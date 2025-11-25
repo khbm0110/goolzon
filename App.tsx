@@ -696,7 +696,7 @@ const INITIAL_API_CONFIG: ApiConfig = {
     }
 };
 
-const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const AppProvider: React.FC = () => {
   const [articles, setArticles] = useState<Article[]>(INITIAL_ARTICLES);
   const [matches, setMatches] = useState<Match[]>(INITIAL_MATCHES);
   const [standings, setStandings] = useState<Standing[]>(INITIAL_STANDINGS);
