@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { 
   LayoutDashboard, 
@@ -29,7 +30,8 @@ import {
   Trophy,
   Users,
   Loader2,
-  UploadCloud
+  UploadCloud,
+  AlertTriangle
 } from 'lucide-react';
 import { Article, Category, ClubProfile, Player, PlayerStats, FeatureFlags, ApiConfig } from '../types';
 import { useApp } from '../App';
@@ -222,14 +224,24 @@ const SettingsView: React.FC<{
             // Strip squad data before inserting into the 'clubs' table.
             const clubsToInsert = Object.values(CLUB_DATABASE)
                 .filter(c => c.id !== 'generic')
-                .map(({ squad, ...clubData }) => clubData);
+                .map(({ squad, englishName, coverImage, fanCount, ...clubData }) => ({
+                    ...clubData,
+                    englishname: englishName,
+                    coverimage: coverImage,
+                    fancount: fanCount
+                }));
             
             const { error: clubsError } = await supabase.from('clubs').upsert(clubsToInsert, { onConflict: 'id' });
             if (clubsError) throw clubsError;
     
             setSeedingMessage("Uploading articles...");
             // Remove sources property if it exists, as it's not in the DB schema
-            const articlesToInsert = INITIAL_ARTICLES.map(({ sources, ...articleData }) => articleData);
+            const articlesToInsert = INITIAL_ARTICLES.map(({ sources, imageUrl, isBreaking, videoEmbedId, ...articleData }) => ({
+                ...articleData,
+                imageurl: imageUrl,
+                isbreaking: isBreaking,
+                videoembedid: videoEmbedId
+            }));
             
             const { error: articlesError } = await supabase.from('articles').upsert(articlesToInsert, { onConflict: 'id' });
             if (articlesError) throw articlesError;
@@ -392,6 +404,13 @@ const SettingsView: React.FC<{
                     </p>
                 </div>
                 <div className="p-6 space-y-4">
+                    <div className="text-sm text-amber-400 bg-amber-900/30 border border-amber-800 p-4 rounded-lg flex items-start gap-3">
+                        <AlertTriangle className="w-8 h-8 text-amber-500 shrink-0" />
+                        <div>
+                            <h4 className="font-bold mb-1">ملاحظة هامة جداً</h4>
+                            عند نسخ كود SQL، تأكد من الاحتفاظ بعلامات الاقتباس المزدوجة حول أسماء الأعمدة (مثل <code>"imageUrl"</code>). هذا يضمن تطابقها مع الكود. إزالتها سيؤدي إلى تحويل الأسماء إلى أحرف صغيرة (<code>imageurl</code>)، مما يسبب أخطاء في عرض وحفظ البيانات.
+                        </div>
+                    </div>
                     <div>
                         <h3 className="text-lg font-bold text-amber-400 mb-2">إصلاح سريع: عمود 'coverImage' مفقود</h3>
                         <p className="text-sm text-slate-400 mb-3">إذا واجهت خطأ حول فقدان عمود "coverImage" عند تعبئة البيانات، قم بتشغيل هذا الأمر:</p>

@@ -755,7 +755,19 @@ const AppProvider: React.FC = () => {
         setArticles(prev => [article, ...prev]);
         return true;
     }
-    const { error } = await supabase.from('articles').insert(article);
+
+    // Map camelCase from app to lowercase for DB
+    const { imageUrl, isBreaking, videoEmbedId, ...restOfArticle } = article;
+    const articleForDb = {
+        ...restOfArticle,
+        imageurl: imageUrl || '', // Ensure not null for DB
+        isbreaking: isBreaking ?? false,
+        videoembedid: videoEmbedId ?? '',
+    };
+    // remove sources if it exists, not in DB schema
+    delete (articleForDb as any).sources;
+
+    const { error } = await supabase.from('articles').insert(articleForDb);
     if (error) {
         console.error("Supabase add article error:", error);
         alert(`Failed to save article: ${error.message}`);
@@ -779,8 +791,15 @@ const AppProvider: React.FC = () => {
       const supabase = getSupabase(apiConfig.supabaseUrl, apiConfig.supabaseKey);
       if (!supabase) { alert("Supabase not configured."); return false; }
       
-      const { squad, ...clubData } = club; // Don't save squad in this table
-      const { error } = await supabase.from('clubs').insert(clubData);
+      const { squad, englishName, coverImage, fanCount, ...clubData } = club;
+      const clubForDb = {
+          ...clubData,
+          englishname: englishName,
+          coverimage: coverImage,
+          fancount: fanCount,
+      };
+      
+      const { error } = await supabase.from('clubs').insert(clubForDb);
       
       if (error) {
           console.error("Supabase add club error:", error);
@@ -795,8 +814,15 @@ const AppProvider: React.FC = () => {
       const supabase = getSupabase(apiConfig.supabaseUrl, apiConfig.supabaseKey);
       if (!supabase) { alert("Supabase not configured."); return false; }
 
-      const { squad, ...clubData } = club;
-      const { error } = await supabase.from('clubs').update(clubData).eq('id', club.id);
+      const { squad, englishName, coverImage, fanCount, ...clubData } = club;
+      const clubForDb = {
+          ...clubData,
+          englishname: englishName,
+          coverimage: coverImage,
+          fancount: fanCount,
+      };
+
+      const { error } = await supabase.from('clubs').update(clubForDb).eq('id', club.id);
       
       if (error) {
           console.error("Supabase update club error:", error);
@@ -940,18 +966,31 @@ const AppProvider: React.FC = () => {
                  // Fetch articles and clubs in parallel
                  const [articlesRes, clubsRes] = await Promise.all([
                      supabase.from('articles').select('*').order('date', { ascending: false }).limit(50),
-                     supabase.from('clubs').select('*') // Simplify: Fetch clubs, then players per club later if needed
+                     supabase.from('clubs').select('*')
                  ]);
 
                  if (articlesRes.error) throw articlesRes.error;
-                 setArticles(articlesRes.data || []);
+                 const articlesFromDb = articlesRes.data || [];
+                 // Map from DB (lowercase) to App (camelCase)
+                 setArticles(articlesFromDb.map((a: any) => ({
+                     ...a,
+                     imageUrl: a.imageurl,
+                     isBreaking: a.isbreaking,
+                     videoEmbedId: a.videoembedid,
+                 })));
 
                  if (clubsRes.error) throw clubsRes.error;
-                 // For now, assume squad data is part of the JSONB or needs separate fetching.
-                 // We'll hydrate with mock squad data for now.
-                 const clubsWithMockSquads = (clubsRes.data || []).map(dbClub => {
+                 const clubsFromDb = clubsRes.data || [];
+                 const clubsWithMockSquads = (clubsFromDb).map((dbClub: any) => {
                     const mockClub = Object.values(CLUB_DATABASE).find(c => c.id === dbClub.id);
-                    return { ...dbClub, squad: mockClub?.squad || [] };
+                    // Map from DB (lowercase) to App (camelCase)
+                    return { 
+                        ...dbClub, 
+                        englishName: dbClub.englishname,
+                        coverImage: dbClub.coverimage,
+                        fanCount: dbClub.fancount,
+                        squad: mockClub?.squad || [] 
+                    };
                  });
                  setClubs(clubsWithMockSquads);
                  
