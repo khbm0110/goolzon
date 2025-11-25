@@ -27,23 +27,20 @@ import {
   Key,
   Cpu,
   Trophy,
-  Users
+  Users,
+  Loader2
 } from 'lucide-react';
 import { Article, Category, ClubProfile, Player, PlayerStats, FeatureFlags, ApiConfig } from '../types';
 import { useApp } from '../App';
 import TeamLogo from './TeamLogo';
 
-interface AdminDashboardProps {
-  articles: Article[];
-  onAddArticle: (article: Article) => void;
-  onUpdateArticle: (article: Article) => void;
-  onDeleteArticle: (id: string) => void;
-}
-
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ articles, onAddArticle, onUpdateArticle, onDeleteArticle }) => {
+const AdminDashboard: React.FC = () => {
   const [activeView, setActiveView] = useState<'DASHBOARD' | 'EDITOR' | 'LIST' | 'SEO' | 'ADS' | 'CLUBS' | 'MERCATO' | 'SETTINGS'>('DASHBOARD');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const { clubs, addClub, updateClub, deleteClub, transferPlayer, featureFlags, setFeatureFlag, apiConfig, setApiConfig } = useApp();
+  const { 
+    clubs, addClub, updateClub, deleteClub, transferPlayer, 
+    featureFlags, setFeatureFlag, apiConfig, setApiConfig 
+  } = useApp();
   
   // Editor State
   const [editorData, setEditorData] = useState<Partial<Article>>({
@@ -118,14 +115,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ articles, onAddArticle,
            ))}
         </nav>
         <div className="p-4 border-t border-slate-800">
-           {isSidebarOpen && <div className="text-xs text-slate-600 text-center">Gulf Sports CMS v1.1</div>}
+           {isSidebarOpen && <div className="text-xs text-slate-600 text-center">Gulf Sports CMS v1.2</div>}
         </div>
       </aside>
 
       {/* Main Content */}
       <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'mr-64' : 'mr-20'} p-6`}>
         {activeView === 'DASHBOARD' && <div className="text-white text-center p-10 bg-slate-900 rounded-xl border border-slate-800">مرحباً بك في لوحة التحكم</div>}
-        {activeView === 'EDITOR' && <div className="text-white">Editor Placeholder (Functionality in previous context)</div>}
+        {activeView === 'EDITOR' && <div className="text-white">Editor Placeholder</div>}
         {activeView === 'LIST' && <div className="text-white">List Placeholder</div>}
         
         {activeView === 'CLUBS' && featureFlags.clubs && (
@@ -377,8 +374,6 @@ const SettingsView: React.FC<{
     );
 };
 
-// ... [Keep other components like MercatoView, ClubsManagerView, etc. unchanged] ...
-// Re-exporting them for clarity but keeping XML concise.
 const MercatoView: React.FC<{
     clubs: ClubProfile[];
     onTransfer: (pid: string, sid: string, tid: string, price: number) => void;
@@ -544,12 +539,13 @@ const MercatoView: React.FC<{
 
 const ClubsManagerView: React.FC<{
   clubs: ClubProfile[];
-  onAdd: (c: ClubProfile) => void;
-  onUpdate: (c: ClubProfile) => void;
-  onDelete: (id: string) => void;
+  onAdd: (c: ClubProfile) => Promise<boolean>;
+  onUpdate: (c: ClubProfile) => Promise<boolean>;
+  onDelete: (id: string) => Promise<boolean>;
 }> = ({ clubs, onAdd, onUpdate, onDelete }) => {
   const [editingClub, setEditingClub] = useState<Partial<ClubProfile> | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   
   // Player Edit State
   const [editingPlayer, setEditingPlayer] = useState<Partial<Player> | null>(null);
@@ -578,25 +574,39 @@ const ClubsManagerView: React.FC<{
     setIsFormOpen(true);
   };
 
-  const handleSaveClub = (e: React.FormEvent) => {
+  const handleSaveClub = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingClub) return;
-
-    const clubToSave = { ...editingClub };
-    if (!clubToSave.id) {
-        clubToSave.id = clubToSave.englishName?.toLowerCase().replace(/\s/g, '-') || Date.now().toString();
-    }
-
-    // Determine if update or add
-    const exists = clubs.some(c => c.id === clubToSave.id);
-    if (exists) {
-       onUpdate(clubToSave as ClubProfile);
-    } else {
-       onAdd(clubToSave as ClubProfile);
-    }
+    setIsSaving(true);
     
-    setIsFormOpen(false);
-    setEditingClub(null);
+    try {
+        const clubToSave = { ...editingClub };
+        const isNew = !clubToSave.id;
+        if (isNew) {
+            clubToSave.id = clubToSave.englishName?.toLowerCase().replace(/\s/g, '-') || Date.now().toString();
+        }
+
+        const success = isNew
+            ? await onAdd(clubToSave as ClubProfile)
+            : await onUpdate(clubToSave as ClubProfile);
+
+        if (success) {
+            alert(`تم حفظ النادي "${clubToSave.name}" بنجاح!`);
+            setIsFormOpen(false);
+            setEditingClub(null);
+        }
+    } finally {
+        setIsSaving(false);
+    }
+  };
+
+  const handleDeleteClub = async (club: ClubProfile) => {
+    if (window.confirm(`هل أنت متأكد من حذف نادي ${club.name}؟ لا يمكن التراجع عن هذا الإجراء.`)) {
+        const success = await onDelete(club.id);
+        if (success) {
+            alert("تم حذف النادي بنجاح.");
+        }
+    }
   };
 
   // --- Player Management Logic ---
@@ -690,7 +700,7 @@ const ClubsManagerView: React.FC<{
                             <button onClick={() => handleEdit(club)} className="p-2 hover:bg-primary/20 hover:text-primary rounded-lg transition-colors">
                             <Edit size={16} />
                             </button>
-                            <button onClick={() => onDelete(club.id)} className="p-2 hover:bg-red-500/20 hover:text-red-500 rounded-lg transition-colors">
+                            <button onClick={() => handleDeleteClub(club)} className="p-2 hover:bg-red-500/20 hover:text-red-500 rounded-lg transition-colors">
                             <Trash2 size={16} />
                             </button>
                         </div>
@@ -854,9 +864,11 @@ const ClubsManagerView: React.FC<{
                   </button>
                   <button 
                     type="submit"
-                    className="px-6 py-2 rounded-lg bg-primary text-slate-900 hover:bg-emerald-400 transition-colors font-bold flex items-center gap-2"
+                    disabled={isSaving}
+                    className="px-6 py-2 rounded-lg bg-primary text-slate-900 hover:bg-emerald-400 transition-colors font-bold flex items-center gap-2 disabled:bg-slate-700 disabled:text-slate-500"
                   >
-                      <Save size={18} /> حفظ التغييرات
+                      {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                      {isSaving ? 'جاري الحفظ...' : 'حفظ التغييرات'}
                   </button>
               </div>
            </form>

@@ -44,14 +44,16 @@ const MATCH_SYNC_INTERVAL = 60000;
 // --- Context for Global State ---
 interface AppContextType {
   articles: Article[];
-  addArticle: (article: Article) => void;
+  addArticle: (article: Article) => Promise<boolean>;
+  updateArticle: (article: Article) => Promise<boolean>;
+  deleteArticle: (id: string) => Promise<boolean>;
   matches: Match[];
   standings: Standing[];
   clubs: ClubProfile[];
-  addClub: (club: ClubProfile) => void;
-  updateClub: (club: ClubProfile) => void;
-  deleteClub: (id: string) => void;
-  transferPlayer: (playerId: string, sourceClubId: string, targetClubId: string, price: number) => void; // New Transfer Logic
+  addClub: (club: ClubProfile) => Promise<boolean>;
+  updateClub: (club: ClubProfile) => Promise<boolean>;
+  deleteClub: (id: string) => Promise<boolean>;
+  transferPlayer: (playerId: string, sourceClubId: string, targetClubId: string, price: number) => void; // This will be complex to make async
   isAIGenerating: boolean;
   lastAIUpdate: Date | null;
   selectedMatch: Match | null;
@@ -746,36 +748,87 @@ const AppProvider: React.FC = () => {
       localStorage.setItem('gs_api_config', JSON.stringify(config));
   };
 
-  const addArticle = (article: Article) => {
+  const addArticle = async (article: Article): Promise<boolean> => {
+    const supabase = getSupabase(apiConfig.supabaseUrl, apiConfig.supabaseKey);
+    if (!supabase) {
+        alert("Supabase is not configured. Article saved locally only.");
+        setArticles(prev => [article, ...prev]);
+        return true;
+    }
+    const { error } = await supabase.from('articles').insert(article);
+    if (error) {
+        console.error("Supabase add article error:", error);
+        alert(`Failed to save article: ${error.message}`);
+        return false;
+    }
     setArticles(prev => [article, ...prev]);
+    return true;
   };
 
-  const addClub = (club: ClubProfile) => {
+  const updateArticle = async (article: Article): Promise<boolean> => {
+     // For future implementation
+     return true;
+  }
+
+  const deleteArticle = async (id: string): Promise<boolean> => {
+     // For future implementation
+     return true;
+  }
+
+  const addClub = async (club: ClubProfile): Promise<boolean> => {
+      const supabase = getSupabase(apiConfig.supabaseUrl, apiConfig.supabaseKey);
+      if (!supabase) { alert("Supabase not configured."); return false; }
+      
+      const { squad, ...clubData } = club; // Don't save squad in this table
+      const { error } = await supabase.from('clubs').insert(clubData);
+      
+      if (error) {
+          console.error("Supabase add club error:", error);
+          alert(`Failed to save club: ${error.message}`);
+          return false;
+      }
       setClubs(prev => [...prev, club]);
+      return true;
   };
 
-  const updateClub = (club: ClubProfile) => {
+  const updateClub = async (club: ClubProfile): Promise<boolean> => {
+      const supabase = getSupabase(apiConfig.supabaseUrl, apiConfig.supabaseKey);
+      if (!supabase) { alert("Supabase not configured."); return false; }
+
+      const { squad, ...clubData } = club;
+      const { error } = await supabase.from('clubs').update(clubData).eq('id', club.id);
+      
+      if (error) {
+          console.error("Supabase update club error:", error);
+          alert(`Failed to update club: ${error.message}`);
+          return false;
+      }
       setClubs(prev => prev.map(c => c.id === club.id ? club : c));
+      return true;
   };
 
-  const deleteClub = (id: string) => {
+  const deleteClub = async (id: string): Promise<boolean> => {
+      const supabase = getSupabase(apiConfig.supabaseUrl, apiConfig.supabaseKey);
+      if (!supabase) { alert("Supabase not configured."); return false; }
+      
+      const { error } = await supabase.from('clubs').delete().eq('id', id);
+      
+      if (error) {
+          console.error("Supabase delete club error:", error);
+          alert(`Failed to delete club: ${error.message}`);
+          return false;
+      }
       setClubs(prev => prev.filter(c => c.id !== id));
+      return true;
   };
 
   const transferPlayer = (playerId: string, sourceClubId: string, targetClubId: string, price: number) => {
+      // Note: Making this fully async with Supabase is complex as it involves multiple table updates (players, clubs)
+      // and potentially a 'transfers' table. Keeping it local for now.
       setClubs(prevClubs => {
-          // Use array mapping instead of Map to allow TS to infer types correctly
-          // We clone only the modified clubs for immutability
-          const newClubs = prevClubs.map(c => {
-             if (c.id === sourceClubId || c.id === targetClubId) {
-                return { ...c, squad: [...c.squad] };
-             }
-             return c;
-          });
-          
+          const newClubs = prevClubs.map(c => ({...c, squad: [...c.squad]}));
           const sourceClub = newClubs.find(c => c.id === sourceClubId);
           const targetClub = newClubs.find(c => c.id === targetClubId);
-          
           if (!sourceClub || !targetClub) return prevClubs;
 
           const playerIndex = sourceClub.squad.findIndex(p => p.id === playerId);
@@ -783,15 +836,11 @@ const AppProvider: React.FC = () => {
 
           const [player] = sourceClub.squad.splice(playerIndex, 1);
           
-          // Add transfer news automatically
-          const newsTitle = `رسمياً: ${player.name} ينتقل من ${sourceClub.name} إلى ${targetClub.name}`;
-          const newsContent = `أعلن نادي ${targetClub.name} اليوم عن تعاقده مع اللاعب ${player.name} قادماً من ${sourceClub.name} في صفقة بلغت قيمتها ${price} مليون يورو.`;
-          
           addArticle({
               id: Date.now().toString(),
-              title: newsTitle,
-              summary: newsContent,
-              content: `<p>${newsContent}</p>`,
+              title: `رسمياً: ${player.name} ينتقل من ${sourceClub.name} إلى ${targetClub.name}`,
+              summary: `أعلن نادي ${targetClub.name} اليوم عن تعاقده مع اللاعب ${player.name} قادماً من ${sourceClub.name}.`,
+              content: `أعلن نادي ${targetClub.name} اليوم عن تعاقده مع اللاعب ${player.name} قادماً من ${sourceClub.name}.`,
               imageUrl: player.image || targetClub.coverImage,
               category: targetClub.country,
               date: new Date().toISOString(),
@@ -891,14 +940,20 @@ const AppProvider: React.FC = () => {
                  // Fetch articles and clubs in parallel
                  const [articlesRes, clubsRes] = await Promise.all([
                      supabase.from('articles').select('*').order('date', { ascending: false }).limit(50),
-                     supabase.from('clubs').select('*, squad:players(*)') // Assumes 'players' table has FK to 'clubs'
+                     supabase.from('clubs').select('*') // Simplify: Fetch clubs, then players per club later if needed
                  ]);
 
                  if (articlesRes.error) throw articlesRes.error;
                  setArticles(articlesRes.data || []);
 
                  if (clubsRes.error) throw clubsRes.error;
-                 setClubs(clubsRes.data || []);
+                 // For now, assume squad data is part of the JSONB or needs separate fetching.
+                 // We'll hydrate with mock squad data for now.
+                 const clubsWithMockSquads = (clubsRes.data || []).map(dbClub => {
+                    const mockClub = Object.values(CLUB_DATABASE).find(c => c.id === dbClub.id);
+                    return { ...dbClub, squad: mockClub?.squad || [] };
+                 });
+                 setClubs(clubsWithMockSquads);
                  
              } catch (error) {
                  console.error("Error fetching from Supabase:", error);
@@ -924,30 +979,20 @@ const AppProvider: React.FC = () => {
      const syncData = async () => {
          if (apiConfig.keys.matches) {
              const liveMatches = await fetchLiveMatches(apiConfig.keys.matches, apiConfig.leagueIds);
-             
-             // If we have an API Key, we trust the API result. 
-             // If it returns empty, it means there are no matches, so we show empty.
-             // We do NOT fallback to INITIAL_MATCHES if the user has provided a key.
              setMatches(liveMatches); 
              
              const liveStandings = await fetchStandings(apiConfig.keys.matches, apiConfig.leagueIds);
              if (liveStandings.length > 0) {
                  setStandings(liveStandings);
              } else {
-                 // If Key exists but no standings found (e.g. invalid league ID), we clear mock data to avoid confusion
                  setStandings([]);
              }
          }
      };
-
-     // Initial Sync
      syncData();
-
-     // Periodic Sync
      if (apiConfig.autoSync) {
          matchSyncIntervalRef.current = setInterval(syncData, MATCH_SYNC_INTERVAL);
      }
-
      return () => {
          if (matchSyncIntervalRef.current) clearInterval(matchSyncIntervalRef.current);
      }
@@ -964,30 +1009,22 @@ const AppProvider: React.FC = () => {
     const runAutopilot = async () => {
        setIsAIGenerating(true);
        try {
-           // 1. Generate Article
            const trendingTopics = [
              'الدوري السعودي', 'الهلال', 'النصر', 'كريستيانو رونالدو', 
              'الدوري الإماراتي', 'العين', 'السد القطري', 'المنتخب السعودي'
            ];
            const randomTopic = trendingTopics[Math.floor(Math.random() * trendingTopics.length)];
            
-           // Pass API key if available
-           const newArticle = await generateArticleContent(randomTopic, apiConfig.keys.gemini);
-           if (newArticle) {
-             // Avoid duplicates by title check
-             setArticles(prev => {
-                if (prev.some(a => a.title === newArticle.title)) return prev;
-                return [
-                   {
-                      id: Date.now().toString(),
-                      ...newArticle,
-                      date: new Date().toISOString(),
-                      views: 0,
-                      author: 'AI Reporter'
-                   }, 
-                   ...prev.slice(0, 49) // Keep last 50
-                ];
-             });
+           const newArticleContent = await generateArticleContent(randomTopic, apiConfig.keys.gemini);
+           if (newArticleContent && !articles.some(a => a.title === newArticleContent.title)) {
+             const newArticle: Article = {
+                 id: Date.now().toString(),
+                 ...newArticleContent,
+                 date: new Date().toISOString(),
+                 views: 0,
+                 author: 'AI Reporter'
+             };
+             await addArticle(newArticle); // This now saves to Supabase
            }
        } catch (e) {
            console.error("Autopilot Error:", e);
@@ -996,21 +1033,20 @@ const AppProvider: React.FC = () => {
            setLastAIUpdate(new Date());
        }
     };
-
-    // Run immediately on enable then interval
-    // runAutopilot(); 
+    
     autopilotIntervalRef.current = setInterval(runAutopilot, AUTOPILOT_INTERVAL);
-
     return () => {
         if (autopilotIntervalRef.current) clearInterval(autopilotIntervalRef.current);
     };
-  }, [isAutopilot, featureFlags.autopilot, apiConfig.keys.gemini]);
+  }, [isAutopilot, featureFlags.autopilot, apiConfig.keys.gemini, articles]);
 
 
   return (
     <AppContext.Provider value={{
       articles,
       addArticle,
+      updateArticle,
+      deleteArticle,
       matches,
       standings,
       clubs,
@@ -1053,7 +1089,7 @@ const AppProvider: React.FC = () => {
                 
                 {/* Protected Routes */}
                 <Route path="/profile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
-                <Route path="/admin" element={<ProtectedRoute><AdminDashboard articles={articles} onAddArticle={addArticle} onUpdateArticle={() => {}} onDeleteArticle={() => {}} /></ProtectedRoute>} />
+                <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
             </Routes>
         </Layout>
       </Router>

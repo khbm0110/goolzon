@@ -20,7 +20,9 @@ export interface GeneratedArticle {
   sources?: { title: string; uri: string }[];
   hasNews?: boolean;
   imageKeyword?: string;
-  imageUrl?: string;
+  // FIX: The imageUrl property was optional, causing a type mismatch with the Article interface where it is required.
+  // Making imageUrl required to ensure type compatibility.
+  imageUrl: string;
 }
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
