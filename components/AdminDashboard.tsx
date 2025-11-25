@@ -19,6 +19,7 @@ import {
   ArrowRightLeft,
   Search,
   CheckCircle2,
+  Clipboard,
   Settings,
   ToggleLeft,
   ToggleRight,
@@ -154,6 +155,38 @@ const AdminDashboard: React.FC = () => {
       </main>
     </div>
   );
+};
+
+// --- Helper Component for Code Blocks ---
+const CodeBlock: React.FC<{ code: string; title?: string }> = ({ code, title }) => {
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(code);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+        <div className="bg-slate-950 border border-slate-700 rounded-lg overflow-hidden">
+            {title && (
+                <div className="px-4 py-2 bg-slate-800 text-slate-300 text-xs font-bold border-b border-slate-700">
+                    {title}
+                </div>
+            )}
+            <div className="relative p-4">
+                <pre className="text-sm text-slate-300 font-mono whitespace-pre-wrap text-left" style={{ direction: 'ltr' }}>
+                    <code>{code}</code>
+                </pre>
+                <button 
+                    onClick={handleCopy}
+                    className="absolute top-2 right-2 p-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 hover:text-white transition-colors"
+                >
+                    {copied ? <CheckCircle2 size={16} className="text-primary" /> : <Clipboard size={16} />}
+                </button>
+            </div>
+        </div>
+    );
 };
 
 // --- Settings/Features Management View ---
@@ -347,8 +380,47 @@ const SettingsView: React.FC<{
                     </div>
                 </div>
             </div>
+            
+            {/* 4. Database Schema Helper */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
+                <div className="p-6 border-b border-slate-800 bg-slate-950">
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                        <Database className="text-indigo-500" /> Database Schema Helper
+                    </h2>
+                    <p className="text-slate-400 text-sm mt-2">
+                        استخدم استعلامات SQL هذه في محرر Supabase SQL لإنشاء جداولك أو إصلاحها.
+                    </p>
+                </div>
+                <div className="p-6 space-y-4">
+                    <div>
+                        <h3 className="text-lg font-bold text-amber-400 mb-2">إصلاح سريع: عمود 'coverImage' مفقود</h3>
+                        <p className="text-sm text-slate-400 mb-3">إذا واجهت خطأ حول فقدان عمود "coverImage" عند تعبئة البيانات، قم بتشغيل هذا الأمر:</p>
+                        <CodeBlock 
+                            code={`ALTER TABLE clubs ADD COLUMN "coverImage" TEXT;`} 
+                        />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-200 mt-4 pt-4 border-t border-slate-800 mb-2">مخططات الجدول الكاملة</h3>
+                        <p className="text-sm text-slate-400 mb-3">إذا كنت تبدأ من جديد، استخدم هذه الأوامر لإنشاء الجداول المطلوبة بأسماء الأعمدة الصحيحة.</p>
+                        <div className="space-y-4">
+                            <CodeBlock 
+                                title="جدول `articles`"
+                                code={`CREATE TABLE articles (\n  id TEXT PRIMARY KEY,\n  title TEXT NOT NULL,\n  summary TEXT,\n  content TEXT,\n  "imageUrl" TEXT,\n  category TEXT,\n  date TIMESTAMPTZ DEFAULT NOW(),\n  author TEXT,\n  views INT DEFAULT 0,\n  "isBreaking" BOOLEAN DEFAULT FALSE,\n  "videoEmbedId" TEXT\n);`}
+                            />
+                            <CodeBlock 
+                                title="جدول `clubs`"
+                                code={`CREATE TABLE clubs (\n  id TEXT PRIMARY KEY,\n  name TEXT NOT NULL,\n  "englishName" TEXT,\n  logo TEXT,\n  "coverImage" TEXT,\n  founded INT,\n  stadium TEXT,\n  coach TEXT,\n  nickname TEXT,\n  country TEXT,\n  colors JSONB,\n  social JSONB,\n  "fanCount" INT,\n  trophies JSONB\n);`}
+                            />
+                             <CodeBlock 
+                                title="تفعيل الوصول للقراءة (RLS)"
+                                code={`-- هام: قم بتشغيل هذا بعد إنشاء الجداول\nALTER TABLE articles ENABLE ROW LEVEL SECURITY;\nCREATE POLICY "Allow public read access" ON articles FOR SELECT USING (true);\n\nALTER TABLE clubs ENABLE ROW LEVEL SECURITY;\nCREATE POLICY "Allow public read access" ON clubs FOR SELECT USING (true);`}
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-            {/* 4. API Configuration Section */}
+            {/* 5. API Configuration Section */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
                 <div className="p-6 border-b border-slate-800 bg-slate-950 flex justify-between items-center">
                     <div>
