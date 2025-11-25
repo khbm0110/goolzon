@@ -103,6 +103,8 @@ const HomePage: React.FC = () => {
   const videoArticles = articles.filter(a => a.category === Category.VIDEO).slice(0, 3);
   
   // DETERMINE DISPLAY MATCHES
+  // If API key is present, we use the `matches` state (which comes from API).
+  // If NO API key, we fallback to INITIAL_MATCHES (Mock data).
   const hasApiKey = Boolean(apiConfig.keys.matches);
   const displayMatches = hasApiKey ? matches : INITIAL_MATCHES;
 
@@ -259,7 +261,8 @@ const HomePage: React.FC = () => {
             <div className="sticky top-24 space-y-6">
               
               {/* Standings Widget */}
-              <StandingsWidget standings={standings} />
+              {/* Note: Standings state is auto-updated by useEffect. If key exists, it has real data or empty array */}
+              <StandingsWidget standings={hasApiKey ? standings : INITIAL_STANDINGS} />
 
               {/* Matches Widget */}
               <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden shadow-xl">
@@ -682,8 +685,8 @@ const INITIAL_FLAGS: FeatureFlags = {
 
 const INITIAL_API_CONFIG: ApiConfig = {
     provider: 'api-football',
-    leagueIds: '307, 308, 309, 301, 306, 312, 315', // Default GCC leagues
-    autoSync: true,
+    leagueIds: '307, 301, 306, 312, 315, 318',
+    autoSync: false,
     keys: {
         matches: '',
         results: '',
@@ -693,400 +696,270 @@ const INITIAL_API_CONFIG: ApiConfig = {
     }
 };
 
-const App: React.FC = () => {
-  const [articles, setArticles] = useState<Article[]>(() => {
-     try {
-       const saved = localStorage.getItem('gs_articles');
-       return saved ? JSON.parse(saved) : INITIAL_ARTICLES;
-     } catch (e) {
-       console.error("Failed to load articles from storage, resetting:", e);
-       return INITIAL_ARTICLES;
-     }
+const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [articles, setArticles] = useState<Article[]>(INITIAL_ARTICLES);
+  const [matches, setMatches] = useState<Match[]>(INITIAL_MATCHES);
+  const [standings, setStandings] = useState<Standing[]>(INITIAL_STANDINGS);
+  const [clubs, setClubs] = useState<ClubProfile[]>(() => {
+      // Hydrate from Club Database but merge with local logic if needed
+      return Object.values(CLUB_DATABASE).filter(c => c.id !== 'generic');
   });
 
-  // Feature Flags State
   const [featureFlags, setFeatureFlags] = useState<FeatureFlags>(() => {
-    try {
-        const saved = localStorage.getItem('gs_flags');
-        return saved ? JSON.parse(saved) : INITIAL_FLAGS;
-    } catch { return INITIAL_FLAGS; }
+      const saved = localStorage.getItem('gs_features');
+      return saved ? { ...INITIAL_FLAGS, ...JSON.parse(saved) } : INITIAL_FLAGS;
   });
+
+  const [apiConfig, setApiConfigState] = useState<ApiConfig>(() => {
+      const saved = localStorage.getItem('gs_api_config');
+      // Merge saved config with initial to ensure all fields exist (in case of updates)
+      return saved ? { ...INITIAL_API_CONFIG, ...JSON.parse(saved) } : INITIAL_API_CONFIG;
+  });
+
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    const saved = localStorage.getItem('gs_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  
+  const [followedTeams, setFollowedTeams] = useState<string[]>(() => {
+    const saved = localStorage.getItem('gs_followed');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [isAIGenerating, setIsAIGenerating] = useState(false);
+  const [lastAIUpdate, setLastAIUpdate] = useState<Date | null>(null);
+  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+  const [isLoadingInitial, setIsLoadingInitial] = useState(true);
+  const [isAutopilot, setIsAutopilot] = useState(featureFlags.autopilot);
+  
+  const autopilotIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const matchSyncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // --- Actions ---
 
   const setFeatureFlag = (key: keyof FeatureFlags, value: boolean) => {
-    setFeatureFlags(prev => {
-        const newFlags = { ...prev, [key]: value };
-        localStorage.setItem('gs_flags', JSON.stringify(newFlags));
-        return newFlags;
-    });
+      setFeatureFlags(prev => {
+          const next = { ...prev, [key]: value };
+          localStorage.setItem('gs_features', JSON.stringify(next));
+          return next;
+      });
   };
-
-  // API Config State
-  // Use improved initialization to merge with defaults in case local storage is partial
-  const [apiConfig, setApiConfigState] = useState<ApiConfig>(() => {
-      try {
-          const saved = localStorage.getItem('gs_api_config');
-          if (saved) {
-             const parsed = JSON.parse(saved);
-             // Robust merge: keep defaults, overwrite with saved, ensure keys object exists and is merged
-             return { 
-                ...INITIAL_API_CONFIG, 
-                ...parsed, 
-                keys: { ...INITIAL_API_CONFIG.keys, ...(parsed.keys || {}) } 
-             };
-          }
-          return INITIAL_API_CONFIG;
-      } catch { return INITIAL_API_CONFIG; }
-  });
 
   const setApiConfig = (config: ApiConfig) => {
       setApiConfigState(config);
       localStorage.setItem('gs_api_config', JSON.stringify(config));
   };
 
-  // State for Clubs Management
-  const [clubs, setClubs] = useState<ClubProfile[]>(() => {
-    try {
-      const saved = localStorage.getItem('gs_clubs');
-      // If we have saved clubs, use them. Otherwise, initialize from constant DATABASE
-      if (saved) return JSON.parse(saved);
-      // Initialize with array from Object.values of the constant database
-      return Object.values(CLUB_DATABASE);
-    } catch {
-      return Object.values(CLUB_DATABASE);
-    }
-  });
-
-  // --- AUTHENTICATION STATE ---
-  const [users, setUsers] = useState<User[]>(() => {
-    try {
-      const saved = localStorage.getItem('gs_users');
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
-
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    try {
-      const saved = localStorage.getItem('gs_current_user');
-      return saved ? JSON.parse(saved) : null;
-    } catch { return null; }
-  });
-
-  useEffect(() => {
-    localStorage.setItem('gs_users', JSON.stringify(users));
-  }, [users]);
-
-  useEffect(() => {
-    if (currentUser) localStorage.setItem('gs_current_user', JSON.stringify(currentUser));
-    else localStorage.removeItem('gs_current_user');
-  }, [currentUser]);
-
-  const login = (username: string, pass: string) => {
-    const user = users.find(u => (u.username === username || u.email === username) && u.password === pass);
-    if (user) {
-      setCurrentUser(user);
-      return true;
-    }
-    return false;
-  };
-
-  const register = (userData: Partial<User>) => {
-    if (users.some(u => u.username === userData.username || u.email === userData.email)) return false;
-    
-    const newUser: User = {
-      id: Date.now().toString(),
-      name: userData.name!,
-      username: userData.username!,
-      email: userData.email!,
-      password: userData.password!,
-      joinDate: new Date().toISOString(),
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.username}&backgroundColor=b6e3f4`
-    };
-    
-    setUsers([...users, newUser]);
-    setCurrentUser(newUser);
-    return true;
-  };
-
-  const logout = () => setCurrentUser(null);
-  
-  const [isAIGenerating, setIsAIGenerating] = useState(false);
-  const [lastAIUpdate, setLastAIUpdate] = useState<Date | null>(null);
-  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
-  const [isLoadingInitial, setIsLoadingInitial] = useState(true);
-  const [isAutopilot, setIsAutopilot] = useState(false); // Default is OFF as requested
-  
-  // Real Matches State
-  const [matches, setMatches] = useState<Match[]>([]);
-  // Real Standings State
-  const [standings, setStandings] = useState<Standing[]>(INITIAL_STANDINGS);
-  
-  // Followed Teams State
-  const [followedTeams, setFollowedTeams] = useState<string[]>(() => {
-      try {
-          const saved = localStorage.getItem('gs_followed_teams');
-          return saved ? JSON.parse(saved) : [];
-      } catch {
-          return [];
-      }
-  });
-  
-  // Ref to track generating state within closure
-  const isGeneratingRef = useRef(false);
-  // Ref to track articles for duplicate checking within interval
-  const articlesRef = useRef(articles);
-
-  useEffect(() => {
-     // Fake initial loading for Skeleton demonstration
-     const timer = setTimeout(() => {
-         setIsLoadingInitial(false);
-     }, 2000);
-     return () => clearTimeout(timer);
-  }, []);
-
-  // --- REAL MATCHES API ENGINE ---
-  useEffect(() => {
-      // If matches feature is disabled or no key provided, do nothing
-      if (!featureFlags.matches || !apiConfig.keys.matches) {
-          setMatches([]); // Clear real matches to trigger fallback UI in list
-          return;
-      }
-
-      const syncMatches = async () => {
-          console.log("Syncing matches from API Football...");
-          const liveMatches = await fetchLiveMatches(apiConfig.keys.matches, apiConfig.leagueIds);
-          // Set matches regardless of length. If empty, it means no matches today.
-          setMatches(liveMatches); 
-      };
-
-      // Initial Sync
-      syncMatches();
-
-      // Auto Sync Interval
-      let interval: ReturnType<typeof setInterval>;
-      if (apiConfig.autoSync) {
-          interval = setInterval(syncMatches, MATCH_SYNC_INTERVAL);
-      }
-
-      return () => {
-          if (interval) clearInterval(interval);
-      };
-  }, [featureFlags.matches, apiConfig.keys.matches, apiConfig.leagueIds, apiConfig.autoSync]);
-
-  // --- REAL STANDINGS API ENGINE ---
-  useEffect(() => {
-     if (featureFlags.matches && apiConfig.keys.matches) {
-        // Fetch real standings
-        fetchStandings(apiConfig.keys.matches, apiConfig.leagueIds).then(res => {
-           // If we got results, or if the API call returned empty array (meaning no data for this season/config), 
-           // we MUST update the state to reflect reality and remove mock data.
-           // However, if the fetch failed (e.g. network error) and returned empty [], we might want to keep existing state 
-           // but here we prioritize accuracy. If key is present, we show what API gives.
-           setStandings(res);
-        });
-     }
-  }, [featureFlags.matches, apiConfig.keys.matches, apiConfig.leagueIds]);
-
-  // Keep ref in sync
-  useEffect(() => {
-    articlesRef.current = articles;
-    try {
-      localStorage.setItem('gs_articles', JSON.stringify(articles));
-    } catch (e) {
-      console.error("Failed to save articles:", e);
-    }
-  }, [articles]);
-
-  // Persist followed teams
-  useEffect(() => {
-      localStorage.setItem('gs_followed_teams', JSON.stringify(followedTeams));
-  }, [followedTeams]);
-
-  // Persist Clubs
-  useEffect(() => {
-    try {
-      localStorage.setItem('gs_clubs', JSON.stringify(clubs));
-    } catch (e) {
-      console.error("Failed to save clubs:", e);
-    }
-  }, [clubs]);
-
-  const toggleFollow = (teamName: string) => {
-      setFollowedTeams(prev => {
-          if (prev.includes(teamName)) return prev.filter(t => t !== teamName);
-          return [...prev, teamName];
-      });
-  };
-
   const addArticle = (article: Article) => {
-    setArticles(prevArticles => {
-        const exists = prevArticles.some(a => a.title === article.title);
-        if (exists) return prevArticles;
-        return [article, ...prevArticles];
-    });
+    setArticles(prev => [article, ...prev]);
   };
 
-  const updateArticle = (updatedArticle: Article) => {
-    setArticles(prev => prev.map(a => a.id === updatedArticle.id ? updatedArticle : a));
+  const addClub = (club: ClubProfile) => {
+      setClubs(prev => [...prev, club]);
   };
 
-  const deleteArticle = (id: string) => {
-    setArticles(prev => prev.filter(a => a.id !== id));
-  };
-
-  // Club Management Functions
-  const addClub = (newClub: ClubProfile) => {
-    setClubs(prev => [...prev, newClub]);
-  };
-
-  const updateClub = (updatedClub: ClubProfile) => {
-    setClubs(prev => prev.map(c => c.id === updatedClub.id ? updatedClub : c));
+  const updateClub = (club: ClubProfile) => {
+      setClubs(prev => prev.map(c => c.id === club.id ? club : c));
   };
 
   const deleteClub = (id: string) => {
-    setClubs(prev => prev.filter(c => c.id !== id));
+      setClubs(prev => prev.filter(c => c.id !== id));
   };
 
-  // --- Transfer API Simulation ---
   const transferPlayer = (playerId: string, sourceClubId: string, targetClubId: string, price: number) => {
-     const sourceClub = clubs.find(c => c.id === sourceClubId);
-     const targetClub = clubs.find(c => c.id === targetClubId);
-     
-     if (!sourceClub || !targetClub) return;
+      setClubs(prevClubs => {
+          // Use array mapping instead of Map to allow TS to infer types correctly
+          // We clone only the modified clubs for immutability
+          const newClubs = prevClubs.map(c => {
+             if (c.id === sourceClubId || c.id === targetClubId) {
+                return { ...c, squad: [...c.squad] };
+             }
+             return c;
+          });
+          
+          const sourceClub = newClubs.find(c => c.id === sourceClubId);
+          const targetClub = newClubs.find(c => c.id === targetClubId);
+          
+          if (!sourceClub || !targetClub) return prevClubs;
 
-     // 1. Find player
-     const player = sourceClub.squad.find(p => p.id === playerId);
-     if (!player) return;
+          const playerIndex = sourceClub.squad.findIndex(p => p.id === playerId);
+          if (playerIndex === -1) return prevClubs;
 
-     // 2. Remove from Source
-     const newSourceSquad = sourceClub.squad.filter(p => p.id !== playerId);
-     const updatedSourceClub = { ...sourceClub, squad: newSourceSquad };
+          const [player] = sourceClub.squad.splice(playerIndex, 1);
+          
+          // Add transfer news automatically
+          const newsTitle = `رسمياً: ${player.name} ينتقل من ${sourceClub.name} إلى ${targetClub.name}`;
+          const newsContent = `أعلن نادي ${targetClub.name} اليوم عن تعاقده مع اللاعب ${player.name} قادماً من ${sourceClub.name} في صفقة بلغت قيمتها ${price} مليون يورو.`;
+          
+          addArticle({
+              id: Date.now().toString(),
+              title: newsTitle,
+              summary: newsContent,
+              content: `<p>${newsContent}</p>`,
+              imageUrl: player.image || targetClub.coverImage,
+              category: targetClub.country,
+              date: new Date().toISOString(),
+              author: 'Bot الانتقالات',
+              views: 0,
+              isBreaking: true
+          });
 
-     // 3. Add to Target (Update dynamic image to new club kit - simulated by just keeping same image for now)
-     const newTargetSquad = [...targetClub.squad, player];
-     const updatedTargetClub = { ...targetClub, squad: newTargetSquad };
+          targetClub.squad.push(player);
+          return newClubs;
+      });
+  };
 
-     // 4. Update State
-     setClubs(prev => prev.map(c => {
-         if (c.id === sourceClubId) return updatedSourceClub;
-         if (c.id === targetClubId) return updatedTargetClub;
-         return c;
-     }));
+  const toggleAutopilot = () => {
+    setIsAutopilot(!isAutopilot);
+  };
 
-     // 5. Generate Breaking News
-     const newsTitle = `رسمياً: ${player.name} ينتقل من ${sourceClub.name} إلى ${targetClub.name}`;
-     const newsSummary = `في صفقة من العيار الثقيل، أعلن نادي ${targetClub.name} عن التعاقد مع النجم ${player.name} قادماً من ${sourceClub.name}.`;
-     const newsContent = `
-        <p>أتم مجلس إدارة نادي <strong>${targetClub.name}</strong> إجراءات التعاقد مع اللاعب <strong>${player.name}</strong> في صفقة انتقال نهائي.</p>
-        <p>وتأتي هذه الصفقة لتدعيم صفوف الفريق للمنافسات القادمة، حيث يعتبر ${player.name} من أبرز اللاعبين في مركزه.</p>
-        <p>وقد بلغت قيمة الصفقة حوالي ${price} مليون يورو.</p>
-     `;
-     
-     addArticle({
-         id: Date.now().toString(),
-         title: newsTitle,
-         summary: newsSummary,
-         content: newsContent,
-         imageUrl: player.image || targetClub.logo,
-         category: Category.BREAKING,
-         date: new Date().toISOString(),
-         author: 'سوق الانتقالات',
-         views: 0,
-         isBreaking: true
+  const toggleFollow = (teamName: string) => {
+     setFollowedTeams(prev => {
+        const next = prev.includes(teamName) ? prev.filter(t => t !== teamName) : [...prev, teamName];
+        localStorage.setItem('gs_followed', JSON.stringify(next));
+        return next;
      });
   };
 
-  // --- TRAFFIC SIMULATOR ---
-  useEffect(() => {
-    const trafficTimer = setInterval(() => {
-      setArticles(prev => prev.map(a => {
-        const isRecent = new Date(a.date).getTime() > (Date.now() - 86400000);
-        if (isRecent && Math.random() > 0.7) {
-           return { ...a, views: a.views + Math.floor(Math.random() * 3) + 1 };
-        }
-        return a;
-      }));
-    }, 5000);
-    return () => clearInterval(trafficTimer);
-  }, []);
-
-  // --- AUTOMATED NEWS ENGINE (AUTO-PILOT) ---
-  useEffect(() => {
-    // If Autopilot is OFF (either global toggle or Feature Flag), do nothing
-    if (!isAutopilot || !featureFlags.autopilot) return;
-
-    // Immediately trigger one if it's the first time turning on
-    const initialTrigger = setTimeout(async () => {
-        if (!isGeneratingRef.current) {
-            triggerAutoGeneration();
-        }
-    }, 5000);
-
-    const interval = setInterval(async () => {
-        if (!isGeneratingRef.current) {
-            triggerAutoGeneration();
-        }
-    }, AUTOPILOT_INTERVAL);
-
-    return () => {
-        clearInterval(interval);
-        clearTimeout(initialTrigger);
+  // --- Auth ---
+  const login = (username: string, pass: string) => {
+    // Mock Login
+    if (pass.length < 3) return false;
+    const user: User = {
+        id: '1',
+        name: 'مشجع خليجي',
+        username: username,
+        email: `${username}@example.com`,
+        password: '',
+        joinDate: new Date().toISOString(),
+        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix'
     };
-  }, [isAutopilot, featureFlags.autopilot]);
-
-  const triggerAutoGeneration = async () => {
-      isGeneratingRef.current = true;
-      setIsAIGenerating(true);
-      
-      try {
-        // Smart Selection: Pick a random club from the list
-        // Use dynamic clubs list if available, else fallback
-        const clubsList = clubs.length > 0 ? clubs : GULF_CLUBS;
-        const randomClub = clubsList[Math.floor(Math.random() * clubsList.length)];
-        const topic = `أخبار ${randomClub.name} اليوم`;
-        
-        console.log(`Auto-Pilot: Generating news for ${topic}...`);
-        
-        // Pass existing titles to avoid duplicates
-        const existingTitles = articlesRef.current.map(a => a.title);
-        
-        // PASS DYNAMIC KEY HERE
-        const newArticle = await generateArticleContent(topic, apiConfig.keys.gemini, 2, existingTitles);
-        
-        if (newArticle) {
-            const articleObj: Article = {
-                id: Date.now().toString(),
-                title: newArticle.title,
-                summary: newArticle.summary,
-                content: newArticle.content,
-                imageUrl: newArticle.imageUrl || getSmartImageUrl(randomClub.name),
-                category: newArticle.category as Category || Category.SAUDI,
-                date: new Date().toISOString(),
-                author: 'AI Reporter',
-                views: 120,
-                isBreaking: false
-            };
-            
-            // Double check duplication before adding
-            const isDuplicate = articlesRef.current.some(a => a.title === articleObj.title);
-            if (!isDuplicate) {
-                addArticle(articleObj);
-                setLastAIUpdate(new Date());
-            }
-        }
-      } catch (error) {
-        console.error("Auto-Pilot Error:", error);
-      } finally {
-        setIsAIGenerating(false);
-        isGeneratingRef.current = false;
-      }
+    setCurrentUser(user);
+    localStorage.setItem('gs_user', JSON.stringify(user));
+    return true;
   };
 
+  const register = (data: Partial<User>) => {
+      const user: User = {
+          id: Date.now().toString(),
+          name: data.name || 'User',
+          username: data.username || 'user',
+          email: data.email || 'user@mail.com',
+          password: '',
+          joinDate: new Date().toISOString(),
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.username}`
+      };
+      setCurrentUser(user);
+      localStorage.setItem('gs_user', JSON.stringify(user));
+      return true;
+  };
+
+  const logout = () => {
+      setCurrentUser(null);
+      localStorage.removeItem('gs_user');
+  };
+
+  // --- Effects ---
+
+  // 1. Initial Load & Hydration
+  useEffect(() => {
+     setTimeout(() => setIsLoadingInitial(false), 1500);
+  }, []);
+
+  // 2. Real-Time Match Data Fetching (Prioritize API Key)
+  useEffect(() => {
+     const syncData = async () => {
+         if (apiConfig.keys.matches) {
+             const liveMatches = await fetchLiveMatches(apiConfig.keys.matches, apiConfig.leagueIds);
+             
+             // If we have an API Key, we trust the API result. 
+             // If it returns empty, it means there are no matches, so we show empty.
+             // We do NOT fallback to INITIAL_MATCHES if the user has provided a key.
+             setMatches(liveMatches); 
+             
+             const liveStandings = await fetchStandings(apiConfig.keys.matches, apiConfig.leagueIds);
+             if (liveStandings.length > 0) {
+                 setStandings(liveStandings);
+             } else {
+                 // If Key exists but no standings found (e.g. invalid league ID), we clear mock data to avoid confusion
+                 setStandings([]);
+             }
+         }
+     };
+
+     // Initial Sync
+     syncData();
+
+     // Periodic Sync
+     if (apiConfig.autoSync) {
+         matchSyncIntervalRef.current = setInterval(syncData, MATCH_SYNC_INTERVAL);
+     }
+
+     return () => {
+         if (matchSyncIntervalRef.current) clearInterval(matchSyncIntervalRef.current);
+     }
+  }, [apiConfig.keys.matches, apiConfig.leagueIds, apiConfig.autoSync]);
+
+
+  // 3. AI Autopilot Logic
+  useEffect(() => {
+    if (!isAutopilot || !featureFlags.autopilot) {
+        if (autopilotIntervalRef.current) clearInterval(autopilotIntervalRef.current);
+        return;
+    }
+
+    const runAutopilot = async () => {
+       setIsAIGenerating(true);
+       try {
+           // 1. Generate Article
+           const trendingTopics = [
+             'الدوري السعودي', 'الهلال', 'النصر', 'كريستيانو رونالدو', 
+             'الدوري الإماراتي', 'العين', 'السد القطري', 'المنتخب السعودي'
+           ];
+           const randomTopic = trendingTopics[Math.floor(Math.random() * trendingTopics.length)];
+           
+           // Pass API key if available
+           const newArticle = await generateArticleContent(randomTopic, apiConfig.keys.gemini);
+           if (newArticle) {
+             // Avoid duplicates by title check
+             setArticles(prev => {
+                if (prev.some(a => a.title === newArticle.title)) return prev;
+                return [
+                   {
+                      id: Date.now().toString(),
+                      ...newArticle,
+                      date: new Date().toISOString(),
+                      views: 0,
+                      author: 'AI Reporter'
+                   }, 
+                   ...prev.slice(0, 49) // Keep last 50
+                ];
+             });
+           }
+       } catch (e) {
+           console.error("Autopilot Error:", e);
+       } finally {
+           setIsAIGenerating(false);
+           setLastAIUpdate(new Date());
+       }
+    };
+
+    // Run immediately on enable then interval
+    // runAutopilot(); 
+    autopilotIntervalRef.current = setInterval(runAutopilot, AUTOPILOT_INTERVAL);
+
+    return () => {
+        if (autopilotIntervalRef.current) clearInterval(autopilotIntervalRef.current);
+    };
+  }, [isAutopilot, featureFlags.autopilot, apiConfig.keys.gemini]);
+
+
   return (
-    <AppContext.Provider value={{ 
-      articles, 
-      addArticle, 
-      matches, 
-      standings, 
+    <AppContext.Provider value={{
+      articles,
+      addArticle,
+      matches,
+      standings,
       clubs,
       addClub,
       updateClub,
@@ -1098,7 +971,7 @@ const App: React.FC = () => {
       setSelectedMatch,
       isLoadingInitial,
       isAutopilot,
-      toggleAutopilot: () => setIsAutopilot(!isAutopilot),
+      toggleAutopilot,
       followedTeams,
       toggleFollow,
       currentUser,
@@ -1112,40 +985,27 @@ const App: React.FC = () => {
     }}>
       <Router>
         <Layout>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route 
-              path="/admin" 
-              element={
-                <AdminDashboard 
-                  articles={articles} 
-                  onAddArticle={addArticle}
-                  onUpdateArticle={updateArticle}
-                  onDeleteArticle={deleteArticle}
-                />
-              } 
-            />
-            {/* Auth Routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            
-            <Route path="/profile" element={
-              <ProtectedRoute>
-                <UserProfile />
-              </ProtectedRoute>
-            } />
-            
-            <Route path="/country/:id" element={<CountryPage />} />
-            <Route path="/club/:id" element={<ClubDashboard />} />
-            <Route path="/analysis" element={<CountryPage />} />
-            <Route path="/article/:id" element={<ArticleDetail />} />
-            <Route path="/matches" element={<MatchesPage />} />
-            <Route path="/videos" element={<VideosPage />} />
-          </Routes>
+            <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/matches" element={<MatchesPage />} />
+                <Route path="/videos" element={<VideosPage />} />
+                <Route path="/analysis" element={<CountryPage />} />
+                <Route path="/country/:id" element={<CountryPage />} />
+                <Route path="/article/:id" element={<ArticleDetail />} />
+                <Route path="/club/:id" element={<ClubDashboard />} />
+                
+                {/* Auth Routes */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                
+                {/* Protected Routes */}
+                <Route path="/profile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
+                <Route path="/admin" element={<ProtectedRoute><AdminDashboard articles={articles} onAddArticle={addArticle} onUpdateArticle={() => {}} onDeleteArticle={() => {}} /></ProtectedRoute>} />
+            </Routes>
         </Layout>
       </Router>
     </AppContext.Provider>
   );
 };
 
-export default App;
+export default AppProvider;

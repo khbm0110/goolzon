@@ -29,15 +29,20 @@ const MatchCenterModal: React.FC<MatchCenterModalProps> = ({ match, onClose }) =
           if (apiConfig.keys.matches) {
               try {
                   data = await fetchFixtureDetails(apiConfig.keys.matches, match.id);
+                  if (!data) {
+                      // If API return null (e.g. rate limit or error), and we have a key, we might NOT want to show fake data
+                      // But for robustness, let's just log it.
+                      console.warn("API returned no details for fixture", match.id);
+                  }
               } catch (e) {
-                  console.warn("API Fetch failed, falling back logic if needed.");
+                  console.warn("API Fetch failed.", e);
               }
           }
 
-          // 2. Fallback to Hybrid Engine only if:
+          // 2. Fallback to Hybrid Engine ONLY if:
           //    a) No API key is configured (Demo Mode)
-          //    b) OR if data is still null AND user hasn't explicitly disabled mock data.
-          //    But for "Real Data" request, we prefer showing empty/error over fake data if key exists.
+          //    b) OR if data is still null AND we want to fallback (but user complained about fake data)
+          //    FIX: If API Key exists, do NOT show fake data. Only show fake data if NO key is provided.
           if (!data && !apiConfig.keys.matches) {
              data = await getMatchDetails(match.homeTeam, match.awayTeam, match.scoreHome, match.scoreAway);
           }
@@ -151,6 +156,7 @@ const MatchCenterModal: React.FC<MatchCenterModalProps> = ({ match, onClose }) =
             ) : !details ? (
                 <div className="text-center py-12 text-slate-500">
                     <p>لا تتوفر تفاصيل لهذه المباراة حالياً.</p>
+                    {apiConfig.keys.matches && <p className="text-xs text-slate-600 mt-2">تأكد من صلاحية مفتاح API أو توفر التغطية لهذه المباراة</p>}
                 </div>
             ) : (
                 <>

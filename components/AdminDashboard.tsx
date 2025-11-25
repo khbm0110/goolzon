@@ -182,7 +182,7 @@ const SettingsView: React.FC<{
     ];
 
     const apiKeysList = [
-        { key: 'matches', label: 'مفتاح المباريات (v3.football.api-sports.io)', desc: 'يستخدم لجلب جدول المباريات والترتيب. يجب استخدام مفتاح Dashboard المباشر.', icon: Trophy },
+        { key: 'matches', label: 'مفتاح المباريات (API-Sports Dashboard)', desc: 'استخدم المفتاح من v3.football.api-sports.io (Direct Dashboard).', icon: Trophy },
         { key: 'results', label: 'مفتاح النتائج (Results)', desc: 'يستخدم لجلب النتائج المباشرة والأهداف أثناء المباراة.', icon: CheckCircle2 },
         { key: 'playersData', label: 'مفتاح بيانات اللاعبين (Players)', desc: 'لجلب تفاصيل اللاعبين، الصور، والطاقات للإحصائيات.', icon: User },
         { key: 'scouting', label: 'مفتاح البحث (Scouting)', desc: 'يستخدم في سوق الانتقالات للبحث عن لاعبين جدد.', icon: Users },
