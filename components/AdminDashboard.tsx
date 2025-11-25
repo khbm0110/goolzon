@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { 
   LayoutDashboard, 
@@ -28,11 +27,14 @@ import {
   Cpu,
   Trophy,
   Users,
-  Loader2
+  Loader2,
+  UploadCloud
 } from 'lucide-react';
 import { Article, Category, ClubProfile, Player, PlayerStats, FeatureFlags, ApiConfig } from '../types';
 import { useApp } from '../App';
 import TeamLogo from './TeamLogo';
+import { getSupabase } from '../services/supabaseClient';
+import { INITIAL_ARTICLES, CLUB_DATABASE } from '../constants';
 
 const AdminDashboard: React.FC = () => {
   const [activeView, setActiveView] = useState<'DASHBOARD' | 'EDITOR' | 'LIST' | 'SEO' | 'ADS' | 'CLUBS' | 'MERCATO' | 'SETTINGS'>('DASHBOARD');
@@ -163,10 +165,52 @@ const SettingsView: React.FC<{
 }> = ({ featureFlags, setFeatureFlag, apiConfig, setApiConfig }) => {
     
     const [localApiConfig, setLocalApiConfig] = useState(apiConfig);
+    const [isSeeding, setIsSeeding] = useState(false);
+    const [seedingMessage, setSeedingMessage] = useState('');
 
     const handleSaveApi = () => {
         setApiConfig(localApiConfig);
         alert('تم حفظ إعدادات الربط البرمجي والمفاتيح بنجاح!');
+    };
+    
+    const handleSeedDatabase = async () => {
+        if (!window.confirm("This will upload all local mock data to your Supabase tables. This is a one-time setup action. Continue?")) return;
+    
+        setIsSeeding(true);
+        const supabase = getSupabase(apiConfig.supabaseUrl, apiConfig.supabaseKey);
+        if (!supabase) {
+            alert("Supabase is not configured!");
+            setIsSeeding(false);
+            return;
+        }
+    
+        try {
+            setSeedingMessage("Uploading clubs...");
+            // Strip squad data before inserting into the 'clubs' table.
+            const clubsToInsert = Object.values(CLUB_DATABASE)
+                .filter(c => c.id !== 'generic')
+                .map(({ squad, ...clubData }) => clubData);
+            
+            const { error: clubsError } = await supabase.from('clubs').upsert(clubsToInsert, { onConflict: 'id' });
+            if (clubsError) throw clubsError;
+    
+            setSeedingMessage("Uploading articles...");
+            // Remove sources property if it exists, as it's not in the DB schema
+            const articlesToInsert = INITIAL_ARTICLES.map(({ sources, ...articleData }) => articleData);
+            
+            const { error: articlesError } = await supabase.from('articles').upsert(articlesToInsert, { onConflict: 'id' });
+            if (articlesError) throw articlesError;
+    
+            setSeedingMessage("Seeding complete!");
+            alert("Database seeded successfully! Please refresh the application to see the live data.");
+        
+        } catch (error: any) {
+            const errorMessage = `Seeding failed: ${error.message}`;
+            setSeedingMessage(errorMessage);
+            alert(errorMessage);
+        } finally {
+            setIsSeeding(false);
+        }
     };
 
     const featuresList: { key: keyof FeatureFlags; label: string; desc: string; icon: any }[] = [
@@ -273,8 +317,38 @@ const SettingsView: React.FC<{
                     </div>
                 </div>
             </div>
+            
+            {/* 3. Database Actions Section */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
+                <div className="p-6 border-b border-slate-800 bg-slate-950">
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                        <Database className="text-orange-500" /> Database Actions
+                    </h2>
+                    <p className="text-slate-400 text-sm mt-2">
+                        Execute one-time actions to manage your database. Use with caution.
+                    </p>
+                </div>
+                <div className="p-6 flex items-center gap-6">
+                    <button 
+                        onClick={handleSeedDatabase}
+                        disabled={isSeeding || !apiConfig.supabaseUrl}
+                        className="bg-orange-600 hover:bg-orange-500 text-white px-6 py-3 rounded-xl font-bold transition-colors flex items-center gap-2 shadow-lg shadow-orange-900/20 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
+                    >
+                        {isSeeding ? <Loader2 size={18} className="animate-spin" /> : <UploadCloud size={18} />}
+                        {isSeeding ? seedingMessage : 'Seed Database with Initial Data'}
+                    </button>
+                    <div className="flex-1">
+                        <p className="text-sm text-slate-400">
+                            This will upload the built-in articles and clubs to your empty Supabase tables.
+                        </p>
+                        <p className="text-xs text-slate-500 mt-1">
+                            Only run this once after creating your tables. It uses 'upsert' so it's safe to run again if needed.
+                        </p>
+                    </div>
+                </div>
+            </div>
 
-            {/* 3. API Configuration Section */}
+            {/* 4. API Configuration Section */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
                 <div className="p-6 border-b border-slate-800 bg-slate-950 flex justify-between items-center">
                     <div>

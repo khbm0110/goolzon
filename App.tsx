@@ -1017,9 +1017,17 @@ const AppProvider: React.FC = () => {
            
            const newArticleContent = await generateArticleContent(randomTopic, apiConfig.keys.gemini);
            if (newArticleContent && !articles.some(a => a.title === newArticleContent.title)) {
+             // FIX: The category from Gemini is a string, but the Article type expects the Category enum.
+             // This safely converts the string to a Category enum member, with a fallback.
+             const categoryValues = Object.values(Category) as string[];
+             const safeCategory = categoryValues.includes(newArticleContent.category)
+               ? newArticleContent.category as Category
+               : Category.SAUDI;
+
              const newArticle: Article = {
                  id: Date.now().toString(),
                  ...newArticleContent,
+                 category: safeCategory,
                  date: new Date().toISOString(),
                  views: 0,
                  author: 'AI Reporter'
