@@ -19,6 +19,7 @@ import { INITIAL_ARTICLES, INITIAL_MATCHES, INITIAL_STANDINGS, GULF_CLUBS, CLUB_
 import { generateArticleContent } from './services/geminiService';
 import { getSmartImageUrl } from './services/imageService';
 import { fetchLiveMatches, fetchStandings } from './services/apiFootball';
+import { getSupabase } from './services/supabaseClient';
 import { 
   TrendingUp, 
   Trophy, 
@@ -319,10 +320,6 @@ const HomePage: React.FC = () => {
     </div>
   );
 };
-
-// ... [Keep other pages like CountryPage, MatchesPage, VideosPage, ArticleDetail same as before, no changes needed] ...
-// Re-implementing simplified layout/router for brevity as they remain largely unchanged
-// But must include MatchesPage logic update to use hasApiKey
 
 const CountryPage: React.FC = () => {
     const { articles } = useApp();
@@ -687,6 +684,8 @@ const INITIAL_API_CONFIG: ApiConfig = {
     provider: 'api-football',
     leagueIds: '307, 301, 306, 312, 315, 318',
     autoSync: false,
+    supabaseUrl: '',
+    supabaseKey: '',
     keys: {
         matches: '',
         results: '',
@@ -697,13 +696,10 @@ const INITIAL_API_CONFIG: ApiConfig = {
 };
 
 const AppProvider: React.FC = () => {
-  const [articles, setArticles] = useState<Article[]>(INITIAL_ARTICLES);
+  const [articles, setArticles] = useState<Article[]>([]);
   const [matches, setMatches] = useState<Match[]>(INITIAL_MATCHES);
   const [standings, setStandings] = useState<Standing[]>(INITIAL_STANDINGS);
-  const [clubs, setClubs] = useState<ClubProfile[]>(() => {
-      // Hydrate from Club Database but merge with local logic if needed
-      return Object.values(CLUB_DATABASE).filter(c => c.id !== 'generic');
-  });
+  const [clubs, setClubs] = useState<ClubProfile[]>([]);
 
   const [featureFlags, setFeatureFlags] = useState<FeatureFlags>(() => {
       const saved = localStorage.getItem('gs_features');
@@ -825,14 +821,32 @@ const AppProvider: React.FC = () => {
   const login = (username: string, pass: string) => {
     // Mock Login
     if (pass.length < 3) return false;
+
+    // Special case for admin user
+    if (username.toLowerCase() === 'admin' && pass === 'admin123') {
+        const adminUser: User = {
+            id: 'admin-001',
+            name: 'المدير العام',
+            username: 'admin',
+            email: 'admin@gulfsports.dev',
+            password: '', // Don't store password
+            joinDate: new Date().toISOString(),
+            avatar: 'https://api.dicebear.com/7.x/initials/svg?seed=Admin&backgroundColor=10b981&textColor=ffffff'
+        };
+        setCurrentUser(adminUser);
+        localStorage.setItem('gs_user', JSON.stringify(adminUser));
+        return true;
+    }
+
+    // Regular user login with any other credentials
     const user: User = {
-        id: '1',
+        id: Date.now().toString(),
         name: 'مشجع خليجي',
         username: username,
         email: `${username}@example.com`,
         password: '',
         joinDate: new Date().toISOString(),
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix'
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`
     };
     setCurrentUser(user);
     localStorage.setItem('gs_user', JSON.stringify(user));
@@ -840,6 +854,10 @@ const AppProvider: React.FC = () => {
   };
 
   const register = (data: Partial<User>) => {
+      // Prevent registering as admin
+      if (data.username?.toLowerCase() === 'admin') {
+          return false;
+      }
       const user: User = {
           id: Date.now().toString(),
           name: data.name || 'User',
@@ -861,10 +879,45 @@ const AppProvider: React.FC = () => {
 
   // --- Effects ---
 
-  // 1. Initial Load & Hydration
+  // 1. Initial Load & Hydration (from Supabase or Mock Data)
   useEffect(() => {
-     setTimeout(() => setIsLoadingInitial(false), 1500);
-  }, []);
+     const initializeApp = async () => {
+         setIsLoadingInitial(true);
+         const supabase = getSupabase(apiConfig.supabaseUrl, apiConfig.supabaseKey);
+         
+         if (supabase) {
+             console.log("Supabase client initialized. Fetching data...");
+             try {
+                 // Fetch articles and clubs in parallel
+                 const [articlesRes, clubsRes] = await Promise.all([
+                     supabase.from('articles').select('*').order('date', { ascending: false }).limit(50),
+                     supabase.from('clubs').select('*, squad:players(*)') // Assumes 'players' table has FK to 'clubs'
+                 ]);
+
+                 if (articlesRes.error) throw articlesRes.error;
+                 setArticles(articlesRes.data || []);
+
+                 if (clubsRes.error) throw clubsRes.error;
+                 setClubs(clubsRes.data || []);
+                 
+             } catch (error) {
+                 console.error("Error fetching from Supabase:", error);
+                 // Fallback to mock data on error
+                 setArticles(INITIAL_ARTICLES);
+                 setClubs(Object.values(CLUB_DATABASE).filter(c => c.id !== 'generic'));
+             }
+         } else {
+             console.log("No Supabase config. Using initial mock data.");
+             // Fallback to mock data if supabase is not configured
+             setArticles(INITIAL_ARTICLES);
+             setClubs(Object.values(CLUB_DATABASE).filter(c => c.id !== 'generic'));
+         }
+         
+         setIsLoadingInitial(false);
+     };
+
+     initializeApp();
+  }, [apiConfig.supabaseUrl, apiConfig.supabaseKey]);
 
   // 2. Real-Time Match Data Fetching (Prioritize API Key)
   useEffect(() => {

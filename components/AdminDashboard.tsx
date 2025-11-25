@@ -235,12 +235,54 @@ const SettingsView: React.FC<{
                 </div>
             </div>
 
-            {/* 2. API Configuration Section */}
+            {/* 2. Supabase Configuration Section */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
                 <div className="p-6 border-b border-slate-800 bg-slate-950 flex justify-between items-center">
                     <div>
                         <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                            <Database className="text-blue-500" /> إعدادات الربط البرمجي (API Keys)
+                            <Database className="text-green-500" /> Supabase Backend
+                        </h2>
+                        <p className="text-slate-400 text-sm mt-2">
+                            قم بتوصيل التطبيق بقاعدة بيانات Supabase لتفعيل التخزين الدائم للبيانات والمصادقة.
+                        </p>
+                    </div>
+                    {localApiConfig.supabaseUrl && (
+                        <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 border border-green-500/30 rounded-full">
+                            <CheckCircle2 size={14} className="text-green-500" />
+                            <span className="text-xs font-bold text-green-400">متصل</span>
+                        </div>
+                    )}
+                </div>
+                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-300 flex items-center gap-2">Supabase URL</label>
+                        <input 
+                            type="text"
+                            value={localApiConfig.supabaseUrl}
+                            onChange={e => setLocalApiConfig({...localApiConfig, supabaseUrl: e.target.value})}
+                            placeholder="https://<project-id>.supabase.co"
+                            className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-green-500 outline-none font-mono"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-300 flex items-center gap-2">Supabase Anon Key</label>
+                        <input 
+                            type="password"
+                            value={localApiConfig.supabaseKey}
+                            onChange={e => setLocalApiConfig({...localApiConfig, supabaseKey: e.target.value})}
+                            placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                            className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-green-500 outline-none font-mono"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* 3. API Configuration Section */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
+                <div className="p-6 border-b border-slate-800 bg-slate-950 flex justify-between items-center">
+                    <div>
+                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                            <Key className="text-yellow-500" /> مفاتيح API للمصادر الخارجية
                         </h2>
                         <p className="text-slate-400 text-sm mt-2">
                              إدارة مفاتيح الوصول للمصادر المختلفة (المباريات، النتائج، اللاعبين، والذكاء الاصطناعي).

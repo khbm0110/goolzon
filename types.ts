@@ -25,6 +25,8 @@ export interface ApiConfig {
   provider: 'api-football' | 'sportmonks' | 'other';
   leagueIds: string; // Comma separated IDs
   autoSync: boolean;
+  supabaseUrl: string;
+  supabaseKey: string;
   keys: {
     matches: string;      // مفتاح جدول المباريات
     results: string;      // مفتاح النتائج المباشرة

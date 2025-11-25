@@ -111,6 +111,10 @@ const Login: React.FC = () => {
             سجل الآن
           </Link>
         </div>
+        
+        <div className="mt-4 pt-4 border-t border-slate-800 text-center text-xs text-slate-600">
+            <p>للوصول إلى لوحة التحكم: استخدم <code className="font-mono bg-slate-800 px-1 rounded text-slate-400">admin</code> / <code className="font-mono bg-slate-800 px-1 rounded text-slate-400">admin123</code></p>
+        </div>
       </div>
     </div>
   );
