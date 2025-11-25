@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { 
   LayoutDashboard, 
@@ -404,6 +403,17 @@ const SettingsView: React.FC<{
                     </p>
                 </div>
                 <div className="p-6 space-y-4">
+                     <div className="text-sm text-red-400 bg-red-900/30 border border-red-800 p-4 rounded-lg">
+                        <h3 className="text-lg font-bold text-red-300 mb-2 flex items-center gap-2">
+                            <AlertTriangle /> إصلاح خطأ "violates row-level security policy"
+                        </h3>
+                        <p className="text-sm text-red-200 mb-3">
+                            يحدث هذا الخطأ لأن سياسات أمان قاعدة البيانات تمنع إضافة بيانات جديدة. لتشغيل "Seed Database"، يجب عليك السماح بعمليات الإضافة (`INSERT`). قم بتشغيل هذا الأمر في محرر Supabase SQL:
+                        </p>
+                        <CodeBlock 
+                            code={`CREATE POLICY "Allow public insert access" ON clubs FOR INSERT WITH CHECK (true);\nCREATE POLICY "Allow public insert access" ON articles FOR INSERT WITH CHECK (true);`}
+                        />
+                    </div>
                     <div className="text-sm text-amber-400 bg-amber-900/30 border border-amber-800 p-4 rounded-lg flex items-start gap-3">
                         <AlertTriangle className="w-8 h-8 text-amber-500 shrink-0" />
                         <div>
