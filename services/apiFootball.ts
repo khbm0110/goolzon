@@ -31,7 +31,8 @@ export const fetchLiveMatches = async (apiKey: string, leagueIds: string): Promi
 
   const headers = getHeaders(apiKey);
   const today = new Date().toISOString().split('T')[0];
-  const targetIds = leagueIds.split(',').map(id => parseInt(id.trim())).filter(n => !isNaN(n));
+  // Safe parsing of league IDs
+  const targetIds = (leagueIds || '').split(',').map(id => parseInt(id.trim())).filter(n => !isNaN(n));
   
   try {
     const response = await fetch(`${BASE_URL}/fixtures?date=${today}&timezone=Asia/Riyadh`, { headers });
@@ -141,8 +142,8 @@ export const fetchFixtureDetails = async (apiKey: string, fixtureId: string): Pr
 export const fetchStandings = async (apiKey: string, leagueIds: string): Promise<Standing[]> => {
     if (!apiKey) return [];
     
-    // Convert leagueIds string to array of numbers
-    const targetIds = leagueIds.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+    // Safe parsing of league IDs
+    const targetIds = (leagueIds || '').split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
     if (targetIds.length === 0) return [];
 
     const headers = getHeaders(apiKey);

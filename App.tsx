@@ -721,10 +721,20 @@ const App: React.FC = () => {
   };
 
   // API Config State
+  // Use improved initialization to merge with defaults in case local storage is partial
   const [apiConfig, setApiConfigState] = useState<ApiConfig>(() => {
       try {
           const saved = localStorage.getItem('gs_api_config');
-          return saved ? JSON.parse(saved) : INITIAL_API_CONFIG;
+          if (saved) {
+             const parsed = JSON.parse(saved);
+             // Robust merge: keep defaults, overwrite with saved, ensure keys object exists and is merged
+             return { 
+                ...INITIAL_API_CONFIG, 
+                ...parsed, 
+                keys: { ...INITIAL_API_CONFIG.keys, ...(parsed.keys || {}) } 
+             };
+          }
+          return INITIAL_API_CONFIG;
       } catch { return INITIAL_API_CONFIG; }
   });
 

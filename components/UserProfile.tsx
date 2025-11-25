@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { User, Shield, LayoutTemplate, Settings, Trophy, Users, Plus, X, Search, LogOut } from 'lucide-react';
 import { Player, ClubProfile } from '../types';
