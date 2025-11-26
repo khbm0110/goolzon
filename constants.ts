@@ -2,37 +2,28 @@
 
 import { Article, Category, ClubProfile } from './types';
 
-export const GULF_CLUBS = [
+export const POPULAR_CLUBS = [
   // Saudi
   { name: 'الهلال', country: Category.SAUDI, logo: 'https://upload.wikimedia.org/wikipedia/en/f/fa/Al_Hilal_SFC_logo.svg', id: 'hilal' },
   { name: 'النصر', country: Category.SAUDI, logo: 'https://upload.wikimedia.org/wikipedia/en/a/a1/Al_Nassr_FC_Logo.svg', id: 'nassr' },
-  { name: 'الاتحاد', country: Category.SAUDI, logo: 'https://upload.wikimedia.org/wikipedia/en/0/06/Al_Ittihad_Club_Logo.png', id: 'ittihad' }, // PNG is often more reliable for Ittihad on wiki
+  { name: 'الاتحاد', country: Category.SAUDI, logo: 'https://upload.wikimedia.org/wikipedia/en/0/06/Al_Ittihad_Club_Logo.png', id: 'ittihad' },
   { name: 'الأهلي', country: Category.SAUDI, logo: 'https://upload.wikimedia.org/wikipedia/en/b/b3/Al-Ahli_Saudi_FC_logo.svg', id: 'ahli' },
-  { name: 'الشباب', country: Category.SAUDI, logo: 'https://upload.wikimedia.org/wikipedia/en/e/e0/Al_Shabab_FC_Saudi_logo.svg', id: 'shabab' },
   
+  // Europe
+  { name: 'ريال مدريد', country: Category.SPAIN, logo: 'https://upload.wikimedia.org/wikipedia/en/5/56/Real_Madrid_CF.svg', id: 'realmadrid' },
+  { name: 'برشلونة', country: Category.SPAIN, logo: 'https://upload.wikimedia.org/wikipedia/en/4/47/FC_Barcelona_%28crest%29.svg', id: 'barcelona' },
+  { name: 'مانشستر سيتي', country: Category.ENGLAND, logo: 'https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg', id: 'mancity' },
+  { name: 'ليفربول', country: Category.ENGLAND, logo: 'https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg', id: 'liverpool' },
+  { name: 'بايرن ميونخ', country: Category.GERMANY, logo: 'https://upload.wikimedia.org/wikipedia/commons/1/1b/FC_Bayern_M%C3%BCnchen_logo_%282017%29.svg', id: 'bayern' },
+
   // UAE
   { name: 'العين', country: Category.UAE, logo: 'https://upload.wikimedia.org/wikipedia/en/a/a3/Al_Ain_FC_Logo.png', id: 'ain' },
-  { name: 'الوصل', country: Category.UAE, logo: 'https://upload.wikimedia.org/wikipedia/en/f/f3/Al_Wasl_FC_logo.svg', id: 'wasl' },
-  { name: 'الشارقة', country: Category.UAE, logo: 'https://upload.wikimedia.org/wikipedia/en/0/01/Sharjah_FC_logo.svg', id: 'sharjah' },
-  { name: 'الوحدة', country: Category.UAE, logo: 'https://upload.wikimedia.org/wikipedia/en/8/80/Al_Wahda_FC_logo.svg', id: 'wahda' },
   
   // Qatar
   { name: 'السد', country: Category.QATAR, logo: 'https://upload.wikimedia.org/wikipedia/en/8/86/Al-Sadd_SC_logo.svg', id: 'sadd' },
-  { name: 'الدحيل', country: Category.QATAR, logo: 'https://upload.wikimedia.org/wikipedia/en/c/c2/Al-Duhail_SC_logo.svg', id: 'duhail' },
-  { name: 'الريان', country: Category.QATAR, logo: 'https://upload.wikimedia.org/wikipedia/en/0/04/Al_Rayyan_SC_logo.svg', id: 'rayyan' },
-  
+
   // Kuwait
   { name: 'الكويت', country: Category.KUWAIT, logo: 'https://upload.wikimedia.org/wikipedia/en/2/22/Kuwait_SC_logo.svg', id: 'kuwait' },
-  { name: 'القادسية', country: Category.KUWAIT, logo: 'https://upload.wikimedia.org/wikipedia/en/6/6f/Qadsia_SC_logo.svg', id: 'qadsia' },
-  { name: 'العربي', country: Category.KUWAIT, logo: 'https://upload.wikimedia.org/wikipedia/en/1/1a/Al-Arabi_SC_Kuwait_logo.svg', id: 'arabi' },
-
-  // Oman
-  { name: 'السيب', country: Category.OMAN, logo: 'https://upload.wikimedia.org/wikipedia/en/9/9b/Al-Seeb_Club_logo.svg', id: 'seeb' },
-  { name: 'النهضة', country: Category.OMAN, logo: 'https://upload.wikimedia.org/wikipedia/ar/6/68/Al-Nahda_Club_Logo.png', id: 'nahda' },
-
-  // Bahrain
-  { name: 'المحرق', country: Category.BAHRAIN, logo: 'https://upload.wikimedia.org/wikipedia/en/c/ce/Al-Muharraq_SC_logo.svg', id: 'muharraq' },
-  { name: 'الرفاع', country: Category.BAHRAIN, logo: 'https://upload.wikimedia.org/wikipedia/en/8/87/Al-Riffa_SC_logo.svg', id: 'riffa' },
 ];
 
 // NOTE: This database is used for the INITIAL SEEDING of Supabase from the Admin Panel.

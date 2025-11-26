@@ -16,6 +16,7 @@ import {
   Loader2,
   PlayCircle
 } from 'lucide-react';
+import { POPULAR_CLUBS } from '../constants';
 
 const SectionHeader: React.FC<{ title: string; link?: string }> = ({ title, link }) => (
   <div className="flex items-center justify-between mb-4 border-r-4 border-primary pr-3 bg-gradient-to-l from-slate-900 to-transparent p-2 rounded-r">
@@ -29,7 +30,7 @@ const SectionHeader: React.FC<{ title: string; link?: string }> = ({ title, link
 );
 
 const HomePage: React.FC = () => {
-  const { articles, matches, standings, clubs, isLoadingInitial } = useData();
+  const { articles, matches, standings, isLoadingInitial } = useData();
   const { isAIGenerating, setSelectedMatch } = useUI();
   const { featureFlags } = useSettings();
   
@@ -41,13 +42,11 @@ const HomePage: React.FC = () => {
   const displayMatches = matches;
   const displayStandings = standings;
 
-  const countrySections = [
+  const leagueSections = [
+    { key: Category.ENGLAND, title: 'الدوري الإنجليزي', link: '/country/england' },
+    { key: Category.SPAIN, title: 'الدوري الإسباني', link: '/country/spain' },
     { key: Category.SAUDI, title: 'الدوري السعودي', link: '/country/saudi' },
     { key: Category.UAE, title: 'الكرة الإماراتية', link: '/country/uae' },
-    { key: Category.QATAR, title: 'نجوم قطر', link: '/country/qatar' },
-    { key: Category.KUWAIT, title: 'الكرة الكويتية', link: '/country/kuwait' },
-    { key: Category.OMAN, title: 'الدوري العماني', link: '/country/oman' },
-    { key: Category.BAHRAIN, title: 'الكرة البحرينية', link: '/country/bahrain' },
   ];
 
   return (
@@ -121,9 +120,9 @@ const HomePage: React.FC = () => {
 
            {featureFlags.clubs && (
              <section>
-                <SectionHeader title="أندية الخليج" />
+                <SectionHeader title="أشهر الأندية" />
                 <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                  {clubs.map((club) => (
+                  {POPULAR_CLUBS.map((club) => (
                     <Link key={club.id} to={`/club/${club.id}`} className="flex flex-col items-center justify-center bg-slate-900 p-4 rounded-xl border border-slate-800 hover:border-primary/50 transition-all hover:-translate-y-1 group">
                       <div className="w-16 h-16 mb-3 relative flex items-center justify-center">
                          <div className="absolute inset-0 bg-primary/5 rounded-full filter blur-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -160,7 +159,7 @@ const HomePage: React.FC = () => {
            )}
 
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {countrySections.map((section) => {
+              {leagueSections.map((section) => {
                 const sectionArticles = articles.filter(a => a.category === section.key).slice(0, 3);
                 if (sectionArticles.length === 0 && !isLoadingInitial) return null;
 

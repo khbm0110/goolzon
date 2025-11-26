@@ -7,6 +7,11 @@ export enum Category {
   KUWAIT = 'الكويت',
   OMAN = 'عمان',
   BAHRAIN = 'البحرين',
+  ENGLAND = 'الدوري الإنجليزي',
+  SPAIN = 'الدوري الإسباني',
+  ITALY = 'الدوري الإيطالي',
+  GERMANY = 'الدوري الألماني',
+  CHAMPIONS_LEAGUE = 'دوري أبطال أوروبا',
   ANALYSIS = 'تحليلات',
   VIDEO = 'فيديو',
   BREAKING = 'عاجل'

@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
@@ -10,13 +11,18 @@ const CountryPage: React.FC = () => {
     const { articles } = useData();
     const location = useLocation();
     
-    const categoryMap: Record<string, string> = {
+    const categoryMap: Record<string, Category> = {
       '/country/saudi': Category.SAUDI,
       '/country/uae': Category.UAE,
       '/country/qatar': Category.QATAR,
       '/country/kuwait': Category.KUWAIT,
       '/country/oman': Category.OMAN,
       '/country/bahrain': Category.BAHRAIN,
+      '/country/england': Category.ENGLAND,
+      '/country/spain': Category.SPAIN,
+      '/country/italy': Category.ITALY,
+      '/country/germany': Category.GERMANY,
+      '/country/champions-league': Category.CHAMPIONS_LEAGUE,
       '/analysis': Category.ANALYSIS,
     };
   

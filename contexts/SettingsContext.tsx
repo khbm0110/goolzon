@@ -13,7 +13,7 @@ const INITIAL_FLAGS: FeatureFlags = {
 
 const INITIAL_API_CONFIG: ApiConfig = {
     provider: 'api-football',
-    leagueIds: '307, 301, 306, 312, 315, 318',
+    leagueIds: '307, 39, 140, 2, 135, 78, 301', // SA, EPL, LIGA, UCL, SERIEA, BUND, UAE
     autoSync: false,
     supabaseUrl: '',
     supabaseKey: '',

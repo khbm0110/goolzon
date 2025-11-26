@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Standing, Category } from '../types';
 import TeamLogo from './TeamLogo';
@@ -10,10 +11,11 @@ const StandingsWidget: React.FC<StandingsWidgetProps> = ({ standings }) => {
   const [activeTab, setActiveTab] = useState<string>('SAUDI');
 
   const tabs = [
-    { key: 'SAUDI', label: 'السعودية' },
-    { key: 'UAE', label: 'الإمارات' },
-    { key: 'QATAR', label: 'قطر' },
-    { key: 'KUWAIT', label: 'الكويت' },
+    { key: 'SAUDI', label: 'السعودي' },
+    { key: 'ENGLAND', label: 'الإنجليزي' },
+    { key: 'SPAIN', label: 'الإسباني' },
+    { key: 'ITALY', label: 'الإيطالي' },
+    { key: 'GERMANY', label: 'الألماني' },
   ];
 
   const filteredStandings = standings
@@ -58,7 +60,7 @@ const StandingsWidget: React.FC<StandingsWidgetProps> = ({ standings }) => {
             <tbody className="divide-y divide-slate-800">
               {filteredStandings.map((team) => (
                 <tr key={team.team} className="hover:bg-slate-800/30 transition-colors group">
-                  <td className={`py-2 px-2 text-center font-bold ${team.rank <= 3 ? 'text-primary' : 'text-slate-500'}`}>
+                  <td className={`py-2 px-2 text-center font-bold ${team.rank <= 4 ? 'text-primary' : 'text-slate-500'}`}>
                     {team.rank}
                   </td>
                   <td className="py-2 px-2">

@@ -1,9 +1,17 @@
 
+
 import { Match, Category, MatchDetails, Standing, MatchEvent } from '../types';
 
 const BASE_URL = 'https://v3.football.api-sports.io';
 
 export const LEAGUE_MAPPING: Record<number, Category> = {
+  // Major European
+  2: Category.CHAMPIONS_LEAGUE,
+  39: Category.ENGLAND,
+  140: Category.SPAIN,
+  135: Category.ITALY,
+  78: Category.GERMANY,
+  // Gulf
   307: Category.SAUDI,
   301: Category.UAE,
   306: Category.QATAR,
@@ -11,6 +19,23 @@ export const LEAGUE_MAPPING: Record<number, Category> = {
   315: Category.BAHRAIN,
   318: Category.OMAN
 };
+
+const categoryToKey = (cat: Category): string => {
+    const mapping: Partial<Record<Category, string>> = {
+        [Category.SAUDI]: 'SAUDI',
+        [Category.UAE]: 'UAE',
+        [Category.QATAR]: 'QATAR',
+        [Category.KUWAIT]: 'KUWAIT',
+        [Category.OMAN]: 'OMAN',
+        [Category.BAHRAIN]: 'BAHRAIN',
+        [Category.ENGLAND]: 'ENGLAND',
+        [Category.SPAIN]: 'SPAIN',
+        [Category.ITALY]: 'ITALY',
+        [Category.GERMANY]: 'GERMANY',
+    };
+    return mapping[cat] || 'GENERAL';
+};
+
 
 // Helper to map API status to our internal status
 const getStatus = (shortStatus: string): 'UPCOMING' | 'LIVE' | 'FINISHED' => {
@@ -171,15 +196,9 @@ export const fetchStandings = async (apiKey: string, leagueIds: string): Promise
                 rawData = await fetchLeagueSeason(id, currentYear - 1);
             }
 
-            if (rawData) {
-                // Determine internal league key based on ID for filtering in widget
-                let leagueKey = 'SAUDI';
-                if (LEAGUE_MAPPING[id]) leagueKey = LEAGUE_MAPPING[id] === Category.SAUDI ? 'SAUDI' : 
-                                                    LEAGUE_MAPPING[id] === Category.UAE ? 'UAE' :
-                                                    LEAGUE_MAPPING[id] === Category.QATAR ? 'QATAR' :
-                                                    LEAGUE_MAPPING[id] === Category.KUWAIT ? 'KUWAIT' : 
-                                                    LEAGUE_MAPPING[id] === Category.OMAN ? 'OMAN' :
-                                                    LEAGUE_MAPPING[id] === Category.BAHRAIN ? 'BAHRAIN' : 'SAUDI';
+            const category = LEAGUE_MAPPING[id];
+            if (rawData && category) {
+                const leagueKey = categoryToKey(category);
 
                 // Map the data
                 const mapped = rawData.map((item: any) => ({

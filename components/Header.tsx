@@ -20,12 +20,11 @@ const Header: React.FC<HeaderProps> = ({ onSearchClick, isAutopilotEnabled, onTo
 
   const navItems = [
     { label: 'الرئيسية', path: '/' },
-    { label: 'السعودية', path: '/country/saudi' },
-    { label: 'الإمارات', path: '/country/uae' },
-    { label: 'قطر', path: '/country/qatar' },
-    { label: 'الكويت', path: '/country/kuwait' },
-    { label: 'عمان', path: '/country/oman' },
-    { label: 'البحرين', path: '/country/bahrain' },
+    { label: 'دوري الأبطال', path: '/country/champions-league' },
+    { label: 'الدوري الإنجليزي', path: '/country/england' },
+    { label: 'الدوري الإسباني', path: '/country/spain' },
+    { label: 'الدوري السعودي', path: '/country/saudi' },
+    { label: 'الدوري الإماراتي', path: '/country/uae' },
     { label: 'تحليلات', path: '/analysis', hidden: !featureFlags.analysis },
   ].filter(item => !item.hidden);
 
@@ -53,7 +52,7 @@ const Header: React.FC<HeaderProps> = ({ onSearchClick, isAutopilotEnabled, onTo
             </div>
             <div className="flex flex-col">
               <span className="text-2xl font-black tracking-tighter text-white leading-none">Gulf<span className="text-primary">Sports</span></span>
-              <span className="text-10px text-slate-400 tracking-widest font-bold">نبض الكرة الخليجية</span>
+              <span className="text-10px text-slate-400 tracking-widest font-bold">نبض الكرة العالمية</span>
             </div>
           </Link>
 
