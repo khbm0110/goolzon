@@ -71,16 +71,55 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const updateArticle = async (article: Article): Promise<boolean> => {
-     // Implementation for Supabase update would go here
-     console.warn("Update article not fully implemented for Supabase yet.");
      setArticles(prev => prev.map(a => a.id === article.id ? article : a));
+     
+     const supabase = getSupabase(apiConfig.supabaseUrl, apiConfig.supabaseKey);
+     if (!supabase) {
+        console.warn("Supabase not configured. Article updated locally only.");
+        return true;
+     }
+
+     const articleForDb = {
+        id: article.id,
+        title: article.title,
+        summary: article.summary,
+        content: article.content,
+        imageUrl: article.imageUrl,
+        category: article.category,
+        date: article.date,
+        author: article.author,
+        views: article.views,
+        isBreaking: article.isBreaking ?? false,
+        videoEmbedId: article.videoEmbedId || null,
+    };
+
+     const { error } = await supabase.from('articles').update(articleForDb).eq('id', article.id);
+     if (error) {
+        console.error("Supabase update article error:", error);
+        alert(`Failed to update article: ${error.message}`);
+        return false;
+     }
+
      return true;
   }
 
   const deleteArticle = async (id: string): Promise<boolean> => {
-     // Implementation for Supabase delete would go here
-     console.warn("Delete article not fully implemented for Supabase yet.");
      setArticles(prev => prev.filter(a => a.id !== id));
+
+     const supabase = getSupabase(apiConfig.supabaseUrl, apiConfig.supabaseKey);
+     if (!supabase) {
+        console.warn("Supabase not configured. Article deleted locally only.");
+        return true;
+     }
+
+     const { error } = await supabase.from('articles').delete().eq('id', id);
+     if (error) {
+        console.error("Supabase delete article error:", error);
+        alert(`Failed to delete article: ${error.message}`);
+        // Optionally revert local state
+        return false;
+     }
+
      return true;
   }
 

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { 
   LayoutDashboard, 
@@ -39,12 +38,62 @@ import { useSettings } from '../contexts/SettingsContext';
 import TeamLogo from './TeamLogo';
 import { getSupabase } from '../services/supabaseClient';
 import { INITIAL_ARTICLES, CLUB_DATABASE } from '../constants';
+import ArticleEditor from './ArticleEditor';
+
+const ContentListView: React.FC<{
+    articles: Article[];
+    onEdit: (article: Article) => void;
+    onDelete: (id: string) => void;
+}> = ({ articles, onEdit, onDelete }) => {
+    return (
+        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
+            <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950">
+                <h2 className="font-bold text-white flex items-center gap-2">
+                    <List className="text-primary" /> إدارة المحتوى
+                </h2>
+            </div>
+            <div className="overflow-x-auto">
+                <table className="w-full text-right">
+                    <thead className="bg-slate-950 text-slate-400 text-xs uppercase font-bold">
+                        <tr>
+                            <th className="px-6 py-4">العنوان</th>
+                            <th className="px-6 py-4">القسم</th>
+                            <th className="px-6 py-4">المؤلف</th>
+                            <th className="px-6 py-4">التاريخ</th>
+                            <th className="px-6 py-4">الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800 text-sm text-slate-300">
+                        {articles.map(article => (
+                            <tr key={article.id} className="hover:bg-slate-800/50">
+                                <td className="px-6 py-4 font-bold text-white max-w-sm truncate">{article.title}</td>
+                                <td className="px-6 py-4"><span className="bg-slate-800 px-2 py-1 rounded text-xs">{article.category}</span></td>
+                                <td className="px-6 py-4">{article.author}</td>
+                                <td className="px-6 py-4 text-slate-500 font-mono text-xs">{new Date(article.date).toLocaleDateString('ar-SA')}</td>
+                                <td className="px-6 py-4">
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={() => onEdit(article)} className="p-2 hover:bg-primary/20 hover:text-primary rounded-lg transition-colors">
+                                            <Edit size={16} />
+                                        </button>
+                                        <button onClick={() => onDelete(article.id)} className="p-2 hover:bg-red-500/20 hover:text-red-500 rounded-lg transition-colors">
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
 
 const AdminDashboard: React.FC = () => {
-  const [activeView, setActiveView] = useState<'DASHBOARD' | 'EDITOR' | 'LIST' | 'SEO' | 'ADS' | 'CLUBS' | 'MERCATO' | 'SETTINGS'>('SETTINGS');
+  const [activeView, setActiveView] = useState<'DASHBOARD' | 'EDITOR' | 'LIST' | 'SEO' | 'ADS' | 'CLUBS' | 'MERCATO' | 'SETTINGS'>('DASHBOARD');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { 
-    clubs, addClub, updateClub, deleteClub, transferPlayer, articles, addArticle 
+    clubs, addClub, updateClub, deleteClub, transferPlayer, articles, addArticle, updateArticle, deleteArticle
   } = useData();
   const { 
     featureFlags, setFeatureFlag, apiConfig, setApiConfig 
@@ -67,6 +116,12 @@ const AdminDashboard: React.FC = () => {
     setEditorMode('EDIT');
     setActiveView('EDITOR');
   };
+  
+  const handleDeleteArticle = (id: string) => {
+      if (window.confirm('هل أنت متأكد من حذف هذا المقال؟')) {
+          deleteArticle(id);
+      }
+  };
 
   const handleNewClick = () => {
     setEditorData({
@@ -80,6 +135,28 @@ const AdminDashboard: React.FC = () => {
     });
     setEditorMode('NEW');
     setActiveView('EDITOR');
+  };
+
+  const handleSaveArticle = async (articleData: Article) => {
+    let success = false;
+    if (editorMode === 'NEW') {
+        const newArticle: Article = {
+            ...articleData,
+            id: `usr-${Date.now()}`,
+            date: new Date().toISOString(),
+            views: 0,
+            isBreaking: articleData.isBreaking || false,
+            author: articleData.author || 'محرر Gulf Sports',
+        };
+        success = await addArticle(newArticle);
+    } else {
+        success = await updateArticle(articleData);
+    }
+
+    if (success) {
+        alert('تم حفظ المقال بنجاح!');
+        setActiveView('LIST');
+    }
   };
 
   const navItems = [
@@ -128,8 +205,21 @@ const AdminDashboard: React.FC = () => {
 
       <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'mr-64' : 'mr-20'} p-6`}>
         {activeView === 'DASHBOARD' && <div className="text-white text-center p-10 bg-slate-900 rounded-xl border border-slate-800">مرحباً بك في لوحة التحكم</div>}
-        {activeView === 'EDITOR' && <div className="text-white">Editor Placeholder</div>}
-        {activeView === 'LIST' && <div className="text-white">List Placeholder</div>}
+        {activeView === 'EDITOR' && (
+            <ArticleEditor 
+                initialData={editorData}
+                onSave={handleSaveArticle}
+                onCancel={() => setActiveView('LIST')}
+                mode={editorMode}
+            />
+        )}
+        {activeView === 'LIST' && (
+            <ContentListView 
+                articles={articles} 
+                onEdit={handleEditClick} 
+                onDelete={handleDeleteArticle} 
+            />
+        )}
         
         {activeView === 'CLUBS' && featureFlags.clubs && (
            <ClubsManagerView 
