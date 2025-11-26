@@ -5,7 +5,6 @@ import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useSettings } from '../contexts/SettingsContext';
-import { getSupabase } from '../services/supabaseClient';
 
 const FORMATION_433 = [
     { id: 0, role: 'GK', top: '85%', left: '50%' },
@@ -24,67 +23,34 @@ const FORMATION_433 = [
 const UserProfile: React.FC = () => {
     const { clubs } = useData();
     const { currentUser, logout } = useAuth();
-    const { apiConfig } = useSettings();
     const navigate = useNavigate();
     const [showTactics, setShowTactics] = useState(true);
-    const [dreamSquad, setDreamSquad] = useState<Record<number, Player & { clubLogo?: string }>>({});
     const [isLoadingSquad, setIsLoadingSquad] = useState(true);
     const [activeSlot, setActiveSlot] = useState<number | null>(null);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
 
+    const [dreamSquad, setDreamSquad] = useState<Record<number, Player & { clubLogo?: string }>>(() => {
+        if (!currentUser) return {};
+        const saved = localStorage.getItem(`goolzon_dream_squad_${currentUser.id}`);
+        return saved ? JSON.parse(saved) : {};
+    });
+
     // Effect to load data on mount
     useEffect(() => {
-        const loadSquad = async () => {
-            if (!currentUser) {
-                setIsLoadingSquad(false);
-                return;
-            }
-    
-            const supabase = getSupabase(apiConfig.supabaseUrl, apiConfig.supabaseKey);
-            if (supabase) {
-                const { data, error } = await supabase
-                    .from('user_profiles')
-                    .select('dream_squad')
-                    .eq('id', currentUser.id)
-                    .single();
-    
-                if (data && data.dream_squad) {
-                    setDreamSquad(data.dream_squad);
-                } else {
-                    const saved = localStorage.getItem(`goolzon_dream_squad_${currentUser.id}`);
-                    setDreamSquad(saved ? JSON.parse(saved) : {});
-                }
-            } else {
-                const saved = localStorage.getItem(`goolzon_dream_squad_${currentUser.id}`);
-                setDreamSquad(saved ? JSON.parse(saved) : {});
-            }
+        if (!currentUser) {
             setIsLoadingSquad(false);
-        };
-    
-        loadSquad();
-    }, [currentUser, apiConfig.supabaseUrl, apiConfig.supabaseKey]);
+            return;
+        }
+        const saved = localStorage.getItem(`goolzon_dream_squad_${currentUser.id}`);
+        setDreamSquad(saved ? JSON.parse(saved) : {});
+        setIsLoadingSquad(false);
+    }, [currentUser]);
     
     // Effect to save data on change
     useEffect(() => {
         if (!currentUser || isLoadingSquad) return;
-    
-        const saveSquad = async () => {
-            const supabase = getSupabase(apiConfig.supabaseUrl, apiConfig.supabaseKey);
-            localStorage.setItem(`goolzon_dream_squad_${currentUser.id}`, JSON.stringify(dreamSquad));
-
-            if (supabase) {
-                const { error } = await supabase
-                    .from('user_profiles')
-                    .upsert({ id: currentUser.id, dream_squad: dreamSquad });
-    
-                if (error) {
-                    console.error("Error saving dream squad to Supabase:", error);
-                }
-            }
-        };
-    
-        saveSquad();
-    }, [dreamSquad, currentUser, apiConfig.supabaseUrl, apiConfig.supabaseKey, isLoadingSquad]);
+        localStorage.setItem(`goolzon_dream_squad_${currentUser.id}`, JSON.stringify(dreamSquad));
+    }, [dreamSquad, currentUser, isLoadingSquad]);
 
     const allPlayers = clubs.flatMap(c => c.squad.map(p => ({ ...p, clubLogo: c.logo, clubName: c.name })));
 

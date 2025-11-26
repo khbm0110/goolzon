@@ -39,8 +39,6 @@ import { Article, Category, ClubProfile, Player, PlayerStats, FeatureFlags, ApiC
 import { useData } from '../contexts/DataContext';
 import { useSettings } from '../contexts/SettingsContext';
 import TeamLogo from './TeamLogo';
-import { getSupabase } from '../services/supabaseClient';
-import { INITIAL_ARTICLES, CLUB_DATABASE } from '../constants';
 import ArticleEditor from './ArticleEditor';
 import { Link } from 'react-router-dom';
 
@@ -350,9 +348,9 @@ const AdminDashboard: React.FC = () => {
             views: 0, isBreaking: articleData.isBreaking || false,
             author: articleData.author || 'محرر goolzon',
         };
-        success = await addArticle(newArticle);
+        success = addArticle(newArticle);
     } else {
-        success = await updateArticle(articleData);
+        success = updateArticle(articleData);
     }
 
     if (success) {
@@ -454,47 +452,14 @@ const AdminDashboard: React.FC = () => {
   );
 };
 
-const CodeBlock: React.FC<{ code: string; title?: string }> = ({ code, title }) => {
-    const [copied, setCopied] = useState(false);
-
-    const handleCopy = () => {
-        navigator.clipboard.writeText(code);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-    };
-
-    return (
-        <div className="bg-slate-950 border border-slate-700 rounded-lg overflow-hidden">
-            {title && (
-                <div className="px-4 py-2 bg-slate-800 text-slate-300 text-xs font-bold border-b border-slate-700">
-                    {title}
-                </div>
-            )}
-            <div className="relative p-4">
-                <pre className="text-sm text-slate-300 font-mono whitespace-pre-wrap text-left" style={{ direction: 'ltr' }}>
-                    <code>{code}</code>
-                </pre>
-                <button 
-                    onClick={handleCopy}
-                    className="absolute top-2 right-2 p-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 hover:text-white transition-colors"
-                >
-                    {copied ? <CheckCircle2 size={16} className="text-primary" /> : <Clipboard size={16} />}
-                </button>
-            </div>
-        </div>
-    );
-};
-
 const SettingsView: React.FC<{
     featureFlags: FeatureFlags;
     setFeatureFlag: (key: keyof FeatureFlags, value: boolean) => void;
     apiConfig: ApiConfig;
-    setApiConfig: (config: ApiConfig) => Promise<boolean>;
+    setApiConfig: (config: ApiConfig) => void;
 }> = ({ featureFlags, setFeatureFlag, apiConfig, setApiConfig }) => {
     
     const [localApiConfig, setLocalApiConfig] = useState(apiConfig);
-    const [isSeeding, setIsSeeding] = useState(false);
-    const [seedingMessage, setSeedingMessage] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
@@ -503,61 +468,11 @@ const SettingsView: React.FC<{
 
     const handleSaveApi = async () => {
         setIsSaving(true);
-        const success = await setApiConfig(localApiConfig);
-        if (success) {
-            alert('تم حفظ الإعدادات بنجاح!');
-        }
-        setIsSaving(false);
+        setApiConfig(localApiConfig);
+        // Simulate save time for user feedback
+        setTimeout(() => setIsSaving(false), 500);
     };
     
-    const handleSeedDatabase = async () => {
-        if (!window.confirm("سيقوم هذا الإجراء برفع جميع البيانات المحلية المؤقتة إلى جداول Supabase الخاصة بك. هذا الإجراء يتم لمرة واحدة عند الإعداد. هل تريد المتابعة؟")) return;
-    
-        setIsSeeding(true);
-        const supabase = getSupabase(localApiConfig.supabaseUrl, localApiConfig.supabaseKey);
-        if (!supabase) {
-            alert("إعدادات Supabase غير مكتملة!");
-            setIsSeeding(false);
-            return;
-        }
-    
-        try {
-            setSeedingMessage("جاري رفع بيانات الأندية...");
-            const clubsToInsert = Object.values(CLUB_DATABASE)
-                .filter(c => c.id !== 'generic')
-                .map(({ squad, englishName, coverImage, fanCount, ...clubData }) => ({
-                    ...clubData,
-                    "englishName": englishName,
-                    "coverImage": coverImage,
-                    "fanCount": fanCount
-                }));
-            
-            const { error: clubsError } = await supabase.from('clubs').upsert(clubsToInsert, { onConflict: 'id' });
-            if (clubsError) throw clubsError;
-    
-            setSeedingMessage("جاري رفع بيانات المقالات...");
-            const articlesToInsert = INITIAL_ARTICLES.map(({ sources, imageUrl, isBreaking, videoEmbedId, ...articleData }) => ({
-                ...articleData,
-                "imageUrl": imageUrl,
-                "isBreaking": isBreaking,
-                "videoEmbedId": videoEmbedId
-            }));
-            
-            const { error: articlesError } = await supabase.from('articles').upsert(articlesToInsert, { onConflict: 'id' });
-            if (articlesError) throw articlesError;
-    
-            setSeedingMessage("اكتملت التعبئة بنجاح!");
-            alert("تمت تعبئة قاعدة البيانات بنجاح! يرجى تحديث التطبيق لرؤية البيانات الحية.");
-        
-        } catch (error: any) {
-            const errorMessage = `فشلت عملية التعبئة: ${error.message}`;
-            setSeedingMessage(errorMessage);
-            alert(errorMessage);
-        } finally {
-            setIsSeeding(false);
-        }
-    };
-
     const featuresList: { key: keyof FeatureFlags; label: string; desc: string; icon: any }[] = [
         { key: 'clubs', label: 'أندية الخليج', desc: 'تفعيل لوحة معلومات الأندية، إدارة اللاعبين، وعرض صفحات الفرق.', icon: Shield },
         { key: 'matches', label: 'مركز المباريات', desc: 'عرض شريط المباريات المباشرة، النتائج، وجداول الترتيب.', icon: CheckCircle2 },
@@ -615,149 +530,6 @@ const SettingsView: React.FC<{
                                 </div>
                             </div>
                         ))}
-                    </div>
-                </div>
-            </div>
-
-            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
-                <div className="p-6 border-b border-slate-800 bg-slate-950 flex justify-between items-center">
-                    <div>
-                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                            <Database className="text-green-500" /> Supabase Backend
-                        </h2>
-                        <p className="text-slate-400 text-sm mt-2">
-                            قم بتوصيل التطبيق بقاعدة بيانات Supabase لتفعيل التخزين الدائم للبيانات والمصادقة.
-                        </p>
-                    </div>
-                    {localApiConfig.supabaseUrl && (
-                        <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 border border-green-500/30 rounded-full">
-                            <CheckCircle2 size={14} className="text-green-500" />
-                            <span className="text-xs font-bold text-green-400">متصل</span>
-                        </div>
-                    )}
-                </div>
-                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-300 flex items-center gap-2">Supabase URL</label>
-                        <input 
-                            type="text"
-                            value={localApiConfig.supabaseUrl}
-                            onChange={e => setLocalApiConfig({...localApiConfig, supabaseUrl: e.target.value})}
-                            placeholder="https://<project-id>.supabase.co"
-                            className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-green-500 outline-none font-mono"
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-300 flex items-center gap-2">Supabase Anon Key</label>
-                        <input 
-                            type="password"
-                            value={localApiConfig.supabaseKey}
-                            onChange={e => setLocalApiConfig({...localApiConfig, supabaseKey: e.target.value})}
-                            placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                            className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-green-500 outline-none font-mono"
-                        />
-                    </div>
-                </div>
-            </div>
-            
-            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
-                <div className="p-6 border-b border-slate-800 bg-slate-950">
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                        <Database className="text-orange-500" /> إجراءات قاعدة البيانات
-                    </h2>
-                    <p className="text-slate-400 text-sm mt-2">
-                        نفذ إجراءات لمرة واحدة لإدارة قاعدة بياناتك. استخدمها بحذر.
-                    </p>
-                </div>
-                <div className="p-6 flex items-center gap-6">
-                    <button 
-                        onClick={handleSeedDatabase}
-                        disabled={isSeeding || !localApiConfig.supabaseUrl}
-                        className="bg-orange-600 hover:bg-orange-500 text-white px-6 py-3 rounded-xl font-bold transition-colors flex items-center gap-2 shadow-lg shadow-orange-900/20 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
-                    >
-                        {isSeeding ? <Loader2 size={18} className="animate-spin" /> : <UploadCloud size={18} />}
-                        {isSeeding ? seedingMessage : 'تعبئة قاعدة البيانات بالبيانات الأولية'}
-                    </button>
-                    <div className="flex-1">
-                        <p className="text-sm text-slate-400">
-                            سيقوم هذا الإجراء برفع المقالات والأندية المضمنة إلى جداول Supabase الفارغة.
-                        </p>
-                        <p className="text-xs text-slate-500 mt-1">
-                            قم بتشغيله مرة واحدة فقط بعد إنشاء الجداول. يستخدم 'upsert' لذا من الآمن تشغيله مرة أخرى إذا لزم الأمر.
-                        </p>
-                    </div>
-                </div>
-            </div>
-            
-            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
-                <div className="p-6 border-b border-slate-800 bg-slate-950">
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                        <Database className="text-indigo-500" /> مساعد مخطط قاعدة البيانات
-                    </h2>
-                    <p className="text-slate-400 text-sm mt-2">
-                        استخدم استعلامات SQL هذه في محرر Supabase SQL لإنشاء جداولك أو إصلاحها. جميع الأوامر آمنة للتشغيل عدة مرات.
-                    </p>
-                </div>
-                <div className="p-6 space-y-4">
-                     <div className="text-sm text-red-400 bg-red-900/30 border border-red-800 p-4 rounded-lg">
-                        <h3 className="text-lg font-bold text-red-300 mb-2 flex items-center gap-2">
-                            <AlertTriangle /> إصلاح شامل لصلاحيات الوصول (RLS)
-                        </h3>
-                        <p className="text-sm text-red-200 mb-3">
-                            إذا فشلت عمليات الحفظ (للمقالات، الأندية، الإعدادات)، فمن المحتمل أن تكون المشكلة في صلاحيات الوصول. قم بتشغيل هذا الكود الشامل مرة واحدة لإصلاح كل شيء.
-                        </p>
-                        <CodeBlock 
-                            code={`-- 1. ARTICLES TABLE
-ALTER TABLE public.articles ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Public access for all on articles" ON public.articles;
-CREATE POLICY "Public access for all on articles" ON public.articles FOR ALL USING (true) WITH CHECK (true);
-
--- 2. CLUBS TABLE
-ALTER TABLE public.clubs ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Public access for all on clubs" ON public.clubs;
-CREATE POLICY "Public access for all on clubs" ON public.clubs FOR ALL USING (true) WITH CHECK (true);
-
--- 3. SETTINGS TABLE
-ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Public access for all on settings" ON public.settings;
-CREATE POLICY "Public access for all on settings" ON public.settings FOR ALL USING (true) WITH CHECK (true);
-
--- 4. USER PROFILES TABLE (for Dream Squad)
-ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Public access for all on user_profiles" ON public.user_profiles;
-CREATE POLICY "Public access for all on user_profiles" ON public.user_profiles FOR ALL USING (true) WITH CHECK (true);
-`}
-                        />
-                    </div>
-                    <div className="text-sm text-amber-400 bg-amber-900/30 border border-amber-800 p-4 rounded-lg flex items-start gap-3">
-                        <AlertTriangle className="w-8 h-8 text-amber-500 shrink-0 mt-1" />
-                        <div>
-                            <h4 className="font-bold mb-1 text-amber-300">ملاحظة هامة جداً: علامات الاقتباس المزدوجة</h4>
-                            <p>
-                                عند نسخ كود SQL، يجب عليك الاحتفاظ بعلامات الاقتباس المزدوجة <code>" "</code> حول أسماء الأعمدة مثل <code>"coverImage"</code>. هذا الأمر ضروري للحفاظ على حالة الأحرف (camelCase) ومنع الأخطاء.
-                            </p>
-                        </div>
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-bold text-slate-200 mt-4 pt-4 border-t border-slate-800 mb-2">مخططات الجدول الكاملة (للمرجعية)</h3>
-                        <div className="space-y-4">
-                            <CodeBlock 
-                                title="جدول `articles`"
-                                code={`CREATE TABLE IF NOT EXISTS public.articles (\n  id TEXT PRIMARY KEY,\n  title TEXT NOT NULL,\n  summary TEXT,\n  content TEXT,\n  "imageUrl" TEXT,\n  category TEXT,\n  date TIMESTAMPTZ DEFAULT NOW(),\n  author TEXT,\n  views INT DEFAULT 0,\n  "isBreaking" BOOLEAN DEFAULT FALSE,\n  "videoEmbedId" TEXT\n);`}
-                            />
-                            <CodeBlock 
-                                title="جدول `clubs`"
-                                code={`CREATE TABLE IF NOT EXISTS public.clubs (\n  id TEXT PRIMARY KEY,\n  name TEXT NOT NULL,\n  "englishName" TEXT,\n  logo TEXT,\n  "coverImage" TEXT,\n  founded INT,\n  stadium TEXT,\n  coach TEXT,\n  nickname TEXT,\n  country TEXT,\n  colors JSONB,\n  social JSONB,\n  "fanCount" INT,\n  trophies JSONB\n);`}
-                            />
-                             <CodeBlock 
-                                title="جدول `user_profiles` (لتشكيلة الأحلام)"
-                                code={`CREATE TABLE IF NOT EXISTS public.user_profiles (\n  id TEXT PRIMARY KEY,\n  dream_squad JSONB,\n  updated_at TIMESTAMPTZ DEFAULT NOW()\n);`}
-                            />
-                            <CodeBlock 
-                                title="جدول `settings`"
-                                code={`CREATE TABLE IF NOT EXISTS public.settings (\n  id INT PRIMARY KEY DEFAULT 1,\n  feature_flags JSONB,\n  api_config JSONB,\n  updated_at TIMESTAMPTZ DEFAULT NOW()\n);\n-- Insert the initial row if it doesn't exist\nINSERT INTO public.settings(id) VALUES (1) ON CONFLICT (id) DO NOTHING;`}
-                            />
-                        </div>
                     </div>
                 </div>
             </div>
@@ -1015,9 +787,9 @@ const MercatoView: React.FC<{
 
 const ClubsManagerView: React.FC<{
   clubs: ClubProfile[];
-  onAdd: (c: ClubProfile) => Promise<boolean>;
-  onUpdate: (c: ClubProfile) => Promise<boolean>;
-  onDelete: (id: string) => Promise<boolean>;
+  onAdd: (c: ClubProfile) => boolean;
+  onUpdate: (c: ClubProfile) => boolean;
+  onDelete: (id: string) => boolean;
 }> = ({ clubs, onAdd, onUpdate, onDelete }) => {
   const [editingClub, setEditingClub] = useState<Partial<ClubProfile> | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -1040,7 +812,7 @@ const ClubsManagerView: React.FC<{
     setIsFormOpen(true);
   };
 
-  const handleSaveClub = async (e: React.FormEvent) => {
+  const handleSaveClub = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingClub) return;
     setIsSaving(true);
@@ -1053,8 +825,8 @@ const ClubsManagerView: React.FC<{
         }
 
         const success = isNew
-            ? await onAdd(clubToSave as ClubProfile)
-            : await onUpdate(clubToSave as ClubProfile);
+            ? onAdd(clubToSave as ClubProfile)
+            : onUpdate(clubToSave as ClubProfile);
 
         if (success) {
             alert(`تم حفظ النادي "${clubToSave.name}" بنجاح!`);
@@ -1066,9 +838,9 @@ const ClubsManagerView: React.FC<{
     }
   };
 
-  const handleDeleteClub = async (club: ClubProfile) => {
+  const handleDeleteClub = (club: ClubProfile) => {
     if (window.confirm(`هل أنت متأكد من حذف نادي ${club.name}؟ لا يمكن التراجع عن هذا الإجراء.`)) {
-        const success = await onDelete(club.id);
+        const success = onDelete(club.id);
         if (success) {
             alert("تم حذف النادي بنجاح.");
         }
