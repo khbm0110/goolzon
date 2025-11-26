@@ -1,11 +1,17 @@
-import React, { createContext, useState, useContext, ReactNode } from 'react';
+
+import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { User } from '../types';
+import { getSupabase } from '../services/supabaseClient';
+import { useSettings } from './SettingsContext';
+
+const ADMIN_EMAIL = 'admin@goolzon.dev';
 
 interface AuthContextType {
   currentUser: User | null;
-  login: (username: string, pass: string) => boolean;
-  register: (userData: Partial<User>) => boolean;
-  logout: () => void;
+  isAdmin: boolean;
+  login: (email: string, pass: string) => Promise<{ success: boolean; isAdmin?: boolean; error?: string }>;
+  register: (userData: Partial<User>) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
   followedTeams: string[];
   toggleFollow: (teamName: string) => void;
 }
@@ -19,15 +25,69 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('goolzon_user');
-    return saved ? JSON.parse(saved) : null;
-  });
-
+  const { supabaseConfig } = useSettings();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  
   const [followedTeams, setFollowedTeams] = useState<string[]>(() => {
     const saved = localStorage.getItem('goolzon_followed');
     return saved ? JSON.parse(saved) : [];
   });
+
+  useEffect(() => {
+    const supabase = getSupabase(supabaseConfig.url, supabaseConfig.anonKey);
+    if (!supabase) {
+        // Clear user state if supabase is de-configured
+        setCurrentUser(null);
+        setIsAdmin(false);
+        return;
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_OUT') {
+            setCurrentUser(null);
+            setIsAdmin(false);
+        } else if (session?.user) {
+            const user = session.user;
+            const isUserAdmin = user.email === ADMIN_EMAIL;
+            
+            const profile: User = {
+                id: user.id,
+                email: user.email || '',
+                name: user.user_metadata?.name || (isUserAdmin ? 'المدير العام' : 'مشجع'),
+                username: user.user_metadata?.username || user.email?.split('@')[0] || 'user',
+                avatar: user.user_metadata?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`,
+                joinDate: user.created_at || new Date().toISOString(),
+                password: '', // Should not be stored
+            };
+            
+            setCurrentUser(profile);
+            setIsAdmin(isUserAdmin);
+        }
+    });
+
+    // Initial check
+    const checkUser = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            const isUserAdmin = user.email === ADMIN_EMAIL;
+             const profile: User = {
+                id: user.id,
+                email: user.email || '',
+                name: user.user_metadata?.name || (isUserAdmin ? 'المدير العام' : 'مشجع'),
+                username: user.user_metadata?.username || user.email?.split('@')[0] || 'user',
+                avatar: user.user_metadata?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`,
+                joinDate: user.created_at || new Date().toISOString(),
+                password: '',
+            };
+            setCurrentUser(profile);
+            setIsAdmin(isUserAdmin);
+        }
+    }
+    checkUser();
+
+    return () => subscription.unsubscribe();
+  }, [supabaseConfig]);
 
   const toggleFollow = (teamName: string) => {
      setFollowedTeams(prev => {
@@ -37,62 +97,55 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
      });
   };
 
-  const login = (username: string, pass: string): boolean => {
-    if (pass.length < 3) return false;
+  const login = async (email: string, pass: string) => {
+    const supabase = getSupabase(supabaseConfig.url, supabaseConfig.anonKey);
+    if (!supabase) return { success: false, error: 'Supabase غير مهيأ.' };
+    
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+    
+    if (error) return { success: false, error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة.' };
+    
+    const isAdminUser = data.user?.email === ADMIN_EMAIL;
+    return { success: true, isAdmin: isAdminUser };
+  };
 
-    if (username.toLowerCase() === 'admin' && pass === 'admin123') {
-        const adminUser: User = {
-            id: 'admin-001',
-            name: 'المدير العام',
-            username: 'admin',
-            email: 'admin@gulfsports.dev',
-            password: '', 
-            joinDate: new Date().toISOString(),
-            avatar: 'https://api.dicebear.com/7.x/initials/svg?seed=Admin&backgroundColor=10b981&textColor=ffffff'
-        };
-        setCurrentUser(adminUser);
-        localStorage.setItem('goolzon_user', JSON.stringify(adminUser));
-        return true;
+  const register = async (data: Partial<User>) => {
+    const supabase = getSupabase(supabaseConfig.url, supabaseConfig.anonKey);
+    if (!supabase) return { success: false, error: 'Supabase غير مهيأ.' };
+    
+    if (!data.email || !data.password) return { success: false, error: 'البريد الإلكتروني وكلمة المرور مطلوبان.' };
+
+    const { error } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+            data: {
+                name: data.name,
+                username: data.username,
+                avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.username}`
+            }
+        }
+    });
+
+    if (error) {
+        if (error.message.includes('unique constraint')) {
+            return { success: false, error: 'هذا البريد الإلكتروني مسجل مسبقًا.' };
+        }
+        return { success: false, error: error.message };
     }
-
-    const user: User = {
-        id: `user-${username.toLowerCase()}`,
-        name: 'مشجع خليجي',
-        username: username,
-        email: `${username}@example.com`,
-        password: '',
-        joinDate: new Date().toISOString(),
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`
-    };
-    setCurrentUser(user);
-    localStorage.setItem('goolzon_user', JSON.stringify(user));
-    return true;
+    return { success: true };
   };
 
-  const register = (data: Partial<User>): boolean => {
-      if (data.username?.toLowerCase() === 'admin') {
-          return false;
-      }
-      const user: User = {
-          id: `user-${data.username?.toLowerCase()}`,
-          name: data.name || 'User',
-          username: data.username || 'user',
-          email: data.email || 'user@mail.com',
-          password: '',
-          joinDate: new Date().toISOString(),
-          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.username}`
-      };
-      setCurrentUser(user);
-      localStorage.setItem('goolzon_user', JSON.stringify(user));
-      return true;
+  const logout = async () => {
+    const supabase = getSupabase(supabaseConfig.url, supabaseConfig.anonKey);
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
+    setCurrentUser(null);
+    setIsAdmin(false);
   };
 
-  const logout = () => {
-      setCurrentUser(null);
-      localStorage.removeItem('goolzon_user');
-  };
-
-  const value = { currentUser, login, register, logout, followedTeams, toggleFollow };
+  const value = { currentUser, isAdmin, login, register, logout, followedTeams, toggleFollow };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

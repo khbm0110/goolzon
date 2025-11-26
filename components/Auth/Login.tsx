@@ -1,7 +1,7 @@
+
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, Lock, Loader2, AlertCircle, ArrowRight } from 'lucide-react';
-// FIX: Replaced useApp with useAuth to correctly access login function.
 import { useAuth } from '../../contexts/AuthContext';
 
 const Login: React.FC = () => {
@@ -11,7 +11,7 @@ const Login: React.FC = () => {
   const [error, setError] = useState('');
   
   const [formData, setFormData] = useState({
-    username: '',
+    email: '',
     password: ''
   });
 
@@ -25,17 +25,23 @@ const Login: React.FC = () => {
     setIsLoading(true);
     setError('');
     
-    // Simulate API delay
-    setTimeout(() => {
-      const success = login(formData.username, formData.password);
-
-      if (success) {
-        navigate('/profile');
-      } else {
-        setError('اسم المستخدم أو كلمة المرور غير صحيحة');
-      }
-      setIsLoading(false);
-    }, 1000);
+    try {
+        const result = await login(formData.email, formData.password);
+        if (result.success) {
+            // Check if user is admin and redirect accordingly
+            if (result.isAdmin) {
+                navigate('/admin');
+            } else {
+                navigate('/profile');
+            }
+        } else {
+            setError(result.error || 'فشل تسجيل الدخول. تحقق من بياناتك.');
+        }
+    } catch (err: any) {
+        setError(err.message || 'فشل تسجيل الدخول. حاول مرة أخرى.');
+    } finally {
+        setIsLoading(false);
+    }
   };
 
   return (
@@ -58,18 +64,18 @@ const Login: React.FC = () => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Username */}
+          {/* Email */}
           <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-400 mr-1">اسم المستخدم</label>
+            <label className="text-xs font-bold text-slate-400 mr-1">البريد الإلكتروني</label>
             <div className="relative">
               <User className="absolute right-3 top-3 text-slate-500" size={18} />
               <input 
-                type="text"
-                name="username"
+                type="email"
+                name="email"
                 required
-                value={formData.username}
+                value={formData.email}
                 onChange={handleChange}
-                placeholder="اسم المستخدم"
+                placeholder="admin@goolzon.dev"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-primary outline-none transition-colors"
                 style={{ direction: 'ltr', textAlign: 'right' }}
               />
@@ -112,9 +118,6 @@ const Login: React.FC = () => {
           </Link>
         </div>
         
-        <div className="mt-4 pt-4 border-t border-slate-800 text-center text-xs text-slate-600">
-            <p>للوصول إلى لوحة التحكم: استخدم <code className="font-mono bg-slate-800 px-1 rounded text-slate-400">admin</code> / <code className="font-mono bg-slate-800 px-1 rounded text-slate-400">admin123</code></p>
-        </div>
       </div>
     </div>
   );

@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User as UserIcon, Mail, Lock, AtSign, Loader2, AlertCircle, Trophy, CheckCircle2 } from 'lucide-react';
-// FIX: Replaced useApp with useAuth to correctly access register function.
 import { useAuth } from '../../contexts/AuthContext';
 
 const Register: React.FC = () => {
@@ -50,22 +49,24 @@ const Register: React.FC = () => {
 
     setIsLoading(true);
     
-    // Simulate API delay
-    setTimeout(() => {
-      const success = register({
+    try {
+      const result = await register({
         name: formData.name,
         username: formData.username,
         email: formData.email,
         password: formData.password
       });
 
-      if (success) {
+      if (result.success) {
         navigate('/profile');
       } else {
-        setError('اسم المستخدم أو البريد الإلكتروني مسجل مسبقاً');
+        setError(result.error || 'حدث خطأ غير متوقع');
       }
-      setIsLoading(false);
-    }, 1500);
+    } catch (err: any) {
+        setError(err.message || 'فشل في التسجيل. حاول مرة أخرى.');
+    } finally {
+        setIsLoading(false);
+    }
   };
 
   return (

@@ -19,8 +19,8 @@ import UserProfile from './components/UserProfile';
 import AdminDashboard from './components/AdminDashboard';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { currentUser } = useAuth();
-  if (!currentUser) return <Navigate to="/login" replace />;
+  const { currentUser, isAdmin } = useAuth();
+  if (!currentUser || !isAdmin) return <Navigate to="/login" replace />;
   return <>{children}</>;
 };
 
