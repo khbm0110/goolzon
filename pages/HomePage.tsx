@@ -1,10 +1,9 @@
-
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { useUI } from '../contexts/UIContext';
 import { useSettings } from '../contexts/SettingsContext';
+import { useAuth } from '../contexts/AuthContext';
 import NewsCard from '../components/NewsCard';
 import StandingsWidget from '../components/StandingsWidget';
 import TeamLogo from '../components/TeamLogo';
@@ -16,7 +15,6 @@ import {
   Loader2,
   PlayCircle
 } from 'lucide-react';
-import { POPULAR_CLUBS } from '../constants';
 
 const SectionHeader: React.FC<{ title: string; link?: string }> = ({ title, link }) => (
   <div className="flex items-center justify-between mb-4 border-r-4 border-primary pr-3 bg-gradient-to-l from-slate-900 to-transparent p-2 rounded-r">
@@ -33,6 +31,7 @@ const HomePage: React.FC = () => {
   const { articles, matches, standings, isLoadingInitial } = useData();
   const { isAIGenerating, setSelectedMatch } = useUI();
   const { featureFlags } = useSettings();
+  const { currentUser, followedTeams } = useAuth();
   
   const breakingNews = articles.filter(a => a.isBreaking);
   const featuredArticle = breakingNews.length > 0 ? breakingNews[0] : articles[0];
@@ -41,6 +40,14 @@ const HomePage: React.FC = () => {
   
   const displayMatches = matches;
   const displayStandings = standings;
+
+  const followedTeamsArticles = (currentUser && followedTeams.length > 0) 
+    ? articles.filter(article => 
+        followedTeams.some(teamName => 
+            article.title.includes(teamName) || article.summary.includes(teamName)
+        )
+      ).slice(0, 6)
+    : [];
 
   const leagueSections = [
     { key: Category.ENGLAND, title: 'الدوري الإنجليزي', link: '/country/england' },
@@ -118,19 +125,12 @@ const HomePage: React.FC = () => {
              </div>
            </section>
 
-           {featureFlags.clubs && (
+           {currentUser && followedTeams.length > 0 && followedTeamsArticles.length > 0 && (
              <section>
-                <SectionHeader title="أشهر الأندية" />
-                <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                  {POPULAR_CLUBS.map((club) => (
-                    <Link key={club.id} to={`/club/${club.id}`} className="flex flex-col items-center justify-center bg-slate-900 p-4 rounded-xl border border-slate-800 hover:border-primary/50 transition-all hover:-translate-y-1 group">
-                      <div className="w-16 h-16 mb-3 relative flex items-center justify-center">
-                         <div className="absolute inset-0 bg-primary/5 rounded-full filter blur-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                         <TeamLogo src={club.logo} alt={club.name} className="w-14 h-14 object-contain z-10 drop-shadow-lg" />
-                      </div>
-                      <span className="text-xs font-bold text-slate-300 group-hover:text-white transition-colors text-center truncate w-full">{club.name}</span>
-                      <span className="text-[10px] text-slate-500 mt-1 bg-slate-950 px-2 py-0.5 rounded-full">{club.country}</span>
-                    </Link>
+                <SectionHeader title="أخبار فرقك المفضلة" />
+                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {followedTeamsArticles.map((article) => (
+                    <NewsCard key={article.id} article={article} />
                   ))}
                 </div>
              </section>
