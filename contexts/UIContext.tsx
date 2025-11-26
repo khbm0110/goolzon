@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useEffect, useContext, ReactNode, useRef } from 'react';
 import { Match, Article, Category } from '../types';
 import { useSettings } from './SettingsContext';
@@ -91,12 +90,16 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
                  const newArticle: Article = {
                      id: `ai-${Date.now()}`,
-                     ...newArticleContent,
+                     title: newArticleContent.title,
+                     summary: newArticleContent.summary,
+                     content: newArticleContent.content,
+                     imageUrl: newArticleContent.imageUrl,
+                     sources: newArticleContent.sources,
                      category: safeCategory,
                      date: new Date().toISOString(),
-                     views: 1, // Start with 1 view
                      author: 'AI Reporter 🤖',
-                     isBreaking: newArticleContent.hasNews // Use AI determination for breaking news
+                     views: 1,
+                     isBreaking: newArticleContent.hasNews,
                  };
                  
                  const success = await addArticle(newArticle);

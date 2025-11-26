@@ -43,14 +43,22 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setArticles(prev => [article, ...prev]);
         return true;
     }
-    const { imageUrl, isBreaking, videoEmbedId, ...restOfArticle } = article;
+    
+    // Explicitly map to the database schema to prevent unknown columns
+    // This fixes the error where extra properties like 'hasNews' were sent.
     const articleForDb = {
-        ...restOfArticle,
-        "imageUrl": imageUrl || '',
-        "isBreaking": isBreaking ?? false,
-        "videoEmbedId": videoEmbedId ?? '',
+        id: article.id,
+        title: article.title,
+        summary: article.summary,
+        content: article.content,
+        imageUrl: article.imageUrl,
+        category: article.category,
+        date: article.date,
+        author: article.author,
+        views: article.views,
+        isBreaking: article.isBreaking ?? false,
+        videoEmbedId: article.videoEmbedId || null,
     };
-    delete (articleForDb as any).sources;
 
     const { error } = await supabase.from('articles').insert(articleForDb);
     if (error) {
