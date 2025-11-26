@@ -1,16 +1,6 @@
 
 
-import { Article, Category, Match, Standing, ClubProfile } from './types';
-
-// Moved from geminiService to share with Club Dashboard
-export const SQUAD_LISTS: Record<string, string[]> = {
-  'الهلال': ['بونو', 'سعود عبدالحميد', 'كوليبالي', 'البليهي', 'الشهراني', 'نيفيز', 'سافيتش', 'مالكوم', 'سالم الدوسري', 'ميتروفيتش', 'نيمار'],
-  'النصر': ['بينتو', 'سلطان الغنام', 'لابورت', 'لاجامي', 'تيليس', 'بروزوفيتش', 'أوتافيو', 'تليسكا', 'ماني', 'رونالدو', 'غريب'],
-  'الاتحاد': ['المععيوف', 'الشنقيطي', 'حجازي', 'كاديش', 'هوساوي', 'كانتي', 'فابينيو', 'رومارينيو', 'بنزيما', 'حمدالله', 'كورنادو'],
-  'الأهلي': ['ميندي', 'مجراشي', 'ديميرال', 'هندي', 'بالعبيد', 'كيسيه', 'المجحد', 'محرز', 'فيرمينو', 'ماكسيمان', 'البريكان'],
-  'العين': ['خالد عيسى', 'بندر', 'كوامي', 'الهاشمي', 'إيريك', 'بارك', 'يحيى', 'كاكو', 'رحيمي', 'لابا', 'بلاسيوس'],
-  'السد': ['برشم', 'وعد', 'خوخي', 'سلمان', 'الهاجري', 'الهيدوس', 'أوريبي', 'عفيف', 'بلاتا', 'بونجاح', 'تاباتا'],
-};
+import { Article, Category, ClubProfile } from './types';
 
 export const GULF_CLUBS = [
   // Saudi
@@ -45,6 +35,8 @@ export const GULF_CLUBS = [
   { name: 'الرفاع', country: Category.BAHRAIN, logo: 'https://upload.wikimedia.org/wikipedia/en/8/87/Al-Riffa_SC_logo.svg', id: 'riffa' },
 ];
 
+// NOTE: This database is used for the INITIAL SEEDING of Supabase from the Admin Panel.
+// It is NOT used as a runtime fallback for the main application.
 export const CLUB_DATABASE: Record<string, ClubProfile> = {
   'nassr': {
     id: 'nassr',
@@ -114,6 +106,8 @@ export const CLUB_DATABASE: Record<string, ClubProfile> = {
   }
 };
 
+// NOTE: These articles are used for the INITIAL SEEDING of Supabase from the Admin Panel.
+// They are NOT used as a runtime fallback for the main application.
 export const INITIAL_ARTICLES: Article[] = [
   {
     id: '1',
@@ -175,20 +169,4 @@ export const INITIAL_ARTICLES: Article[] = [
     views: 45000,
     videoEmbedId: 'dQw4w9WgXcQ' // Mock ID
   }
-];
-
-export const INITIAL_MATCHES: Match[] = [
-  { id: 'm1', homeTeam: 'الهلال', homeLogo: 'https://upload.wikimedia.org/wikipedia/en/f/fa/Al_Hilal_SFC_logo.svg', awayTeam: 'النصر', awayLogo: 'https://upload.wikimedia.org/wikipedia/en/a/a1/Al_Nassr_FC_Logo.svg', scoreHome: 2, scoreAway: 1, time: '85\'', status: 'LIVE', league: 'دوري روشن', country: Category.SAUDI },
-  { id: 'm2', homeTeam: 'الاتحاد', homeLogo: 'https://upload.wikimedia.org/wikipedia/en/0/06/Al_Ittihad_Club_Logo.png', awayTeam: 'الشباب', awayLogo: 'https://upload.wikimedia.org/wikipedia/en/e/e0/Al_Shabab_FC_Saudi_logo.svg', scoreHome: null, scoreAway: null, time: '21:00', status: 'UPCOMING', league: 'دوري روشن', country: Category.SAUDI },
-  { id: 'm3', homeTeam: 'العين', homeLogo: 'https://upload.wikimedia.org/wikipedia/en/a/a3/Al_Ain_FC_Logo.png', awayTeam: 'الشارقة', awayLogo: 'https://upload.wikimedia.org/wikipedia/en/0/01/Sharjah_FC_logo.svg', scoreHome: 3, scoreAway: 0, time: 'FT', status: 'FINISHED', league: 'دوري أدنوك', country: Category.UAE },
-  { id: 'm4', homeTeam: 'السد', homeLogo: 'https://upload.wikimedia.org/wikipedia/en/8/86/Al-Sadd_SC_logo.svg', awayTeam: 'الدحيل', awayLogo: 'https://upload.wikimedia.org/wikipedia/en/c/c2/Al-Duhail_SC_logo.svg', scoreHome: 1, scoreAway: 1, time: '45\'', status: 'LIVE', league: 'دوري نجوم قطر', country: Category.QATAR },
-  { id: 'm5', homeTeam: 'الكويت', homeLogo: 'https://upload.wikimedia.org/wikipedia/en/2/22/Kuwait_SC_logo.svg', awayTeam: 'القادسية', awayLogo: 'https://upload.wikimedia.org/wikipedia/en/6/6f/Qadsia_SC_logo.svg', scoreHome: null, scoreAway: null, time: '19:30', status: 'UPCOMING', league: 'الدوري الكويتي', country: Category.KUWAIT },
-];
-
-export const INITIAL_STANDINGS: Standing[] = [
-  { rank: 1, team: 'الهلال', logo: 'https://upload.wikimedia.org/wikipedia/en/f/fa/Al_Hilal_SFC_logo.svg', played: 20, won: 18, drawn: 2, lost: 0, gf: 58, ga: 10, gd: 48, points: 56, league: 'SAUDI' },
-  { rank: 2, team: 'النصر', logo: 'https://upload.wikimedia.org/wikipedia/en/a/a1/Al_Nassr_FC_Logo.svg', played: 20, won: 15, drawn: 2, lost: 3, gf: 55, ga: 22, gd: 33, points: 47, league: 'SAUDI' },
-  { rank: 3, team: 'الأهلي', logo: 'https://upload.wikimedia.org/wikipedia/en/b/b3/Al-Ahli_Saudi_FC_logo.svg', played: 20, won: 12, drawn: 4, lost: 4, gf: 40, ga: 22, gd: 18, points: 40, league: 'SAUDI' },
-  { rank: 1, team: 'الوصل', logo: 'https://upload.wikimedia.org/wikipedia/en/f/f3/Al_Wasl_FC_logo.svg', played: 18, won: 14, drawn: 4, lost: 0, gf: 45, ga: 15, gd: 30, points: 46, league: 'UAE' },
-  { rank: 2, team: 'العين', logo: 'https://upload.wikimedia.org/wikipedia/en/a/a3/Al_Ain_FC_Logo.png', played: 17, won: 12, drawn: 2, lost: 3, gf: 38, ga: 18, gd: 20, points: 38, league: 'UAE' },
 ];

@@ -1,9 +1,9 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { X, Clock, MapPin, Share2, BarChart2, Users, AlertCircle, Loader2 } from 'lucide-react';
 import { Match, MatchDetails } from '../types';
 import TeamLogo from './TeamLogo';
-import { getMatchDetails } from '../services/geminiService';
 import { fetchFixtureDetails } from '../services/apiFootball';
 // FIX: Replaced useApp with useSettings to correctly access apiConfig.
 import { useSettings } from '../contexts/SettingsContext';
@@ -22,30 +22,22 @@ const MatchCenterModal: React.FC<MatchCenterModalProps> = ({ match, onClose }) =
   useEffect(() => {
     if (match) {
       setLoading(true);
+      setDetails(null); // Reset details when a new match is opened
       
       const loadDetails = async () => {
           let data: MatchDetails | null = null;
           
-          // 1. Try API if Key exists
           if (apiConfig.keys.matches) {
               try {
                   data = await fetchFixtureDetails(apiConfig.keys.matches, match.id);
                   if (!data) {
-                      // If API return null (e.g. rate limit or error), and we have a key, we might NOT want to show fake data
-                      // But for robustness, let's just log it.
                       console.warn("API returned no details for fixture", match.id);
                   }
               } catch (e) {
                   console.warn("API Fetch failed.", e);
               }
-          }
-
-          // 2. Fallback to Hybrid Engine ONLY if:
-          //    a) No API key is configured (Demo Mode)
-          //    b) OR if data is still null AND we want to fallback (but user complained about fake data)
-          //    FIX: If API Key exists, do NOT show fake data. Only show fake data if NO key is provided.
-          if (!data && !apiConfig.keys.matches) {
-             data = await getMatchDetails(match.homeTeam, match.awayTeam, match.scoreHome, match.scoreAway);
+          } else {
+            console.warn("Match details cannot be fetched without an API key.");
           }
           
           setDetails(data);
@@ -157,7 +149,7 @@ const MatchCenterModal: React.FC<MatchCenterModalProps> = ({ match, onClose }) =
             ) : !details ? (
                 <div className="text-center py-12 text-slate-500">
                     <p>لا تتوفر تفاصيل لهذه المباراة حالياً.</p>
-                    {apiConfig.keys.matches && <p className="text-xs text-slate-600 mt-2">تأكد من صلاحية مفتاح API أو توفر التغطية لهذه المباراة</p>}
+                    {!apiConfig.keys.matches && <p className="text-xs text-slate-600 mt-2">يرجى تكوين مفتاح API للمباريات في لوحة التحكم.</p>}
                 </div>
             ) : (
                 <>
@@ -221,7 +213,7 @@ const MatchCenterModal: React.FC<MatchCenterModalProps> = ({ match, onClose }) =
                 <Share2 size={14} /> مشاركة المباراة
              </button>
              <span className="text-xs text-slate-600">
-                {apiConfig.keys.matches ? 'Powered by API-Sports' : 'Powered by Hybrid Sports Engine'}
+                {apiConfig.keys.matches ? 'Powered by API-Sports' : 'لم يتم تكوين مفتاح API'}
              </span>
         </div>
     </div>

@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Header from './Header';
@@ -8,18 +9,14 @@ import MatchCenterModal from './MatchCenterModal';
 import { useData } from '../contexts/DataContext';
 import { useUI } from '../contexts/UIContext';
 import { useSettings } from '../contexts/SettingsContext';
-import { INITIAL_MATCHES } from '../constants';
 import { Trophy } from 'lucide-react';
 
 const Layout: React.FC<{children: React.ReactNode}> = ({ children }) => {
   const { articles, matches } = useData();
   const { selectedMatch, setSelectedMatch, isAutopilot, toggleAutopilot } = useUI();
-  const { featureFlags, apiConfig } = useSettings();
+  const { featureFlags } = useSettings();
   
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-
-  const hasApiKey = Boolean(apiConfig.keys.matches);
-  const displayMatches = hasApiKey ? matches : INITIAL_MATCHES;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-primary selection:text-slate-900">
@@ -35,7 +32,7 @@ const Layout: React.FC<{children: React.ReactNode}> = ({ children }) => {
       />
       <MatchCenterModal match={selectedMatch} onClose={() => setSelectedMatch(null)} />
       
-      {featureFlags.matches && <MatchTicker matches={displayMatches} onMatchClick={setSelectedMatch} />}
+      {featureFlags.matches && <MatchTicker matches={matches} onMatchClick={setSelectedMatch} />}
       
       <main>
         {children}

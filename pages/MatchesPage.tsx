@@ -1,20 +1,18 @@
 
+
 import React from 'react';
 import { useData } from '../contexts/DataContext';
 import { useUI } from '../contexts/UIContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { Match } from '../types';
-import { INITIAL_MATCHES } from '../constants';
 import TeamLogo from '../components/TeamLogo';
 import { Calendar } from 'lucide-react';
 
 const MatchesPage: React.FC = () => {
     const { matches } = useData();
     const { setSelectedMatch } = useUI();
-    const { apiConfig } = useSettings();
     
-    const hasApiKey = Boolean(apiConfig.keys.matches);
-    const displayMatches = hasApiKey ? matches : INITIAL_MATCHES;
+    const displayMatches = matches;
 
     const groupedMatches = displayMatches.reduce((acc: Record<string, Match[]>, match) => {
       const leagueName = match.league || 'مباريات ودية';
@@ -35,7 +33,7 @@ const MatchesPage: React.FC = () => {
         <div className="space-y-8">
           {leagues.length === 0 ? (
              <div className="text-center text-slate-500 py-10 bg-slate-900 rounded-xl">
-                 {hasApiKey ? 'لا توجد مباريات مجدولة لليوم في الدوريات المختارة' : 'لا توجد مباريات اليوم'}
+                 لا توجد مباريات مجدولة لليوم في الدوريات المختارة
              </div>
           ) : leagues.map((league) => {
             const leagueMatches = groupedMatches[league];

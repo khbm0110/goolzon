@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
@@ -9,7 +10,6 @@ import StandingsWidget from '../components/StandingsWidget';
 import TeamLogo from '../components/TeamLogo';
 import { NewsCardSkeleton, MatchRowSkeleton } from '../components/Skeletons';
 import { Category } from '../types';
-import { INITIAL_MATCHES, INITIAL_STANDINGS } from '../constants';
 import { 
   TrendingUp, 
   ChevronLeft,
@@ -31,16 +31,15 @@ const SectionHeader: React.FC<{ title: string; link?: string }> = ({ title, link
 const HomePage: React.FC = () => {
   const { articles, matches, standings, clubs, isLoadingInitial } = useData();
   const { isAIGenerating, setSelectedMatch } = useUI();
-  const { featureFlags, apiConfig } = useSettings();
+  const { featureFlags } = useSettings();
   
   const breakingNews = articles.filter(a => a.isBreaking);
   const featuredArticle = breakingNews.length > 0 ? breakingNews[0] : articles[0];
   const latestNews = articles.filter(a => a.id !== featuredArticle?.id && a.category !== Category.VIDEO).slice(0, 6);
   const videoArticles = articles.filter(a => a.category === Category.VIDEO).slice(0, 3);
   
-  const hasApiKey = Boolean(apiConfig.keys.matches);
-  const displayMatches = hasApiKey ? matches : INITIAL_MATCHES;
-  const displayStandings = hasApiKey ? standings : INITIAL_STANDINGS;
+  const displayMatches = matches;
+  const displayStandings = standings;
 
   const countrySections = [
     { key: Category.SAUDI, title: 'الدوري السعودي', link: '/country/saudi' },
@@ -68,7 +67,7 @@ const HomePage: React.FC = () => {
              {isLoadingInitial ? (
                 <NewsCardSkeleton featured={true} />
              ) : (
-                featuredArticle && <NewsCard article={featuredArticle} featured={true} />
+                featuredArticle ? <NewsCard article={featuredArticle} featured={true} /> : <div className="h-full w-full bg-slate-900 rounded-xl flex items-center justify-center text-slate-500">لا توجد مقالات لعرضها.</div>
              )}
            </div>
            <div className="space-y-4">
@@ -194,7 +193,7 @@ const HomePage: React.FC = () => {
                       Array(5).fill(0).map((_, i) => <MatchRowSkeleton key={i} />)
                    ) : displayMatches.length === 0 ? (
                       <div className="p-6 text-center text-slate-500 text-xs">
-                          {hasApiKey ? 'لا توجد مباريات جارية اليوم' : 'لا توجد مباريات'}
+                          لا توجد مباريات جارية اليوم
                       </div>
                    ) : (
                        displayMatches.slice(0, 5).map(match => (

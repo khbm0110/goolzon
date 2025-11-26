@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { Article, Match, Standing, ClubProfile, Category, Player } from '../types';
-import { INITIAL_ARTICLES, INITIAL_MATCHES, INITIAL_STANDINGS, CLUB_DATABASE } from '../constants';
+import { INITIAL_ARTICLES, CLUB_DATABASE } from '../constants';
 import { fetchLiveMatches, fetchStandings } from '../services/apiFootball';
 import { getSupabase } from '../services/supabaseClient';
 import { useSettings } from './SettingsContext';
@@ -31,8 +31,8 @@ export const useData = () => {
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { apiConfig } = useSettings();
   const [articles, setArticles] = useState<Article[]>([]);
-  const [matches, setMatches] = useState<Match[]>(INITIAL_MATCHES);
-  const [standings, setStandings] = useState<Standing[]>(INITIAL_STANDINGS);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [standings, setStandings] = useState<Standing[]>([]);
   const [clubs, setClubs] = useState<ClubProfile[]>([]);
   const [isLoadingInitial, setIsLoadingInitial] = useState(true);
 
@@ -210,95 +210,70 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               date: new Date().toISOString(),
               author: 'Bot الانتقالات',
               views: Math.floor(Math.random() * 5000) + 1000,
-              isBreaking: true
+              isBreaking: true,
           };
 
-          addArticle(transferArticle);
-
+          addArticle(transferArticle); // Add a news article about the transfer
           targetClub.squad.push(player);
           return newClubs;
       });
   };
 
   useEffect(() => {
-     const initializeApp = async () => {
-         setIsLoadingInitial(true);
-         const supabase = getSupabase(apiConfig.supabaseUrl, apiConfig.supabaseKey);
-         
-         if (supabase) {
-             console.log("Supabase client initialized. Fetching data...");
-             try {
-                 const [articlesRes, clubsRes] = await Promise.all([
-                     supabase.from('articles').select('*').order('date', { ascending: false }).limit(50),
-                     supabase.from('clubs').select('*')
-                 ]);
+    const fetchData = async () => {
+        setIsLoadingInitial(true);
 
-                 if (articlesRes.error) throw articlesRes.error;
-                 const articlesFromDb = articlesRes.data || [];
-                 setArticles(articlesFromDb.map((a: any) => ({
-                     ...a,
-                     imageUrl: a.imageUrl,
-                     isBreaking: a.isBreaking,
-                     videoEmbedId: a.videoEmbedId,
-                 })));
+        const supabase = getSupabase(apiConfig.supabaseUrl, apiConfig.supabaseKey);
 
-                 if (clubsRes.error) throw clubsRes.error;
-                 const clubsFromDb = clubsRes.data || [];
-                 // Enrich clubs from DB with local squad data (as squad is not in DB yet)
-                 const clubsWithMockSquads = (clubsFromDb).map((dbClub: any) => {
-                    const mockClub = Object.values(CLUB_DATABASE).find(c => c.id === dbClub.id);
-                    return { 
-                        ...dbClub, 
-                        englishName: dbClub.englishName,
-                        coverImage: dbClub.coverImage,
-                        fanCount: dbClub.fanCount,
-                        squad: mockClub?.squad || [] 
-                    };
-                 });
-                 setClubs(clubsWithMockSquads);
-                 
-             } catch (error) {
-                 console.error("Error fetching from Supabase:", error);
-                 alert("فشل الاتصال بـ Supabase. تحقق من الإعدادات أو أمان RLS. سيتم عرض البيانات المؤقتة.");
-                 setArticles(INITIAL_ARTICLES);
-                 setClubs(Object.values(CLUB_DATABASE).filter(c => c.id !== 'generic'));
-             }
-         } else {
-             console.log("No Supabase config. Using initial mock data.");
-             setArticles(INITIAL_ARTICLES);
-             setClubs(Object.values(CLUB_DATABASE).filter(c => c.id !== 'generic'));
-         }
-         
-         setIsLoadingInitial(false);
-     };
+        if (supabase) {
+            console.log("Fetching data from Supabase...");
+            const { data: dbArticles, error: articlesError } = await supabase.from('articles').select('*').order('date', { ascending: false });
+            const { data: dbClubs, error: clubsError } = await supabase.from('clubs').select('*');
 
-     initializeApp();
-  }, [apiConfig.supabaseUrl, apiConfig.supabaseKey]);
+            if (articlesError) console.error("Supabase articles error:", articlesError);
+            if (clubsError) console.error("Supabase clubs error:", clubsError);
+            
+            setArticles(dbArticles || []);
+            // For now, we use local squad data as it's not in the DB yet.
+            // A production app would fetch players and join them.
+            const clubsWithSquads = (dbClubs || []).map(dbClub => {
+                const localClub = CLUB_DATABASE[dbClub.id];
+                return { ...dbClub, squad: localClub ? localClub.squad : [] };
+            });
+            setClubs(clubsWithSquads);
+        } else {
+            console.warn("Supabase not configured. Application will run with no initial data.");
+            // Start with empty data if Supabase isn't configured, instead of mock data.
+            setArticles([]);
+            setClubs([]);
+        }
 
-  useEffect(() => {
-     let interval: ReturnType<typeof setInterval> | null = null;
-     const syncData = async () => {
-         if (apiConfig.keys.matches) {
-             const liveMatches = await fetchLiveMatches(apiConfig.keys.matches, apiConfig.leagueIds);
-             setMatches(liveMatches); 
-             
-             const liveStandings = await fetchStandings(apiConfig.keys.matches, apiConfig.leagueIds);
-             setStandings(liveStandings.length > 0 ? liveStandings : []);
-         }
-     };
-     syncData();
-     if (apiConfig.autoSync) {
-         interval = setInterval(syncData, 60000); // 60 seconds
-     }
-     return () => {
-         if (interval) clearInterval(interval);
-     }
-  }, [apiConfig.keys.matches, apiConfig.leagueIds, apiConfig.autoSync]);
+        if (apiConfig.keys.matches) {
+            console.log("Fetching live sports data...");
+            const [liveMatches, leagueStandings] = await Promise.all([
+                fetchLiveMatches(apiConfig.keys.matches, apiConfig.leagueIds),
+                fetchStandings(apiConfig.keys.matches, apiConfig.leagueIds)
+            ]);
+            setMatches(liveMatches);
+            setStandings(leagueStandings);
+        } else {
+            console.warn("API-Sports key not configured. Match/Standing data will be empty.");
+            setMatches([]);
+            setStandings([]);
+        }
+
+        setIsLoadingInitial(false);
+    };
+
+    fetchData();
+  }, [apiConfig]);
 
   const value = {
-      articles, addArticle, updateArticle, deleteArticle,
-      matches, standings, clubs, addClub, updateClub, deleteClub,
-      transferPlayer, isLoadingInitial
+    articles, addArticle, updateArticle, deleteArticle,
+    matches,
+    standings,
+    clubs, addClub, updateClub, deleteClub, transferPlayer,
+    isLoadingInitial
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
