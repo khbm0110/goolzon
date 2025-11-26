@@ -395,6 +395,15 @@ const SettingsView: React.FC<{
                     </p>
                 </div>
                 <div className="p-6 space-y-4">
+                     <div>
+                        <h3 className="text-lg font-bold text-amber-400 mb-2">إصلاح سريع: خطأ "Could not find 'coverImage' column"</h3>
+                        <p className="text-sm text-slate-400 mb-3">
+                            إذا واجهت هذا الخطأ عند محاولة تعبئة قاعدة البيانات (seeding)، فهذا يعني أن جدول <code>clubs</code> الخاص بك لا يحتوي على عمود <code>"coverImage"</code>. قم بتشغيل الأمر التالي في محرر Supabase SQL لإضافته:
+                        </p>
+                        <CodeBlock 
+                            code={`ALTER TABLE clubs ADD COLUMN "coverImage" TEXT;`} 
+                        />
+                    </div>
                      <div className="text-sm text-red-400 bg-red-900/30 border border-red-800 p-4 rounded-lg">
                         <h3 className="text-lg font-bold text-red-300 mb-2 flex items-center gap-2">
                             <AlertTriangle /> إصلاح خطأ "violates row-level security policy"
@@ -407,18 +416,16 @@ const SettingsView: React.FC<{
                         />
                     </div>
                     <div className="text-sm text-amber-400 bg-amber-900/30 border border-amber-800 p-4 rounded-lg flex items-start gap-3">
-                        <AlertTriangle className="w-8 h-8 text-amber-500 shrink-0" />
+                        <AlertTriangle className="w-8 h-8 text-amber-500 shrink-0 mt-1" />
                         <div>
-                            <h4 className="font-bold mb-1">ملاحظة هامة جداً</h4>
-                            عند نسخ كود SQL، تأكد من الاحتفاظ بعلامات الاقتباس المزدوجة حول أسماء الأعمدة (مثل <code>"imageUrl"</code>). هذا يضمن تطابقها مع الكود. إزالتها سيؤدي إلى تحويل الأسماء إلى أحرف صغيرة (<code>imageurl</code>)، مما يسبب أخطاء في عرض وحفظ البيانات.
+                            <h4 className="font-bold mb-1 text-amber-300">ملاحظة هامة جداً: علامات الاقتباس المزدوجة</h4>
+                            <p>
+                                عند نسخ كود SQL، يجب عليك الاحتفاظ بعلامات الاقتباس المزدوجة <code>" "</code> حول أسماء الأعمدة مثل <code>"coverImage"</code> و <code>"fanCount"</code>. هذا الأمر ضروري للحفاظ على حالة الأحرف (camelCase).
+                            </p>
+                            <p className="mt-2">
+                                إذا قمت بإنشاء الجدول بدونها، ستقوم قاعدة البيانات بتحويل الأسماء إلى أحرف صغيرة (<code>coverimage</code>)، مما سيؤدي إلى فشل التطبيق في العثور على الأعمدة الصحيحة.
+                            </p>
                         </div>
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-bold text-amber-400 mb-2">إصلاح سريع: عمود 'coverImage' مفقود</h3>
-                        <p className="text-sm text-slate-400 mb-3">إذا واجهت خطأ حول فقدان عمود "coverImage" عند تعبئة البيانات، قم بتشغيل هذا الأمر:</p>
-                        <CodeBlock 
-                            code={`ALTER TABLE clubs ADD COLUMN "coverImage" TEXT;`} 
-                        />
                     </div>
                     <div>
                         <h3 className="text-lg font-bold text-slate-200 mt-4 pt-4 border-t border-slate-800 mb-2">مخططات الجدول الكاملة</h3>
