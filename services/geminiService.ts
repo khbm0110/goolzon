@@ -174,13 +174,14 @@ export const generateArticleContent = async (topic: string, apiKey?: string, ret
     2. **المصداقية:** استخدم Google Search للتأكد من النتيجة وتفاصيل الحدث (مسجلي الأهداف، التصريحات).
     3. **التنوع:** لا تركز فقط على الهلال والنصر إلا إذا كان الموضوع عنهم. غطِ جميع الأندية الخليجية.
     4. **الأسلوب:** صحفي، احترافي، ومثير للحماس.
+    5. **تنسيق المحتوى (Content Format):** حقل "content" يجب أن يكون نصاً واحداً (string) يحتوي على HTML. استخدم علامات الاقتباس الفردية (') لخصائص HTML (مثال: <p class='example'>) لتجنب أخطاء JSON.
 
     OUTPUT FORMAT (JSON ONLY):
     {
       "hasNews": true,
       "title": "عنوان جذاب جداً وشامل",
       "summary": "ملخص دقيق للخبر (سطرين)",
-      "content": "المقال كاملاً (HTML p tags)",
+      "content": "<p class='important-news'>هذا هو محتوى المقال.</p><p>فقرة إضافية بالتفاصيل.</p>",
       "category": "الدولة (السعودية/الإمارات/قطر...)",
       "tags": ["تاج1", "تاج2"],
       "imageKeyword": "keyword for image search (e.g. Ittihad, Stadium, Trophy)"
