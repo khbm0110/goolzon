@@ -690,17 +690,17 @@ const SettingsView: React.FC<{
                         <Database className="text-indigo-500" /> مساعد مخطط قاعدة البيانات
                     </h2>
                     <p className="text-slate-400 text-sm mt-2">
-                        استخدم استعلامات SQL هذه في محرر Supabase SQL لإنشاء جداولك أو إصلاحها.
+                        استخدم استعلامات SQL هذه في محرر Supabase SQL لإنشاء جداولك أو إصلاحها. جميع الأوامر آمنة للتشغيل عدة مرات.
                     </p>
                 </div>
                 <div className="p-6 space-y-4">
                      <div>
                         <h3 className="text-lg font-bold text-amber-400 mb-2">إصلاح سريع: خطأ "Could not find 'coverImage' column"</h3>
                         <p className="text-sm text-slate-400 mb-3">
-                            إذا واجهت هذا الخطأ عند محاولة تعبئة قاعدة البيانات (seeding)، فهذا يعني أن جدول <code>clubs</code> الخاص بك لا يحتوي على عمود <code>"coverImage"</code>. قم بتشغيل الأمر التالي في محرر Supabase SQL لإضافته:
+                            إذا واجهت هذا الخطأ، قم بتشغيل الأمر التالي في محرر Supabase SQL لإضافة العمود المفقود بأمان.
                         </p>
                         <CodeBlock 
-                            code={`ALTER TABLE clubs ADD COLUMN "coverImage" TEXT;`} 
+                            code={`-- Adds the "coverImage" column if it doesn't already exist\nALTER TABLE public.clubs ADD COLUMN IF NOT EXISTS "coverImage" TEXT;`} 
                         />
                     </div>
                      <div className="text-sm text-red-400 bg-red-900/30 border border-red-800 p-4 rounded-lg">
@@ -708,10 +708,10 @@ const SettingsView: React.FC<{
                             <AlertTriangle /> إصلاح خطأ "violates row-level security policy"
                         </h3>
                         <p className="text-sm text-red-200 mb-3">
-                            يحدث هذا الخطأ لأن سياسات أمان قاعدة البيانات تمنع إضافة بيانات جديدة. لتشغيل "Seed Database"، يجب عليك السماح بعمليات الإضافة (`INSERT`). قم بتشغيل هذا الأمر في محرر Supabase SQL:
+                            يحدث هذا الخطأ لأن سياسات الأمان تمنع إضافة البيانات. قم بتشغيل هذا الأمر للسماح بعمليات الإضافة (`INSERT`).
                         </p>
                         <CodeBlock 
-                            code={`CREATE POLICY "Allow public insert access" ON clubs FOR INSERT WITH CHECK (true);\nCREATE POLICY "Allow public insert access" ON articles FOR INSERT WITH CHECK (true);`}
+                            code={`-- Allows anyone to insert into the clubs table. Safe to run multiple times.\nDROP POLICY IF EXISTS "Allow public insert access" ON public.clubs;\nCREATE POLICY "Allow public insert access" ON public.clubs FOR INSERT WITH CHECK (true);\n\n-- Allows anyone to insert into the articles table. Safe to run multiple times.\nDROP POLICY IF EXISTS "Allow public insert access" ON public.articles;\nCREATE POLICY "Allow public insert access" ON public.articles FOR INSERT WITH CHECK (true);`}
                         />
                     </div>
                     <div className="text-sm text-amber-400 bg-amber-900/30 border border-amber-800 p-4 rounded-lg flex items-start gap-3">
@@ -719,32 +719,29 @@ const SettingsView: React.FC<{
                         <div>
                             <h4 className="font-bold mb-1 text-amber-300">ملاحظة هامة جداً: علامات الاقتباس المزدوجة</h4>
                             <p>
-                                عند نسخ كود SQL، يجب عليك الاحتفاظ بعلامات الاقتباس المزدوجة <code>" "</code> حول أسماء الأعمدة مثل <code>"coverImage"</code> و <code>"fanCount"</code>. هذا الأمر ضروري للحفاظ على حالة الأحرف (camelCase).
-                            </p>
-                            <p className="mt-2">
-                                إذا قمت بإنشاء الجدول بدونها، ستقوم قاعدة البيانات بتحويل الأسماء إلى أحرف صغيرة (<code>coverimage</code>)، مما سيؤدي إلى فشل التطبيق في العثور على الأعمدة الصحيحة.
+                                عند نسخ كود SQL، يجب عليك الاحتفاظ بعلامات الاقتباس المزدوجة <code>" "</code> حول أسماء الأعمدة مثل <code>"coverImage"</code>. هذا الأمر ضروري للحفاظ على حالة الأحرف (camelCase) ومنع الأخطاء.
                             </p>
                         </div>
                     </div>
                     <div>
                         <h3 className="text-lg font-bold text-slate-200 mt-4 pt-4 border-t border-slate-800 mb-2">مخططات الجدول الكاملة</h3>
-                        <p className="text-sm text-slate-400 mb-3">إذا كنت تبدأ من جديد، استخدم هذه الأوامر لإنشاء الجداول المطلوبة بأسماء الأعمدة الصحيحة.</p>
+                        <p className="text-sm text-slate-400 mb-3">إذا كنت تبدأ من جديد، استخدم هذه الأوامر لإنشاء الجداول المطلوبة بأمان.</p>
                         <div className="space-y-4">
                              <CodeBlock 
-                                title="جدول `settings` (جديد)"
-                                code={`-- ينشئ جدول الإعدادات (يُشغل مرة واحدة)\nCREATE TABLE settings (\n  id INT PRIMARY KEY,\n  feature_flags JSONB,\n  api_config JSONB,\n  updated_at TIMESTAMPTZ DEFAULT NOW()\n);\n\n-- تفعيل أمان مستوى الصف\nALTER TABLE settings ENABLE ROW LEVEL SECURITY;\n\n-- السماح للجميع بقراءة الإعدادات\nCREATE POLICY "Allow public read access" ON settings FOR SELECT USING (true);\n\n-- السماح للمستخدمين المسجلين بتحديث الإعدادات\nCREATE POLICY "Allow update for authenticated users" ON settings FOR UPDATE USING (auth.role() = 'authenticated');\n\n-- السماح للمستخدمين المسجلين بإدخال الإعدادات للمرة الأولى\nCREATE POLICY "Allow insert for authenticated users" ON settings FOR INSERT WITH CHECK (auth.role() = 'authenticated');\n\n-- اختياري: إدخال صف الإعدادات الافتراضي الأول. سيقوم التطبيق بذلك تلقائيًا عند أول حفظ.\nINSERT INTO settings(id, feature_flags, api_config) VALUES (1, '{}', '{}');`}
+                                title="جدول `settings` (مهم)"
+                                code={`-- ينشئ جدول الإعدادات وسياسات الأمان الخاصة به. من الآمن تشغيل هذا النص عدة مرات.\n\n-- إنشاء الجدول فقط إذا لم يكن موجودًا\nCREATE TABLE IF NOT EXISTS public.settings (\n  id INT PRIMARY KEY,\n  feature_flags JSONB,\n  api_config JSONB,\n  updated_at TIMESTAMPTZ DEFAULT NOW()\n);\n\n-- تفعيل أمان مستوى الصف\nALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;\n\n-- حذف السياسات القديمة وإعادة إنشائها لضمان عدم حدوث أخطاء\nDROP POLICY IF EXISTS "Allow public read access" ON public.settings;\nCREATE POLICY "Allow public read access" ON public.settings FOR SELECT USING (true);\n\nDROP POLICY IF EXISTS "Allow update for authenticated users" ON public.settings;\nCREATE POLICY "Allow update for authenticated users" ON public.settings FOR UPDATE USING (auth.role() = 'authenticated');\n\nDROP POLICY IF EXISTS "Allow insert for authenticated users" ON public.settings;\nCREATE POLICY "Allow insert for authenticated users" ON public.settings FOR INSERT WITH CHECK (auth.role() = 'authenticated');\n\n-- إدخال صف الإعدادات الأولي (id=1) إذا لم يكن موجودًا\nINSERT INTO public.settings(id, feature_flags, api_config) VALUES (1, '{}', '{}')\nON CONFLICT (id) DO NOTHING;`}
                             />
                             <CodeBlock 
                                 title="جدول `articles`"
-                                code={`CREATE TABLE articles (\n  id TEXT PRIMARY KEY,\n  title TEXT NOT NULL,\n  summary TEXT,\n  content TEXT,\n  "imageUrl" TEXT,\n  category TEXT,\n  date TIMESTAMPTZ DEFAULT NOW(),\n  author TEXT,\n  views INT DEFAULT 0,\n  "isBreaking" BOOLEAN DEFAULT FALSE,\n  "videoEmbedId" TEXT\n);`}
+                                code={`CREATE TABLE IF NOT EXISTS public.articles (\n  id TEXT PRIMARY KEY,\n  title TEXT NOT NULL,\n  summary TEXT,\n  content TEXT,\n  "imageUrl" TEXT,\n  category TEXT,\n  date TIMESTAMPTZ DEFAULT NOW(),\n  author TEXT,\n  views INT DEFAULT 0,\n  "isBreaking" BOOLEAN DEFAULT FALSE,\n  "videoEmbedId" TEXT\n);`}
                             />
                             <CodeBlock 
                                 title="جدول `clubs`"
-                                code={`CREATE TABLE clubs (\n  id TEXT PRIMARY KEY,\n  name TEXT NOT NULL,\n  "englishName" TEXT,\n  logo TEXT,\n  "coverImage" TEXT,\n  founded INT,\n  stadium TEXT,\n  coach TEXT,\n  nickname TEXT,\n  country TEXT,\n  colors JSONB,\n  social JSONB,\n  "fanCount" INT,\n  trophies JSONB\n);`}
+                                code={`CREATE TABLE IF NOT EXISTS public.clubs (\n  id TEXT PRIMARY KEY,\n  name TEXT NOT NULL,\n  "englishName" TEXT,\n  logo TEXT,\n  "coverImage" TEXT,\n  founded INT,\n  stadium TEXT,\n  coach TEXT,\n  nickname TEXT,\n  country TEXT,\n  colors JSONB,\n  social JSONB,\n  "fanCount" INT,\n  trophies JSONB\n);`}
                             />
                              <CodeBlock 
-                                title="تفعيل الوصول للقراءة (RLS)"
-                                code={`-- هام: قم بتشغيل هذا بعد إنشاء الجداول\nALTER TABLE articles ENABLE ROW LEVEL SECURITY;\nCREATE POLICY "Allow public read access" ON articles FOR SELECT USING (true);\n\nALTER TABLE clubs ENABLE ROW LEVEL SECURITY;\nCREATE POLICY "Allow public read access" ON clubs FOR SELECT USING (true);`}
+                                title="تفعيل الوصول للقراءة للعامة (RLS)"
+                                code={`-- يجعل جداول المقالات والأندية قابلة للقراءة للعامة. من الآمن تشغيل هذا النص البرمجي عدة مرات.\n\n-- 1. تمكين أمان مستوى الصف (RLS)\nALTER TABLE public.articles ENABLE ROW LEVEL SECURITY;\nALTER TABLE public.clubs ENABLE ROW LEVEL SECURITY;\n\n-- 2. حذف السياسة القديمة إذا كانت موجودة لتجنب الأخطاء\nDROP POLICY IF EXISTS "Allow public read access" ON public.articles;\nDROP POLICY IF EXISTS "Allow public read access" ON public.clubs;\n\n-- 3. إنشاء سياسة للسماح للجميع بالقراءة (SELECT)\nCREATE POLICY "Allow public read access" ON public.articles FOR SELECT USING (true);\nCREATE POLICY "Allow public read access" ON public.clubs FOR SELECT USING (true);`}
                             />
                         </div>
                     </div>
