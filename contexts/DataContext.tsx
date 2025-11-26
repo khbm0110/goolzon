@@ -59,34 +59,35 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [matches, setMatches] = useState<Match[]>([]);
   const [standings, setStandings] = useState<Standing[]>([]);
   const [isLoadingInitial, setIsLoadingInitial] = useState(true);
-  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
+  // This effect will run when supabaseConfig changes, ensuring data is re-fetched.
   useEffect(() => {
     const supabase = getSupabase(supabaseConfig.url, supabaseConfig.anonKey);
     
-    const fetchInitialData = async () => {
+    const fetchAllData = async () => {
         setIsLoadingInitial(true);
 
-        // Fetch articles from Supabase
+        // --- Articles Data ---
         if (!supabase) {
-            console.warn("Supabase not configured. Using local fallback data for articles.");
+            console.warn("Supabase is not configured. Falling back to local initial articles.");
             setArticles(INITIAL_ARTICLES);
         } else {
-            console.log("Fetching articles from Supabase...");
+            console.log("Attempting to fetch articles from Supabase...");
             const { data, error } = await supabase
                 .from('articles')
                 .select('*')
                 .order('date', { ascending: false });
 
             if (error) {
-                console.error("Error fetching articles:", error);
-                setArticles(INITIAL_ARTICLES);
+                console.error("Error fetching articles from Supabase:", error);
+                setArticles(INITIAL_ARTICLES); // Fallback on error
             } else if (data) {
+                console.log("Successfully fetched articles from Supabase.", data.length);
                 setArticles(data);
             }
         }
 
-        // Fetch matches and standings from API
+        // --- Sports API Data ---
         if (apiConfig.keys.matches) {
             const [liveMatches, leagueStandings] = await Promise.all([
                 fetchLiveMatches(apiConfig.keys.matches, apiConfig.leagueIds),
@@ -95,66 +96,66 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setMatches(liveMatches);
             setStandings(leagueStandings);
         } else {
+            console.warn("API-Sports key not configured. Skipping matches and standings fetch.");
             setMatches([]);
             setStandings([]);
         }
 
         setIsLoadingInitial(false);
-        setIsDataLoaded(true);
     };
     
-    // This now controls all initial data loading
-    if (!isDataLoaded) {
-       fetchInitialData();
-    }
-  }, [supabaseConfig, apiConfig.keys.matches, apiConfig.leagueIds, isDataLoaded]);
+    fetchAllData();
+  }, [supabaseConfig, apiConfig.keys.matches, apiConfig.leagueIds]);
 
 
   const addArticle = async (article: Article): Promise<boolean> => {
     const supabase = getSupabase(supabaseConfig.url, supabaseConfig.anonKey);
     if (!supabase) {
+        console.warn("Supabase not configured. Adding article to local state only.");
         setArticles(prev => [article, ...prev]);
         return true;
     }
     const { error } = await supabase.from('articles').insert([article]);
     if (error) {
-        console.error("Error adding article:", error);
-        alert(`Error: ${error.message}`);
+        console.error("Error adding article to Supabase:", error);
+        alert(`Supabase Error: ${error.message}`);
         return false;
     }
-    setArticles(prev => [article, ...prev]);
+    setArticles(prev => [article, ...prev]); // Optimistic update
     return true;
   };
 
   const updateArticle = async (article: Article): Promise<boolean> => {
      const supabase = getSupabase(supabaseConfig.url, supabaseConfig.anonKey);
      if (!supabase) {
+        console.warn("Supabase not configured. Updating article in local state only.");
         setArticles(prev => prev.map(a => a.id === article.id ? article : a));
         return true;
      }
      const { error } = await supabase.from('articles').update(article).eq('id', article.id);
      if (error) {
-        console.error("Error updating article:", error);
-        alert(`Error: ${error.message}`);
+        console.error("Error updating article in Supabase:", error);
+        alert(`Supabase Error: ${error.message}`);
         return false;
      }
-     setArticles(prev => prev.map(a => a.id === article.id ? article : a));
+     setArticles(prev => prev.map(a => a.id === article.id ? article : a)); // Optimistic update
      return true;
   }
 
   const deleteArticle = async (id: string): Promise<boolean> => {
      const supabase = getSupabase(supabaseConfig.url, supabaseConfig.anonKey);
      if (!supabase) {
+        console.warn("Supabase not configured. Deleting article from local state only.");
         setArticles(prev => prev.filter(a => a.id !== id));
         return true;
      }
      const { error } = await supabase.from('articles').delete().eq('id', id);
      if (error) {
-        console.error("Error deleting article:", error);
-        alert(`Error: ${error.message}`);
+        console.error("Error deleting article from Supabase:", error);
+        alert(`Supabase Error: ${error.message}`);
         return false;
      }
-     setArticles(prev => prev.filter(a => a.id !== id));
+     setArticles(prev => prev.filter(a => a.id !== id)); // Optimistic update
      return true;
   }
 
