@@ -1,12 +1,15 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User as UserIcon, Mail, Lock, AtSign, Loader2, AlertCircle, Trophy, CheckCircle2 } from 'lucide-react';
+import { User as UserIcon, Mail, Lock, AtSign, Loader2, AlertCircle, Trophy, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSettings } from '../../contexts/SettingsContext';
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
   const { register } = useAuth();
+  const { supabaseConfig } = useSettings();
+  const isSupabaseConfigured = !!(supabaseConfig && supabaseConfig.url && supabaseConfig.anonKey);
+  
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [isVisible, setIsVisible] = useState(false);
@@ -109,6 +112,13 @@ const Register: React.FC = () => {
                     <p className="text-emerald-400 font-bold text-sm uppercase tracking-widest">الموسم الجديد {new Date().getFullYear()}</p>
                 </div>
 
+                {!isSupabaseConfigured && (
+                  <div className="bg-amber-500/10 border border-amber-500/50 rounded-xl p-4 mb-6 flex items-center gap-3 text-amber-200 text-sm">
+                      <AlertTriangle size={20} />
+                      ميزة تسجيل لاعبين جدد غير متاحة حالياً. يرجى المحاولة لاحقاً.
+                  </div>
+                )}
+
                 {error && (
                     <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-4 mb-6 flex items-center gap-3 text-red-200 text-sm animate-pulse">
                         <AlertCircle size={20} />
@@ -130,7 +140,8 @@ const Register: React.FC = () => {
                                     required
                                     value={formData.name}
                                     onChange={handleChange}
-                                    className="w-full bg-slate-950/50 border border-slate-700 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none transition-all focus:bg-slate-900 focus:shadow-[0_0_15px_rgba(16,185,129,0.1)]"
+                                    disabled={!isSupabaseConfigured || isLoading}
+                                    className="w-full bg-slate-950/50 border border-slate-700 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none transition-all focus:bg-slate-900 focus:shadow-[0_0_15px_rgba(16,185,129,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
                                     placeholder="الاسم"
                                 />
                             </div>
@@ -145,7 +156,8 @@ const Register: React.FC = () => {
                                     required
                                     value={formData.username}
                                     onChange={handleChange}
-                                    className="w-full bg-slate-950/50 border border-slate-700 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none transition-all focus:bg-slate-900 focus:shadow-[0_0_15px_rgba(16,185,129,0.1)] text-left"
+                                    disabled={!isSupabaseConfigured || isLoading}
+                                    className="w-full bg-slate-950/50 border border-slate-700 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none transition-all focus:bg-slate-900 focus:shadow-[0_0_15px_rgba(16,185,129,0.1)] text-left disabled:opacity-50 disabled:cursor-not-allowed"
                                     style={{direction: 'ltr'}}
                                     placeholder="username"
                                 />
@@ -164,7 +176,8 @@ const Register: React.FC = () => {
                                 required
                                 value={formData.email}
                                 onChange={handleChange}
-                                className="w-full bg-slate-950/50 border border-slate-700 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none transition-all focus:bg-slate-900 focus:shadow-[0_0_15px_rgba(16,185,129,0.1)]"
+                                disabled={!isSupabaseConfigured || isLoading}
+                                className="w-full bg-slate-950/50 border border-slate-700 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none transition-all focus:bg-slate-900 focus:shadow-[0_0_15px_rgba(16,185,129,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
                                 placeholder="name@example.com"
                             />
                         </div>
@@ -181,7 +194,8 @@ const Register: React.FC = () => {
                                 required
                                 value={formData.password}
                                 onChange={handleChange}
-                                className="w-full bg-slate-950/50 border border-slate-700 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none transition-all focus:bg-slate-900 focus:shadow-[0_0_15px_rgba(16,185,129,0.1)]"
+                                disabled={!isSupabaseConfigured || isLoading}
+                                className="w-full bg-slate-950/50 border border-slate-700 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none transition-all focus:bg-slate-900 focus:shadow-[0_0_15px_rgba(16,185,129,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
                                 placeholder="••••••••"
                             />
                         </div>
@@ -196,7 +210,8 @@ const Register: React.FC = () => {
                                 required
                                 value={formData.confirmPassword}
                                 onChange={handleChange}
-                                className="w-full bg-slate-950/50 border border-slate-700 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none transition-all focus:bg-slate-900 focus:shadow-[0_0_15px_rgba(16,185,129,0.1)]"
+                                disabled={!isSupabaseConfigured || isLoading}
+                                className="w-full bg-slate-950/50 border border-slate-700 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none transition-all focus:bg-slate-900 focus:shadow-[0_0_15px_rgba(16,185,129,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
                                 placeholder="تأكيد كلمة المرور"
                             />
                         </div>
@@ -204,8 +219,8 @@ const Register: React.FC = () => {
 
                     <button 
                         type="submit" 
-                        disabled={isLoading}
-                        className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-900 font-black text-lg py-4 rounded-xl transition-all hover:scale-[1.02] shadow-[0_0_25px_rgba(16,185,129,0.4)] mt-4 flex items-center justify-center gap-2 group"
+                        disabled={!isSupabaseConfigured || isLoading}
+                        className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-900 font-black text-lg py-4 rounded-xl transition-all hover:scale-[1.02] shadow-[0_0_25px_rgba(16,185,129,0.4)] mt-4 flex items-center justify-center gap-2 group disabled:bg-slate-700 disabled:from-slate-700 disabled:to-slate-600 disabled:text-slate-500 disabled:shadow-none disabled:hover:scale-100 disabled:cursor-not-allowed"
                     >
                         {isLoading ? <Loader2 className="animate-spin" /> : (
                             <>

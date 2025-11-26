@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { User } from '../types';
 import { getSupabase } from '../services/supabaseClient';
@@ -37,9 +36,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const supabase = getSupabase(supabaseConfig.url, supabaseConfig.anonKey);
     if (!supabase) {
-        // Clear user state if supabase is de-configured
-        setCurrentUser(null);
-        setIsAdmin(false);
+        if (currentUser?.id !== 'local-admin') {
+            setCurrentUser(null);
+            setIsAdmin(false);
+        }
         return;
     }
 
@@ -99,19 +99,41 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = async (email: string, pass: string) => {
     const supabase = getSupabase(supabaseConfig.url, supabaseConfig.anonKey);
-    if (!supabase) return { success: false, error: 'Supabase غير مهيأ.' };
+    const isAdminAttempt = email === ADMIN_EMAIL;
+
+    // Case 1: Supabase is configured
+    if (supabase) {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+        if (error) {
+            return { success: false, error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة.' };
+        }
+        return { success: true, isAdmin: isAdminAttempt };
+    }
     
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
-    
-    if (error) return { success: false, error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة.' };
-    
-    const isAdminUser = data.user?.email === ADMIN_EMAIL;
-    return { success: true, isAdmin: isAdminUser };
+    // Case 2: Supabase is NOT configured - Admin Fallback Login
+    if (isAdminAttempt && pass === 'admin123') {
+        console.warn("Performing local fallback login for admin setup.");
+        const adminProfile: User = {
+            id: 'local-admin',
+            email: ADMIN_EMAIL,
+            name: 'المدير (إعداد)',
+            username: 'admin_setup',
+            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=admin`,
+            joinDate: new Date().toISOString(),
+            password: '',
+        };
+        setCurrentUser(adminProfile);
+        setIsAdmin(true);
+        return { success: true, isAdmin: true };
+    }
+
+    // Case 3: Supabase is NOT configured - Regular User
+    return { success: false, error: 'النظام غير مهيأ حالياً. يرجى مراجعة مسؤول الموقع.' };
   };
 
   const register = async (data: Partial<User>) => {
     const supabase = getSupabase(supabaseConfig.url, supabaseConfig.anonKey);
-    if (!supabase) return { success: false, error: 'Supabase غير مهيأ.' };
+    if (!supabase) return { success: false, error: 'النظام غير مهيأ حالياً. يرجى مراجعة مسؤول الموقع.' };
     
     if (!data.email || !data.password) return { success: false, error: 'البريد الإلكتروني وكلمة المرور مطلوبان.' };
 
@@ -138,9 +160,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logout = async () => {
     const supabase = getSupabase(supabaseConfig.url, supabaseConfig.anonKey);
-    if (supabase) {
+    // Sign out from Supabase only if it's configured and the user isn't the local admin
+    if (supabase && currentUser && currentUser.id !== 'local-admin') {
       await supabase.auth.signOut();
     }
+    // Always clear local state
     setCurrentUser(null);
     setIsAdmin(false);
   };
