@@ -1,6 +1,5 @@
-
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
-import { Article, Match, Standing, ClubProfile, Category } from '../types';
+import { Article, Match, Standing, ClubProfile, Category, Player } from '../types';
 import { INITIAL_ARTICLES, INITIAL_MATCHES, INITIAL_STANDINGS, CLUB_DATABASE } from '../constants';
 import { fetchLiveMatches, fetchStandings } from '../services/apiFootball';
 import { getSupabase } from '../services/supabaseClient';
@@ -47,9 +46,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const { imageUrl, isBreaking, videoEmbedId, ...restOfArticle } = article;
     const articleForDb = {
         ...restOfArticle,
-        imageurl: imageUrl || '',
-        isbreaking: isBreaking ?? false,
-        videoembedid: videoEmbedId ?? '',
+        "imageUrl": imageUrl || '',
+        "isBreaking": isBreaking ?? false,
+        "videoEmbedId": videoEmbedId ?? '',
     };
     delete (articleForDb as any).sources;
 
@@ -64,10 +63,16 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const updateArticle = async (article: Article): Promise<boolean> => {
+     // Implementation for Supabase update would go here
+     console.warn("Update article not fully implemented for Supabase yet.");
+     setArticles(prev => prev.map(a => a.id === article.id ? article : a));
      return true;
   }
 
   const deleteArticle = async (id: string): Promise<boolean> => {
+     // Implementation for Supabase delete would go here
+     console.warn("Delete article not fully implemented for Supabase yet.");
+     setArticles(prev => prev.filter(a => a.id !== id));
      return true;
   }
 
@@ -78,9 +83,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const { squad, englishName, coverImage, fanCount, ...clubData } = club;
       const clubForDb = {
           ...clubData,
-          englishname: englishName,
-          coverimage: coverImage,
-          fancount: fanCount,
+          "englishName": englishName,
+          "coverImage": coverImage,
+          "fanCount": fanCount,
       };
       
       const { error } = await supabase.from('clubs').insert(clubForDb);
@@ -98,12 +103,14 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const supabase = getSupabase(apiConfig.supabaseUrl, apiConfig.supabaseKey);
       if (!supabase) { alert("Supabase not configured."); return false; }
 
+      // We only update the club's metadata, not the squad in this operation
+      // Squad updates are handled via transferPlayer for now.
       const { squad, englishName, coverImage, fanCount, ...clubData } = club;
       const clubForDb = {
           ...clubData,
-          englishname: englishName,
-          coverimage: coverImage,
-          fancount: fanCount,
+          "englishName": englishName,
+          "coverImage": coverImage,
+          "fanCount": fanCount,
       };
 
       const { error } = await supabase.from('clubs').update(clubForDb).eq('id', club.id);
@@ -133,6 +140,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const transferPlayer = (playerId: string, sourceClubId: string, targetClubId: string, price: number) => {
+      // This is a local-only operation for now as there's no player table in Supabase yet.
+      // A full implementation would involve updating player records in a 'players' table.
       setClubs(prevClubs => {
           const newClubs = prevClubs.map(c => ({...c, squad: [...c.squad]}));
           const sourceClub = newClubs.find(c => c.id === sourceClubId);
@@ -144,18 +153,20 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
           const [player] = sourceClub.squad.splice(playerIndex, 1);
           
-          addArticle({
-              id: Date.now().toString(),
-              title: `رسمياً: ${player.name} ينتقل من ${sourceClub.name} إلى ${targetClub.name}`,
-              summary: `أعلن نادي ${targetClub.name} اليوم عن تعاقده مع اللاعب ${player.name} قادماً من ${sourceClub.name}.`,
-              content: `أعلن نادي ${targetClub.name} اليوم عن تعاقده مع اللاعب ${player.name} قادماً من ${sourceClub.name}.`,
+          const transferArticle: Article = {
+              id: `transfer-${Date.now()}`,
+              title: `رسمياً: ${player.name} ينتقل من ${sourceClub.name} إلى ${targetClub.name} مقابل ${price} مليون`,
+              summary: `أعلن نادي ${targetClub.name} اليوم عن تعاقده مع اللاعب ${player.name} قادماً من ${sourceClub.name} في صفقة بلغت قيمتها ${price} مليون يورو.`,
+              content: `في خطوة لتعزيز صفوفه، أتم نادي ${targetClub.name} إجراءات ضم النجم ${player.name}.`,
               imageUrl: player.image || targetClub.coverImage,
               category: targetClub.country,
               date: new Date().toISOString(),
               author: 'Bot الانتقالات',
-              views: 0,
+              views: Math.floor(Math.random() * 5000) + 1000,
               isBreaking: true
-          });
+          };
+
+          addArticle(transferArticle);
 
           targetClub.squad.push(player);
           return newClubs;
@@ -179,20 +190,21 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                  const articlesFromDb = articlesRes.data || [];
                  setArticles(articlesFromDb.map((a: any) => ({
                      ...a,
-                     imageUrl: a.imageurl,
-                     isBreaking: a.isbreaking,
-                     videoEmbedId: a.videoembedid,
+                     imageUrl: a.imageUrl,
+                     isBreaking: a.isBreaking,
+                     videoEmbedId: a.videoEmbedId,
                  })));
 
                  if (clubsRes.error) throw clubsRes.error;
                  const clubsFromDb = clubsRes.data || [];
+                 // Enrich clubs from DB with local squad data (as squad is not in DB yet)
                  const clubsWithMockSquads = (clubsFromDb).map((dbClub: any) => {
                     const mockClub = Object.values(CLUB_DATABASE).find(c => c.id === dbClub.id);
                     return { 
                         ...dbClub, 
-                        englishName: dbClub.englishname,
-                        coverImage: dbClub.coverimage,
-                        fanCount: dbClub.fancount,
+                        englishName: dbClub.englishName,
+                        coverImage: dbClub.coverImage,
+                        fanCount: dbClub.fanCount,
                         squad: mockClub?.squad || [] 
                     };
                  });
@@ -200,6 +212,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                  
              } catch (error) {
                  console.error("Error fetching from Supabase:", error);
+                 alert("فشل الاتصال بـ Supabase. تحقق من الإعدادات أو أمان RLS. سيتم عرض البيانات المؤقتة.");
                  setArticles(INITIAL_ARTICLES);
                  setClubs(Object.values(CLUB_DATABASE).filter(c => c.id !== 'generic'));
              }

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { 
   LayoutDashboard, 
@@ -41,7 +40,7 @@ import { getSupabase } from '../services/supabaseClient';
 import { INITIAL_ARTICLES, CLUB_DATABASE } from '../constants';
 
 const AdminDashboard: React.FC = () => {
-  const [activeView, setActiveView] = useState<'DASHBOARD' | 'EDITOR' | 'LIST' | 'SEO' | 'ADS' | 'CLUBS' | 'MERCATO' | 'SETTINGS'>('DASHBOARD');
+  const [activeView, setActiveView] = useState<'DASHBOARD' | 'EDITOR' | 'LIST' | 'SEO' | 'ADS' | 'CLUBS' | 'MERCATO' | 'SETTINGS'>('SETTINGS');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { 
     clubs, addClub, updateClub, deleteClub, transferPlayer, articles, addArticle 
@@ -159,7 +158,7 @@ const AdminDashboard: React.FC = () => {
     </div>
   );
 };
-// ... (The rest of the file remains the same, so it's omitted for brevity)
+
 const CodeBlock: React.FC<{ code: string; title?: string }> = ({ code, title }) => {
     const [copied, setCopied] = useState(false);
 
@@ -208,46 +207,46 @@ const SettingsView: React.FC<{
     };
     
     const handleSeedDatabase = async () => {
-        if (!window.confirm("This will upload all local mock data to your Supabase tables. This is a one-time setup action. Continue?")) return;
+        if (!window.confirm("سيقوم هذا الإجراء برفع جميع البيانات المحلية المؤقتة إلى جداول Supabase الخاصة بك. هذا الإجراء يتم لمرة واحدة عند الإعداد. هل تريد المتابعة؟")) return;
     
         setIsSeeding(true);
-        const supabase = getSupabase(apiConfig.supabaseUrl, apiConfig.supabaseKey);
+        const supabase = getSupabase(localApiConfig.supabaseUrl, localApiConfig.supabaseKey);
         if (!supabase) {
-            alert("Supabase is not configured!");
+            alert("إعدادات Supabase غير مكتملة!");
             setIsSeeding(false);
             return;
         }
     
         try {
-            setSeedingMessage("Uploading clubs...");
+            setSeedingMessage("جاري رفع بيانات الأندية...");
             const clubsToInsert = Object.values(CLUB_DATABASE)
                 .filter(c => c.id !== 'generic')
                 .map(({ squad, englishName, coverImage, fanCount, ...clubData }) => ({
                     ...clubData,
-                    englishname: englishName,
-                    coverimage: coverImage,
-                    fancount: fanCount
+                    "englishName": englishName,
+                    "coverImage": coverImage,
+                    "fanCount": fanCount
                 }));
             
             const { error: clubsError } = await supabase.from('clubs').upsert(clubsToInsert, { onConflict: 'id' });
             if (clubsError) throw clubsError;
     
-            setSeedingMessage("Uploading articles...");
+            setSeedingMessage("جاري رفع بيانات المقالات...");
             const articlesToInsert = INITIAL_ARTICLES.map(({ sources, imageUrl, isBreaking, videoEmbedId, ...articleData }) => ({
                 ...articleData,
-                imageurl: imageUrl,
-                isbreaking: isBreaking,
-                videoembedid: videoEmbedId
+                "imageUrl": imageUrl,
+                "isBreaking": isBreaking,
+                "videoEmbedId": videoEmbedId
             }));
             
             const { error: articlesError } = await supabase.from('articles').upsert(articlesToInsert, { onConflict: 'id' });
             if (articlesError) throw articlesError;
     
-            setSeedingMessage("Seeding complete!");
-            alert("Database seeded successfully! Please refresh the application to see the live data.");
+            setSeedingMessage("اكتملت التعبئة بنجاح!");
+            alert("تمت تعبئة قاعدة البيانات بنجاح! يرجى تحديث التطبيق لرؤية البيانات الحية.");
         
         } catch (error: any) {
-            const errorMessage = `Seeding failed: ${error.message}`;
+            const errorMessage = `فشلت عملية التعبئة: ${error.message}`;
             setSeedingMessage(errorMessage);
             alert(errorMessage);
         } finally {
@@ -360,27 +359,27 @@ const SettingsView: React.FC<{
             <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
                 <div className="p-6 border-b border-slate-800 bg-slate-950">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                        <Database className="text-orange-500" /> Database Actions
+                        <Database className="text-orange-500" /> إجراءات قاعدة البيانات
                     </h2>
                     <p className="text-slate-400 text-sm mt-2">
-                        Execute one-time actions to manage your database. Use with caution.
+                        نفذ إجراءات لمرة واحدة لإدارة قاعدة بياناتك. استخدمها بحذر.
                     </p>
                 </div>
                 <div className="p-6 flex items-center gap-6">
                     <button 
                         onClick={handleSeedDatabase}
-                        disabled={isSeeding || !apiConfig.supabaseUrl}
+                        disabled={isSeeding || !localApiConfig.supabaseUrl}
                         className="bg-orange-600 hover:bg-orange-500 text-white px-6 py-3 rounded-xl font-bold transition-colors flex items-center gap-2 shadow-lg shadow-orange-900/20 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
                     >
                         {isSeeding ? <Loader2 size={18} className="animate-spin" /> : <UploadCloud size={18} />}
-                        {isSeeding ? seedingMessage : 'Seed Database with Initial Data'}
+                        {isSeeding ? seedingMessage : 'تعبئة قاعدة البيانات بالبيانات الأولية'}
                     </button>
                     <div className="flex-1">
                         <p className="text-sm text-slate-400">
-                            This will upload the built-in articles and clubs to your empty Supabase tables.
+                            سيقوم هذا الإجراء برفع المقالات والأندية المضمنة إلى جداول Supabase الفارغة.
                         </p>
                         <p className="text-xs text-slate-500 mt-1">
-                            Only run this once after creating your tables. It uses 'upsert' so it's safe to run again if needed.
+                            قم بتشغيله مرة واحدة فقط بعد إنشاء الجداول. يستخدم 'upsert' لذا من الآمن تشغيله مرة أخرى إذا لزم الأمر.
                         </p>
                     </div>
                 </div>
@@ -389,7 +388,7 @@ const SettingsView: React.FC<{
             <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
                 <div className="p-6 border-b border-slate-800 bg-slate-950">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                        <Database className="text-indigo-500" /> Database Schema Helper
+                        <Database className="text-indigo-500" /> مساعد مخطط قاعدة البيانات
                     </h2>
                     <p className="text-slate-400 text-sm mt-2">
                         استخدم استعلامات SQL هذه في محرر Supabase SQL لإنشاء جداولك أو إصلاحها.
