@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { User, Shield, LayoutTemplate, Settings, Trophy, Users, Plus, X, Search, LogOut } from 'lucide-react';
 import { Player, ClubProfile } from '../types';
@@ -27,7 +26,7 @@ const UserProfile: React.FC = () => {
     const [showTactics, setShowTactics] = useState(true);
     const [dreamSquad, setDreamSquad] = useState<Record<number, Player & { clubLogo?: string }>>(() => {
         try {
-            const saved = localStorage.getItem(`gs_dream_squad_${currentUser?.id}`);
+            const saved = localStorage.getItem(`goolzon_dream_squad_${currentUser?.id}`);
             return saved ? JSON.parse(saved) : {};
         } catch {
             return {};
@@ -39,7 +38,7 @@ const UserProfile: React.FC = () => {
 
     useEffect(() => {
         if (currentUser) {
-            localStorage.setItem(`gs_dream_squad_${currentUser.id}`, JSON.stringify(dreamSquad));
+            localStorage.setItem(`goolzon_dream_squad_${currentUser.id}`, JSON.stringify(dreamSquad));
         }
     }, [dreamSquad, currentUser]);
 

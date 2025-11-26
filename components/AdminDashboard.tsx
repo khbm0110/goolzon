@@ -153,8 +153,8 @@ interface SeoSettings {
     keywords: string;
 }
 const SEOView: React.FC = () => {
-    const [settings, setSettings] = useLocalStorage<SeoSettings>('gs_seo_settings', {
-        title: 'Gulf Sports | الكرة الخليجية',
+    const [settings, setSettings] = useLocalStorage<SeoSettings>('goolzon_seo_settings', {
+        title: 'goolzon | الكرة الخليجية',
         description: 'المصدر الأول لأخبار الرياضة الخليجية. تغطية شاملة للدوري السعودي، الإماراتي، القطري، الكويتي، العماني، والبحريني مع نتائج مباشرة وتحليلات وفيديو.',
         keywords: 'كرة قدم, الخليج, السعودية, الإمارات, قطر, الكويت, عمان, البحرين, رياضة'
     });
@@ -203,7 +203,7 @@ interface AdSettings {
     sidebarCode: string;
 }
 const AdsView: React.FC = () => {
-    const [settings, setSettings] = useLocalStorage<AdSettings>('gs_ad_settings', {
+    const [settings, setSettings] = useLocalStorage<AdSettings>('goolzon_ad_settings', {
         enabled: false, headerCode: '', articleCode: '', sidebarCode: ''
     });
     const [localSettings, setLocalSettings] = useState(settings);
@@ -335,7 +335,7 @@ const AdminDashboard: React.FC = () => {
   const handleNewClick = () => {
     setEditorData({
       title: '', summary: '', content: '', imageUrl: '',
-      category: Category.SAUDI, author: 'محرر Gulf Sports', videoEmbedId: ''
+      category: Category.SAUDI, author: 'محرر goolzon', videoEmbedId: ''
     });
     setEditorMode('NEW');
     setActiveView('EDITOR');
@@ -348,7 +348,7 @@ const AdminDashboard: React.FC = () => {
             ...articleData,
             id: `usr-${Date.now()}`, date: new Date().toISOString(),
             views: 0, isBreaking: articleData.isBreaking || false,
-            author: articleData.author || 'محرر Gulf Sports',
+            author: articleData.author || 'محرر goolzon',
         };
         success = await addArticle(newArticle);
     } else {
@@ -401,7 +401,7 @@ const AdminDashboard: React.FC = () => {
            ))}
         </nav>
         <div className="p-4 border-t border-slate-800">
-           {isSidebarOpen && <div className="text-xs text-slate-600 text-center">Gulf Sports CMS v1.3</div>}
+           {isSidebarOpen && <div className="text-xs text-slate-600 text-center">goolzon CMS v1.3</div>}
         </div>
       </aside>
 

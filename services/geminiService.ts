@@ -1,5 +1,3 @@
-
-
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { getSmartImageUrl } from "./imageService";
 import { MatchDetails } from "../types";
@@ -88,7 +86,7 @@ export const generateArticleContent = async (topic: string, apiKey?: string, ret
   const model = 'gemini-2.5-flash';
   
   const prompt = `
-    أنت رئيس تحرير موقع "Gulf Sports" الرياضي.
+    أنت رئيس تحرير موقع "goolzon" الرياضي.
     التاريخ اليوم: ${today}.
     
     المهمة: ابحث واكتب مقالاً رياضياً حصرياً حول: "${topic}".

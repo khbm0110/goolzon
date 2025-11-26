@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, Lock, Loader2, AlertCircle, ArrowRight } from 'lucide-react';
@@ -48,7 +47,7 @@ const Login: React.FC = () => {
         
         <div className="text-center mb-8">
           <h1 className="text-3xl font-black text-white mb-2">تسجيل الدخول</h1>
-          <p className="text-slate-400 text-sm">أهلاً بك مجدداً في Gulf Sports</p>
+          <p className="text-slate-400 text-sm">أهلاً بك مجدداً في goolzon</p>
         </div>
 
         {error && (

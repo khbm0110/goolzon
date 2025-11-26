@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, Search, Trophy, Activity, Youtube, Calendar, Zap, Bell, User as UserIcon, LogIn } from 'lucide-react';
@@ -51,7 +50,7 @@ const Header: React.FC<HeaderProps> = ({ onSearchClick, isAutopilotEnabled, onTo
                </span>
             </div>
             <div className="flex flex-col">
-              <span className="text-2xl font-black tracking-tighter text-white leading-none">Gulf<span className="text-primary">Sports</span></span>
+              <span className="text-2xl font-black tracking-tighter text-white leading-none">gool<span className="text-primary">zon</span></span>
               <span className="text-10px text-slate-400 tracking-widest font-bold">نبض الكرة العالمية</span>
             </div>
           </Link>

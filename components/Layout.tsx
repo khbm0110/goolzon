@@ -1,5 +1,3 @@
-
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Header from './Header';
@@ -44,7 +42,7 @@ const Layout: React.FC<{children: React.ReactNode}> = ({ children }) => {
             <div className="col-span-1 md:col-span-2">
                <div className="flex items-center gap-2 mb-4">
                  <Trophy className="text-primary" size={24} />
-                 <span className="text-2xl font-black text-white">Gulf<span className="text-primary">Sports</span></span>
+                 <span className="text-2xl font-black text-white">gool<span className="text-primary">zon</span></span>
                </div>
                <p className="text-slate-400 text-sm leading-relaxed max-w-sm">
                  المنصة الرياضية الأولى في الخليج العربي. تغطية شاملة للدوريات السعودية، الإماراتية، القطرية، الكويتية، العمانية، والبحرينية.
@@ -70,12 +68,12 @@ const Layout: React.FC<{children: React.ReactNode}> = ({ children }) => {
             </div>
           </div>
           <div className="border-t border-slate-800 mt-8 pt-8 text-center text-slate-500 text-sm flex flex-col md:flex-row justify-between items-center">
-            <p>© {new Date().getFullYear()} Gulf Sports. جميع الحقوق محفوظة.</p>
+            <p>© {new Date().getFullYear()} goolzon. جميع الحقوق محفوظة.</p>
             <p className="mt-2 md:mt-0">صنع بشغف للكرة الخليجية</p>
           </div>
           <div className="border-t border-slate-800/50 mt-8 pt-6 text-center">
              <p className="text-[10px] text-slate-600 max-w-3xl mx-auto leading-relaxed">
-                إخلاء مسؤولية: موقع Gulf Sports هو منصة إخبارية ومجتمعية مستقلة. جميع أسماء الأندية، الشعارات، والعلامات التجارية المعروضة في الموقع هي ملكية حصرية لأصحابها المعنيين وتستخدم هنا لأغراض التعريف والإخبار فقط بموجب مبدأ الاستخدام العادل. نحن لا ندعي أي علاقة رسمية مع أي من الأندية أو الاتحادات الرياضية المذكورة إلا إذا نص على ذلك صراحة.
+                إخلاء مسؤولية: موقع goolzon هو منصة إخبارية ومجتمعية مستقلة. جميع أسماء الأندية، الشعارات، والعلامات التجارية المعروضة في الموقع هي ملكية حصرية لأصحابها المعنيين وتستخدم هنا لأغراض التعريف والإخبار فقط بموجب مبدأ الاستخدام العادل. نحن لا ندعي أي علاقة رسمية مع أي من الأندية أو الاتحادات الرياضية المذكورة إلا إذا نص على ذلك صراحة.
              </p>
           </div>
         </div>

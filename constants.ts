@@ -1,5 +1,3 @@
-
-
 import { Article, Category, ClubProfile } from './types';
 
 export const POPULAR_CLUBS = [
@@ -156,7 +154,7 @@ export const INITIAL_ARTICLES: Article[] = [
     imageUrl: 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&q=80&w=1200',
     category: Category.VIDEO,
     date: new Date(Date.now() - 86400000).toISOString(),
-    author: 'فيديو Gulf Sports',
+    author: 'فيديو goolzon',
     views: 45000,
     videoEmbedId: 'dQw4w9WgXcQ' // Mock ID
   }
