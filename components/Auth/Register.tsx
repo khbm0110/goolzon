@@ -2,11 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User as UserIcon, Mail, Lock, AtSign, Loader2, AlertCircle, Trophy, CheckCircle2 } from 'lucide-react';
-import { useApp } from '../../App';
+// FIX: Replaced useApp with useAuth to correctly access register function.
+import { useAuth } from '../../contexts/AuthContext';
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
-  const { register } = useApp();
+  const { register } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [isVisible, setIsVisible] = useState(false);

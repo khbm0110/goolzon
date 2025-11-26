@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
@@ -16,22 +15,35 @@ import {
   Shield
 } from 'lucide-react';
 import { CLUB_DATABASE } from '../constants';
-import { useApp } from '../App';
+import { useData } from '../contexts/DataContext';
+import { useAuth } from '../contexts/AuthContext';
 import TeamLogo from './TeamLogo';
 import NewsCard from './NewsCard';
 import { Match, Player } from '../types';
 
 const ClubDashboard: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { articles, toggleFollow, followedTeams, standings, matches, clubs } = useApp();
+  const { articles, standings, matches, clubs } = useData();
+  const { toggleFollow, followedTeams } = useAuth();
   const [activeTab, setActiveTab] = useState<'HOME' | 'SQUAD' | 'TROPHIES'>('HOME');
   const [simulatedFanCount, setSimulatedFanCount] = useState(0);
 
-  // 1. Resolve Club Data
   const clubId = id?.toLowerCase();
   const club = clubs.find(c => c.id === clubId) || CLUB_DATABASE['generic'];
 
-  if (!club) {
+  useEffect(() => {
+    if (club) {
+        setSimulatedFanCount(club.fanCount || 50000);
+        const interval = setInterval(() => {
+          if (Math.random() > 0.7) {
+            setSimulatedFanCount(prev => prev + Math.floor(Math.random() * 3) + 1);
+          }
+        }, 3000);
+        return () => clearInterval(interval);
+    }
+  }, [club]);
+
+  if (!club || club.id === 'generic') {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
         <div className="text-center p-8 bg-slate-900 rounded-xl border border-slate-800">
@@ -43,20 +55,8 @@ const ClubDashboard: React.FC = () => {
     );
   }
 
-  const isGeneric = club.id === 'generic';
   const isFollowing = followedTeams.includes(club.name);
   const currentStanding = standings.find(s => s.team === club.name);
-
-  // Simulated fan count
-  useEffect(() => {
-    setSimulatedFanCount(club.fanCount || 50000);
-    const interval = setInterval(() => {
-      if (Math.random() > 0.7) {
-        setSimulatedFanCount(prev => prev + Math.floor(Math.random() * 3) + 1);
-      }
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [club]);
 
   const handleFollow = () => {
     toggleFollow(club.name);
@@ -67,10 +67,7 @@ const ClubDashboard: React.FC = () => {
     }
   };
 
-  const clubArticles = articles.filter(a => 
-    a.title.includes(club.name) || 
-    (isGeneric && a.category === club.country)
-  );
+  const clubArticles = articles.filter(a => a.title.includes(club.name));
 
   const upcomingMatches = matches.filter(m => 
     (m.homeTeam === club.name || m.awayTeam === club.name) && 
@@ -79,17 +76,8 @@ const ClubDashboard: React.FC = () => {
 
   const displayMatches = upcomingMatches.length > 0 ? upcomingMatches : [
     {
-        id: 'mock-upcoming',
-        homeTeam: club.name,
-        homeLogo: club.logo,
-        awayTeam: 'الخصم القادم',
-        awayLogo: '',
-        scoreHome: null,
-        scoreAway: null,
-        time: '20:00 م',
-        status: 'UPCOMING',
-        league: 'الدوري المحلي',
-        country: club.country
+        id: 'mock-upcoming', homeTeam: club.name, homeLogo: club.logo, awayTeam: 'الخصم القادم', awayLogo: '',
+        scoreHome: null, scoreAway: null, time: '20:00 م', status: 'UPCOMING', league: 'الدوري المحلي', country: club.country
     } as Match
   ];
 
@@ -99,10 +87,7 @@ const ClubDashboard: React.FC = () => {
 
   return (
     <div className="bg-slate-950 min-h-screen pb-12">
-      
-      {/* HERO SECTION */}
       <div className="relative h-[450px] md:h-[500px]">
-        
         <div className="absolute inset-0">
             <img 
                 src={club.coverImage || "https://images.unsplash.com/photo-1522778119026-d647f0565c6a?auto=format&fit=crop&q=80&w=1200"} 
@@ -167,11 +152,8 @@ const ClubDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* CONTENT TABS */}
       <div className="container mx-auto px-4 mt-8">
          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-             
-             {/* Left Info Sidebar */}
              <div className="lg:col-span-3 space-y-6">
                  <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
                     <h3 className="font-bold text-white mb-4 text-lg border-b border-slate-800 pb-2">عن النادي</h3>
@@ -182,7 +164,6 @@ const ClubDashboard: React.FC = () => {
                     </ul>
                  </div>
                  
-                 {/* Standings Mini Widget */}
                  {currentStanding && (
                     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 relative overflow-hidden">
                        <h3 className="font-bold text-white mb-6 text-lg border-b border-slate-800 pb-2 relative z-10">ترتيب الفريق</h3>
@@ -200,7 +181,6 @@ const ClubDashboard: React.FC = () => {
                     </div>
                  )}
                  
-                 {/* Upcoming Matches */}
                  <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
                      <h3 className="font-bold text-white mb-4 text-lg border-b border-slate-800 pb-2 flex items-center gap-2">
                         <Calendar size={18} style={{color: primaryColor}} /> المباريات القادمة
@@ -223,7 +203,6 @@ const ClubDashboard: React.FC = () => {
                  </div>
              </div>
 
-             {/* Right Main Content */}
              <div className="lg:col-span-9">
                  <div className="flex border-b border-slate-800 mb-6 overflow-x-auto no-scrollbar">
                     {['HOME', 'SQUAD', 'TROPHIES'].map(tab => (
@@ -280,9 +259,7 @@ const ClubDashboard: React.FC = () => {
   );
 };
 
-// --- Player Card Component (FC25 FUT Style) ---
 const PlayerCard: React.FC<{ player: Player; primaryColor: string; clubLogo: string }> = ({ player, primaryColor, clubLogo }) => {
-    // Determine card style based on rating (simulating Rarity)
     let cardBg = "bg-slate-800";
     let textColor = "text-slate-200";
     let accentColor = "text-slate-400";
@@ -290,14 +267,12 @@ const PlayerCard: React.FC<{ player: Player; primaryColor: string; clubLogo: str
     let overlayGradient = "from-slate-900/50 to-transparent";
 
     if (player.rating >= 85) {
-        // Gold / Rare
         cardBg = "bg-gradient-to-br from-[#46390b] via-[#856c1e] to-[#2a2206]";
-        textColor = "text-[#fde047]"; // Goldish text
+        textColor = "text-[#fde047]";
         accentColor = "text-[#fef08a]";
         borderColor = "border-[#a16207]";
         overlayGradient = "from-[#2a2206]/80 to-transparent";
     } else if (player.rating >= 80) {
-        // Silver / Rare
         cardBg = "bg-gradient-to-br from-slate-600 via-slate-500 to-slate-800";
         textColor = "text-white";
         accentColor = "text-slate-200";
@@ -306,34 +281,18 @@ const PlayerCard: React.FC<{ player: Player; primaryColor: string; clubLogo: str
 
     return (
         <div className={`relative w-full aspect-[2/3] rounded-t-3xl rounded-b-2xl overflow-hidden border ${borderColor} ${cardBg} shadow-2xl hover:-translate-y-2 transition-transform duration-300 group`}>
-            
-            {/* Top Section */}
             <div className="absolute top-0 left-0 w-full h-2/3 z-10">
-                {/* Side Bar Info (Left Side usually for FUT) */}
                 <div className="absolute top-6 left-5 flex flex-col items-center gap-1 z-30 w-12">
-                     {/* Rating */}
                      <span className={`text-3xl font-black leading-none ${textColor}`}>{player.rating}</span>
-                     {/* Position */}
                      <span className={`text-xs font-bold uppercase tracking-wider ${textColor}`}>{player.position}</span>
-                     
                      <div className="w-8 h-[1px] bg-white/30 my-1"></div>
-
-                     {/* Nation Flag */}
-                     {player.nationality ? (
-                         <img src={player.nationality} alt="Nation" className="w-8 h-5 object-cover rounded shadow-sm mb-1" />
-                     ) : (
-                         <div className="w-8 h-5 bg-slate-700 rounded mb-1"></div>
-                     )}
-                     
-                     {/* Club Logo */}
+                     {player.nationality && <img src={player.nationality} alt="Nation" className="w-8 h-5 object-cover rounded shadow-sm mb-1" />}
                      {clubLogo && (
                          <div className="w-8 h-8 flex items-center justify-center">
                              <img src={clubLogo} alt="Club" className="w-full h-full object-contain drop-shadow-md" />
                          </div>
                      )}
                 </div>
-
-                {/* Player Image */}
                 <div className="absolute bottom-0 right-[-10px] w-4/5 h-full z-20 flex items-end justify-end">
                     {player.image ? (
                         <img 
@@ -346,16 +305,11 @@ const PlayerCard: React.FC<{ player: Player; primaryColor: string; clubLogo: str
                     )}
                 </div>
             </div>
-
-            {/* Bottom Section (Stats) */}
             <div className="absolute bottom-0 left-0 w-full h-1/3 z-20 flex flex-col justify-end pb-3 px-3">
-                 {/* Name Background */}
                  <div className={`absolute bottom-0 left-0 w-full h-full bg-gradient-to-t ${overlayGradient} z-0`}></div>
-                 
                  <div className="relative z-10 text-center">
                      <h3 className={`font-black text-lg uppercase tracking-wide truncate px-2 mb-2 ${textColor}`}>{player.name}</h3>
                      <div className="w-full h-[1px] bg-white/20 mb-2 mx-auto w-4/5"></div>
-                     
                      <div className="grid grid-cols-6 gap-x-1 gap-y-1 text-center px-1">
                         <StatItem label="PAC" value={player.stats?.pac} color={accentColor} />
                         <StatItem label="SHO" value={player.stats?.sho} color={accentColor} />

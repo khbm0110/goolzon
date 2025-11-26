@@ -2,11 +2,12 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, Lock, Loader2, AlertCircle, ArrowRight } from 'lucide-react';
-import { useApp } from '../../App';
+// FIX: Replaced useApp with useAuth to correctly access login function.
+import { useAuth } from '../../contexts/AuthContext';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { login } = useApp();
+  const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   

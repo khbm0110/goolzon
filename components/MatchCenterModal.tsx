@@ -5,7 +5,8 @@ import { Match, MatchDetails } from '../types';
 import TeamLogo from './TeamLogo';
 import { getMatchDetails } from '../services/geminiService';
 import { fetchFixtureDetails } from '../services/apiFootball';
-import { useApp } from '../App';
+// FIX: Replaced useApp with useSettings to correctly access apiConfig.
+import { useSettings } from '../contexts/SettingsContext';
 
 interface MatchCenterModalProps {
   match: Match | null;
@@ -16,7 +17,7 @@ const MatchCenterModal: React.FC<MatchCenterModalProps> = ({ match, onClose }) =
   const [activeTab, setActiveTab] = useState<'STATS' | 'LINEUPS' | 'SUMMARY'>('STATS');
   const [details, setDetails] = useState<MatchDetails | null>(null);
   const [loading, setLoading] = useState(false);
-  const { apiConfig } = useApp();
+  const { apiConfig } = useSettings();
 
   useEffect(() => {
     if (match) {

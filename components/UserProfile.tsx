@@ -1,11 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { User, Shield, LayoutTemplate, Settings, Trophy, Users, Plus, X, Search, LogOut } from 'lucide-react';
 import { Player, ClubProfile } from '../types';
-import { useApp } from '../App';
+import { useData } from '../contexts/DataContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
-// Define the 4-3-3 Formation Slots
 const FORMATION_433 = [
     { id: 0, role: 'GK', top: '85%', left: '50%' },
     { id: 1, role: 'LB', top: '65%', left: '15%' },
@@ -21,12 +21,12 @@ const FORMATION_433 = [
 ];
 
 const UserProfile: React.FC = () => {
-    const { clubs, currentUser, logout } = useApp();
+    const { clubs } = useData();
+    const { currentUser, logout } = useAuth();
     const navigate = useNavigate();
-    const [showTactics, setShowTactics] = useState(true); // Default to true to show the feature immediately
+    const [showTactics, setShowTactics] = useState(true);
     const [dreamSquad, setDreamSquad] = useState<Record<number, Player & { clubLogo?: string }>>(() => {
         try {
-            // Ideally use currentUser.id to segregate squads
             const saved = localStorage.getItem(`gs_dream_squad_${currentUser?.id}`);
             return saved ? JSON.parse(saved) : {};
         } catch {
@@ -37,14 +37,12 @@ const UserProfile: React.FC = () => {
     const [activeSlot, setActiveSlot] = useState<number | null>(null);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
 
-    // Save squad when changed
     useEffect(() => {
         if (currentUser) {
             localStorage.setItem(`gs_dream_squad_${currentUser.id}`, JSON.stringify(dreamSquad));
         }
     }, [dreamSquad, currentUser]);
 
-    // Flatten all players for search
     const allPlayers = clubs.flatMap(c => c.squad.map(p => ({ ...p, clubLogo: c.logo, clubName: c.name })));
 
     const handleSlotClick = (slotId: number) => {
@@ -74,19 +72,15 @@ const UserProfile: React.FC = () => {
         navigate('/');
     };
 
-    // Calculate squad rating safely
     const squadPlayers = Object.values(dreamSquad) as (Player & { clubLogo?: string })[];
     const totalRating = squadPlayers.reduce((acc: number, player) => acc + (player.rating || 0), 0);
     const averageRating = squadPlayers.length > 0 ? Math.round(totalRating / 11) : 0;
 
-    if (!currentUser) return null; // Should be handled by route protection, but safe check
+    if (!currentUser) return null;
 
     return (
         <div className="min-h-screen bg-slate-950 pb-20">
-            {/* HERO / COVER AREA - WHERE THE DREAM SQUAD LIVES */}
             <div className="relative h-[550px] md:h-[600px] bg-slate-900 group border-b border-slate-800">
-                
-                {/* TACTICS TOGGLE BUTTON */}
                 <div className="absolute top-24 right-4 z-50 flex gap-2">
                     <button 
                         onClick={() => setShowTactics(!showTactics)}
@@ -98,7 +92,6 @@ const UserProfile: React.FC = () => {
 
                 <div className="absolute inset-0">
                     {!showTactics ? (
-                        // PROFILE COVER
                         <>
                             <img 
                                 src="https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&q=80&w=1200" 
@@ -107,7 +100,6 @@ const UserProfile: React.FC = () => {
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent"></div>
                             
-                            {/* Profile Info Overlay */}
                             <div className="absolute bottom-0 left-0 w-full p-8 flex flex-col md:flex-row items-center md:items-end gap-6">
                                 <div className="w-32 h-32 rounded-full border-4 border-emerald-500 bg-slate-800 overflow-hidden shadow-2xl relative">
                                     <img src={currentUser.avatar} className="w-full h-full object-cover" alt={currentUser.username} />
@@ -122,7 +114,6 @@ const UserProfile: React.FC = () => {
                             </div>
                         </>
                     ) : (
-                        // DREAM SQUAD BUILDER (TACTICAL PITCH)
                         <InteractivePitch 
                             squad={dreamSquad} 
                             onSlotClick={handleSlotClick} 
@@ -132,7 +123,6 @@ const UserProfile: React.FC = () => {
                 </div>
             </div>
 
-            {/* CONTENT AREA */}
             <div className="container mx-auto px-4 mt-8">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
@@ -170,7 +160,6 @@ const UserProfile: React.FC = () => {
                 </div>
             </div>
 
-            {/* PLAYER SELECTOR MODAL */}
             {isSelectorOpen && (
                 <PlayerSelectorModal 
                     players={allPlayers}
@@ -183,180 +172,148 @@ const UserProfile: React.FC = () => {
     );
 };
 
-// --- INTERACTIVE TACTICAL PITCH ---
 const InteractivePitch: React.FC<{ 
     squad: Record<number, Player & { clubLogo?: string }>;
     onSlotClick: (id: number) => void;
     onRemovePlayer: (e: React.MouseEvent, id: number) => void;
 }> = ({ squad, onSlotClick, onRemovePlayer }) => {
-    
     return (
         <div className="w-full h-full bg-emerald-800 relative overflow-hidden flex justify-center items-center shadow-inner animate-in fade-in zoom-in-95 duration-500 selection-none">
-            {/* Field Markings */}
             <div className="absolute inset-4 border-2 border-white/20 rounded-lg pointer-events-none"></div>
             <div className="absolute top-1/2 left-0 w-full h-[1px] bg-white/20 pointer-events-none"></div>
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full border-2 border-white/20 pointer-events-none"></div>
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-20 border-2 border-t-0 border-white/20 rounded-b-lg pointer-events-none"></div>
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-40 h-20 border-2 border-b-0 border-white/20 rounded-t-lg pointer-events-none"></div>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 md:w-32 md:h-32 border-2 border-white/20 rounded-full pointer-events-none"></div>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-white/50 rounded-full pointer-events-none"></div>
 
-            {/* Grass Texture Pattern */}
-            <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 20px, #000 20px, #000 40px)' }}></div>
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-16 md:h-24 border-2 border-white/20 rounded-b-xl border-t-0 pointer-events-none"></div>
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/3 h-16 md:h-24 border-2 border-white/20 rounded-t-xl border-b-0 pointer-events-none"></div>
 
-            {/* Formation Slots */}
-            {FORMATION_433.map((slot) => {
-                const player = squad[slot.id];
-                
-                return (
-                    <div 
-                        key={slot.id} 
-                        className="absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center group cursor-pointer z-10 hover:z-20 transition-all"
-                        style={{ top: slot.top, left: slot.left }}
-                        onClick={() => onSlotClick(slot.id)}
-                    >
-                        {player ? (
-                            // FILLED SLOT
-                            <>
-                                <div className="relative">
-                                    <div className="w-12 h-12 md:w-16 md:h-16 rounded-full border-2 border-white shadow-lg overflow-hidden bg-slate-800 relative group-hover:scale-110 transition-transform">
-                                        {player.image ? (
-                                            <img src={player.image} alt={player.name} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <User className="w-full h-full p-2 text-slate-400" />
-                                        )}
-                                    </div>
-                                    <button 
-                                        onClick={(e) => onRemovePlayer(e, slot.id)}
-                                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-red-600"
-                                    >
-                                        <X size={12} />
-                                    </button>
-                                    <div className="absolute -bottom-2 -right-1 w-6 h-6 rounded-full bg-slate-900 border border-slate-600 flex items-center justify-center shadow-md">
-                                        {player.clubLogo ? (
-                                            <img src={player.clubLogo} className="w-4 h-4 object-contain" />
-                                        ) : (
-                                            <Shield size={12} className="text-slate-500"/>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="mt-1 bg-slate-900/80 backdrop-blur px-2 py-0.5 rounded text-[10px] md:text-xs text-white font-bold border border-slate-700 shadow-sm whitespace-nowrap">
-                                    {player.name}
-                                </div>
-                                <div className="absolute -top-3 -left-2 bg-yellow-500 text-slate-900 text-[10px] font-black rounded w-6 h-4 flex items-center justify-center border border-white shadow-sm">
-                                    {player.rating}
-                                </div>
-                            </>
-                        ) : (
-                            // EMPTY SLOT
-                            <div className="flex flex-col items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                                <div className="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-dashed border-white/50 bg-black/20 flex items-center justify-center group-hover:bg-emerald-600/50 group-hover:border-white transition-colors">
-                                    <Plus className="text-white" size={20} />
-                                </div>
-                                <span className="text-[10px] font-bold text-white/70 bg-black/20 px-1.5 rounded uppercase">{slot.role}</span>
-                            </div>
-                        )}
-                    </div>
-                );
-            })}
-
-            <div className="absolute top-4 left-4 bg-slate-900/50 backdrop-blur px-3 py-1 rounded text-white text-xs font-mono border border-slate-700 pointer-events-none">
-                4-3-3 الهجومية
-            </div>
-            
-            <div className="absolute bottom-4 right-4 pointer-events-none">
-                 <div className="flex items-center gap-2 text-[10px] text-white/60 bg-black/30 px-2 py-1 rounded">
-                    <span>انقر لإضافة لاعب</span>
-                    <div className="w-4 h-4 border border-dashed border-white/50 rounded-full flex items-center justify-center"><Plus size={8}/></div>
-                 </div>
-            </div>
-        </div>
-    );
-};
-
-// --- PLAYER SELECTOR MODAL ---
-const PlayerSelectorModal: React.FC<{
-    players: (Player & { clubLogo?: string, clubName?: string })[];
-    onSelect: (p: Player & { clubLogo?: string }) => void;
-    onClose: () => void;
-    positionLabel: string;
-}> = ({ players, onSelect, onClose, positionLabel }) => {
-    const [search, setSearch] = useState('');
-    
-    // Simple filter: name matches
-    const filteredPlayers = players.filter(p => 
-        p.name.toLowerCase().includes(search.toLowerCase())
-    );
-
-    // Sort by rating desc
-    const sortedPlayers = filteredPlayers.sort((a, b) => b.rating - a.rating);
-
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={onClose}></div>
-            
-            <div className="relative w-full max-w-md bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-in zoom-in-95">
-                {/* Header */}
-                <div className="p-4 border-b border-slate-800 bg-slate-950 flex justify-between items-center">
-                    <div>
-                        <h3 className="font-bold text-white">اختر لاعب</h3>
-                        <span className="text-xs text-primary font-bold uppercase tracking-wider">مركز: {positionLabel}</span>
-                    </div>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
-                        <X size={20} />
-                    </button>
-                </div>
-
-                {/* Search */}
-                <div className="p-4 border-b border-slate-800">
-                    <div className="relative">
-                        <Search className="absolute right-3 top-3 text-slate-500" size={18} />
-                        <input 
-                            autoFocus
-                            type="text" 
-                            placeholder="ابحث باسم اللاعب..." 
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-primary outline-none text-sm"
-                        />
-                    </div>
-                </div>
-
-                {/* List */}
-                <div className="overflow-y-auto flex-1 p-2 space-y-2">
-                    {sortedPlayers.length > 0 ? sortedPlayers.map(player => (
-                        <button 
-                            key={player.id}
-                            onClick={() => onSelect(player)}
-                            className="w-full flex items-center gap-3 p-2 hover:bg-slate-800 rounded-xl transition-colors group text-right border border-transparent hover:border-slate-700"
+            <div className="w-full h-full max-w-lg mx-auto relative">
+                {FORMATION_433.map(slot => {
+                    const player = squad[slot.id];
+                    return (
+                        <div 
+                            key={slot.id} 
+                            className="absolute -translate-x-1/2 -translate-y-1/2 transition-all"
+                            style={{ top: slot.top, left: slot.left }}
+                            onClick={() => onSlotClick(slot.id)}
                         >
-                            <div className="w-12 h-12 rounded-full bg-slate-950 border border-slate-800 overflow-hidden shrink-0 relative">
-                                {player.image ? (
-                                    <img src={player.image} className="w-full h-full object-cover" />
-                                ) : (
-                                    <User className="w-full h-full p-3 text-slate-600" />
-                                )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <h4 className="font-bold text-white text-sm group-hover:text-primary transition-colors">{player.name}</h4>
-                                <div className="flex items-center gap-2 text-[10px] text-slate-500 mt-0.5">
-                                    {player.clubLogo && <img src={player.clubLogo} className="w-3 h-3 object-contain" />}
-                                    <span>{player.clubName}</span>
-                                    <span className="w-1 h-1 bg-slate-600 rounded-full"></span>
-                                    <span>{player.position}</span>
+                            {player ? (
+                                <div className="relative group cursor-pointer">
+                                    <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-slate-900 border-4 border-yellow-500 flex flex-col items-center justify-center p-1 shadow-lg animate-in zoom-in-75">
+                                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-slate-800 overflow-hidden border-2 border-slate-700">
+                                            {player.image ? <img src={player.image} alt={player.name} className="w-full h-full object-cover"/> : <User size="100%" className="text-slate-600 p-1"/>}
+                                        </div>
+                                        <span className="text-[10px] md:text-xs font-bold text-white truncate max-w-[50px] md:max-w-[70px] mt-1">{player.name.split(' ').pop()}</span>
+                                    </div>
+                                    <button
+                                        onClick={(e) => onRemovePlayer(e, slot.id)}
+                                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-600 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110"
+                                    >
+                                        <X size={14} />
+                                    </button>
                                 </div>
-                            </div>
-                            <div className={`text-lg font-black ${player.rating >= 85 ? 'text-yellow-500' : 'text-slate-400'}`}>
-                                {player.rating}
-                            </div>
-                        </button>
-                    )) : (
-                        <div className="text-center py-10 text-slate-500 text-sm">
-                            لا يوجد لاعبين مطابقين للبحث
+                            ) : (
+                                <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-black/30 border-2 border-dashed border-white/30 flex flex-col items-center justify-center cursor-pointer hover:bg-white/20 transition-colors group">
+                                    <Plus size={20} className="text-white/50 group-hover:text-white transition-colors" />
+                                    <span className="text-[10px] text-white/50 group-hover:text-white font-bold">{slot.role}</span>
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
+                    );
+                })}
             </div>
         </div>
     );
 };
+
+// FIX: Added missing PlayerSelectorModal component
+const PlayerSelectorModal: React.FC<{
+  players: (Player & { clubLogo?: string; clubName?: string })[];
+  onSelect: (player: Player & { clubLogo?: string }) => void;
+  onClose: () => void;
+  positionLabel: string;
+}> = ({ players, onSelect, onClose, positionLabel }) => {
+  const [query, setQuery] = useState('');
+  const [filteredPlayers, setFilteredPlayers] = useState<(Player & { clubLogo?: string; clubName?: string })[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    const lowerQuery = query.toLowerCase().trim();
+    const filtered = lowerQuery === ''
+      ? players
+      : players.filter(p =>
+          p.name.toLowerCase().includes(lowerQuery) ||
+          (p as any).clubName?.toLowerCase().includes(lowerQuery)
+        );
+    
+    const sorted = [...filtered].sort((a, b) => b.rating - a.rating);
+    setFilteredPlayers(sorted);
+  }, [query, players]);
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-20 px-4">
+      <div 
+        className="absolute inset-0 bg-slate-950/90 backdrop-blur-sm"
+        onClick={onClose}
+      ></div>
+      <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-in fade-in zoom-in-95 duration-200">
+        <div className="p-4 border-b border-slate-700 flex items-center gap-3">
+          <Search className="text-slate-400" size={20} />
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder={`ابحث عن لاعب لمركز ${positionLabel}...`}
+            className="flex-1 bg-transparent text-white placeholder-slate-500 text-lg outline-none font-bold"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <button 
+            onClick={onClose}
+            className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto p-2">
+          {filteredPlayers.length === 0 ? (
+             <div className="text-center py-10 text-slate-500">
+               لا يوجد لاعبون يطابقون بحثك.
+             </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+              {filteredPlayers.slice(0, 100).map(player => ( // Limiting to 100 for performance
+                <button
+                  key={player.id}
+                  onClick={() => onSelect(player)}
+                  className="p-3 bg-slate-950 rounded-xl border border-slate-800 hover:border-primary/50 transition-all hover:bg-slate-800 text-right group flex items-center gap-3"
+                >
+                  <div className="w-12 h-12 rounded-full bg-slate-900 border border-slate-700 overflow-hidden shrink-0">
+                     {player.image ? <img src={player.image} alt={player.name} className="w-full h-full object-cover" /> : <User className="w-full h-full p-2 text-slate-600" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-white truncate group-hover:text-primary">{player.name}</span>
+                      <span className="text-xs font-mono bg-slate-800 px-1 rounded text-yellow-500">{player.rating}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-[10px] text-slate-500 mt-1">
+                      {player.clubLogo && <img src={player.clubLogo} className="w-3 h-3 object-contain" />}
+                      <span>{(player as any).clubName}</span>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
 export default UserProfile;

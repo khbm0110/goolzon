@@ -1,10 +1,10 @@
 
-
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, Search, Trophy, Activity, Youtube, Calendar, Zap, Bell, User as UserIcon, LogIn } from 'lucide-react';
-import { Category } from '../types';
-import { useApp } from '../App';
+import { useAuth } from '../contexts/AuthContext';
+import { useSettings } from '../contexts/SettingsContext';
+import { useUI } from '../contexts/UIContext';
 
 interface HeaderProps {
   onSearchClick?: () => void;
@@ -12,10 +12,11 @@ interface HeaderProps {
   onToggleAutopilot?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onSearchClick, isAutopilotEnabled = false, onToggleAutopilot }) => {
+const Header: React.FC<HeaderProps> = ({ onSearchClick, isAutopilotEnabled, onToggleAutopilot }) => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
-  const { followedTeams, currentUser, featureFlags } = useApp();
+  const { currentUser, followedTeams } = useAuth();
+  const { featureFlags } = useSettings();
 
   const navItems = [
     { label: 'الرئيسية', path: '/' },

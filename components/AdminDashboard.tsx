@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { 
   LayoutDashboard, 
@@ -33,7 +34,8 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { Article, Category, ClubProfile, Player, PlayerStats, FeatureFlags, ApiConfig } from '../types';
-import { useApp } from '../App';
+import { useData } from '../contexts/DataContext';
+import { useSettings } from '../contexts/SettingsContext';
 import TeamLogo from './TeamLogo';
 import { getSupabase } from '../services/supabaseClient';
 import { INITIAL_ARTICLES, CLUB_DATABASE } from '../constants';
@@ -42,9 +44,11 @@ const AdminDashboard: React.FC = () => {
   const [activeView, setActiveView] = useState<'DASHBOARD' | 'EDITOR' | 'LIST' | 'SEO' | 'ADS' | 'CLUBS' | 'MERCATO' | 'SETTINGS'>('DASHBOARD');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { 
-    clubs, addClub, updateClub, deleteClub, transferPlayer, 
+    clubs, addClub, updateClub, deleteClub, transferPlayer, articles, addArticle 
+  } = useData();
+  const { 
     featureFlags, setFeatureFlag, apiConfig, setApiConfig 
-  } = useApp();
+  } = useSettings();
   
   // Editor State
   const [editorData, setEditorData] = useState<Partial<Article>>({
@@ -91,7 +95,6 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="flex min-h-screen bg-slate-950">
-      {/* Sidebar */}
       <aside 
         className={`${isSidebarOpen ? 'w-64' : 'w-20'} bg-slate-900 border-l border-slate-800 transition-all duration-300 flex flex-col fixed h-full z-40`}
       >
@@ -123,7 +126,6 @@ const AdminDashboard: React.FC = () => {
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'mr-64' : 'mr-20'} p-6`}>
         {activeView === 'DASHBOARD' && <div className="text-white text-center p-10 bg-slate-900 rounded-xl border border-slate-800">مرحباً بك في لوحة التحكم</div>}
         {activeView === 'EDITOR' && <div className="text-white">Editor Placeholder</div>}
@@ -157,8 +159,7 @@ const AdminDashboard: React.FC = () => {
     </div>
   );
 };
-
-// --- Helper Component for Code Blocks ---
+// ... (The rest of the file remains the same, so it's omitted for brevity)
 const CodeBlock: React.FC<{ code: string; title?: string }> = ({ code, title }) => {
     const [copied, setCopied] = useState(false);
 
@@ -190,7 +191,6 @@ const CodeBlock: React.FC<{ code: string; title?: string }> = ({ code, title }) 
     );
 };
 
-// --- Settings/Features Management View ---
 const SettingsView: React.FC<{
     featureFlags: FeatureFlags;
     setFeatureFlag: (key: keyof FeatureFlags, value: boolean) => void;
@@ -220,7 +220,6 @@ const SettingsView: React.FC<{
     
         try {
             setSeedingMessage("Uploading clubs...");
-            // Strip squad data before inserting into the 'clubs' table.
             const clubsToInsert = Object.values(CLUB_DATABASE)
                 .filter(c => c.id !== 'generic')
                 .map(({ squad, englishName, coverImage, fanCount, ...clubData }) => ({
@@ -234,7 +233,6 @@ const SettingsView: React.FC<{
             if (clubsError) throw clubsError;
     
             setSeedingMessage("Uploading articles...");
-            // Remove sources property if it exists, as it's not in the DB schema
             const articlesToInsert = INITIAL_ARTICLES.map(({ sources, imageUrl, isBreaking, videoEmbedId, ...articleData }) => ({
                 ...articleData,
                 imageurl: imageUrl,
@@ -276,8 +274,6 @@ const SettingsView: React.FC<{
 
     return (
         <div className="space-y-6">
-            
-            {/* 1. Feature Flags Section */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
                 <div className="p-6 border-b border-slate-800 bg-slate-950">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
@@ -320,7 +316,6 @@ const SettingsView: React.FC<{
                 </div>
             </div>
 
-            {/* 2. Supabase Configuration Section */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
                 <div className="p-6 border-b border-slate-800 bg-slate-950 flex justify-between items-center">
                     <div>
@@ -362,7 +357,6 @@ const SettingsView: React.FC<{
                 </div>
             </div>
             
-            {/* 3. Database Actions Section */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
                 <div className="p-6 border-b border-slate-800 bg-slate-950">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
@@ -392,7 +386,6 @@ const SettingsView: React.FC<{
                 </div>
             </div>
             
-            {/* 4. Database Schema Helper */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
                 <div className="p-6 border-b border-slate-800 bg-slate-950">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
@@ -449,7 +442,6 @@ const SettingsView: React.FC<{
                 </div>
             </div>
 
-            {/* 5. API Configuration Section */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
                 <div className="p-6 border-b border-slate-800 bg-slate-950 flex justify-between items-center">
                     <div>
@@ -469,10 +461,7 @@ const SettingsView: React.FC<{
                 </div>
 
                 <div className="p-6 space-y-8">
-                    
-                    {/* General Settings */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-950 p-4 rounded-xl border border-slate-800">
-                         {/* Provider Selection */}
                          <div className="space-y-2">
                             <label className="text-xs font-bold text-slate-300">مزود البيانات الرياضية</label>
                             <select 
@@ -485,8 +474,6 @@ const SettingsView: React.FC<{
                                 <option value="other">أخرى (Custom)</option>
                             </select>
                         </div>
-
-                         {/* League IDs */}
                          <div className="space-y-2">
                             <label className="text-xs font-bold text-slate-300">أرقام الدوريات (League IDs)</label>
                             <input 
@@ -499,7 +486,6 @@ const SettingsView: React.FC<{
                         </div>
                     </div>
 
-                    {/* API KEYS GRID */}
                     <div>
                         <h3 className="text-white font-bold mb-4 flex items-center gap-2 border-b border-slate-800 pb-2">
                             <Key size={18} className="text-yellow-500"/> إدارة المفاتيح (Granular Keys)
@@ -561,7 +547,6 @@ const MercatoView: React.FC<{
 
     const activeClub = clubs.find(c => c.id === selectedClubId);
     
-    // Flatten all players except from selected club for "Scouting"
     const otherPlayers = clubs
         .filter(c => c.id !== selectedClubId)
         .flatMap(c => c.squad.map(p => ({ ...p, clubId: c.id, clubName: c.name, clubLogo: c.logo })));
@@ -570,8 +555,6 @@ const MercatoView: React.FC<{
 
     const handleBuy = () => {
         if (!transferModal || !selectedClubId) return;
-        
-        // Target is the club BUYING (selectedClubId). 
         onTransfer(transferModal.player.id, transferModal.sourceClub.id, selectedClubId, transferPrice);
         setTransferModal(null);
     };
@@ -597,7 +580,6 @@ const MercatoView: React.FC<{
             </div>
 
             <div className="p-6 flex-1 flex flex-col">
-                {/* Search Bar */}
                 <div className="relative mb-6">
                     <Search className="absolute right-3 top-3 text-slate-500" size={20} />
                     <input 
@@ -609,7 +591,6 @@ const MercatoView: React.FC<{
                     />
                 </div>
 
-                {/* Results Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto max-h-[600px] pr-2">
                     {filteredPlayers.map(player => (
                         <div key={player.id} className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex items-center gap-4 hover:border-slate-600 transition-colors group relative">
@@ -644,7 +625,6 @@ const MercatoView: React.FC<{
                 </div>
             </div>
 
-            {/* Transfer Modal */}
             {transferModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-sm p-4">
                     <div className="bg-slate-900 w-full max-w-md rounded-2xl border border-slate-700 shadow-2xl overflow-hidden animate-in zoom-in-95">
@@ -722,29 +702,19 @@ const ClubsManagerView: React.FC<{
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
-  // Player Edit State
   const [editingPlayer, setEditingPlayer] = useState<Partial<Player> | null>(null);
   const [isPlayerFormOpen, setIsPlayerFormOpen] = useState(false);
 
   const handleEdit = (club: ClubProfile) => {
-    setEditingClub(JSON.parse(JSON.stringify(club))); // Deep copy
+    setEditingClub(JSON.parse(JSON.stringify(club))); 
     setIsFormOpen(true);
   };
 
   const handleAddNew = () => {
     setEditingClub({
-      id: '',
-      name: '',
-      englishName: '',
-      logo: '',
-      country: Category.SAUDI,
-      founded: new Date().getFullYear(),
+      id: '', name: '', englishName: '', logo: '', country: Category.SAUDI, founded: new Date().getFullYear(),
       colors: { primary: '#10b981', secondary: '#0f172a', text: '#ffffff' },
-      stadium: '',
-      coach: '',
-      fanCount: 1000,
-      squad: [],
-      trophies: []
+      stadium: '', coach: '', fanCount: 1000, squad: [], trophies: []
     });
     setIsFormOpen(true);
   };
@@ -784,16 +754,10 @@ const ClubsManagerView: React.FC<{
     }
   };
 
-  // --- Player Management Logic ---
   const handleAddPlayer = () => {
      setEditingPlayer({
-        id: Date.now().toString(),
-        name: '',
-        number: 0,
-        position: 'MID',
-        rating: 75,
-        stats: { pac: 70, sho: 70, pas: 70, dri: 70, def: 50, phy: 60 },
-        image: ''
+        id: Date.now().toString(), name: '', number: 0, position: 'MID', rating: 75,
+        stats: { pac: 70, sho: 70, pas: 70, dri: 70, def: 50, phy: 60 }, image: ''
      });
      setIsPlayerFormOpen(true);
   };
@@ -805,7 +769,6 @@ const ClubsManagerView: React.FC<{
 
   const handleSavePlayer = () => {
      if (!editingPlayer || !editingClub) return;
-     
      const newSquad = [...(editingClub.squad || [])];
      const existingIndex = newSquad.findIndex(p => p.id === editingPlayer.id);
 
@@ -828,7 +791,6 @@ const ClubsManagerView: React.FC<{
 
   const generateAIAvatar = () => {
       if (!editingPlayer) return;
-      // Using DiceBear Avataaars for high quality, legal avatars
       const seed = editingPlayer.name ? editingPlayer.name.replace(/\s/g, '') : Math.random().toString(36);
       const avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}&gender=male&style=circle`;
       setEditingPlayer({ ...editingPlayer, image: avatarUrl });
@@ -836,9 +798,7 @@ const ClubsManagerView: React.FC<{
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
-      
       {!isFormOpen ? (
-        // LIST VIEW
         <>
             <div className="p-4 border-b border-slate-800 flex justify-between items-center">
                 <h2 className="font-bold text-white flex items-center gap-2">
@@ -887,7 +847,6 @@ const ClubsManagerView: React.FC<{
             </div>
         </>
       ) : (
-        // EDIT FORM
         <div className="p-6">
            <div className="flex items-center justify-between mb-6 border-b border-slate-800 pb-4">
               <h2 className="text-xl font-bold text-white">
@@ -899,7 +858,6 @@ const ClubsManagerView: React.FC<{
            </div>
 
            <form onSubmit={handleSaveClub} className="space-y-6">
-              {/* Basic Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-400">اسم النادي (عربي)</label>
@@ -990,7 +948,6 @@ const ClubsManagerView: React.FC<{
                  </div>
               </div>
 
-              {/* SQUAD MANAGEMENT SECTION */}
               <div className="border-t border-slate-800 pt-6 mt-6">
                  <div className="flex items-center justify-between mb-4">
                     <h3 className="font-bold text-white text-lg">قائمة اللاعبين (Squad)</h3>
@@ -1048,7 +1005,6 @@ const ClubsManagerView: React.FC<{
               </div>
            </form>
 
-           {/* PLAYER EDITOR MODAL */}
            {isPlayerFormOpen && (
                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
                    <div className="bg-slate-900 w-full max-w-lg rounded-2xl border border-slate-700 shadow-2xl overflow-hidden animate-in zoom-in-95">
@@ -1057,8 +1013,6 @@ const ClubsManagerView: React.FC<{
                            <button onClick={() => setIsPlayerFormOpen(false)} className="text-slate-500 hover:text-white"><X size={20} /></button>
                        </div>
                        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-                           
-                           {/* Main Details */}
                            <div className="flex gap-4">
                                <div className="w-24 h-24 bg-slate-950 rounded-xl border border-slate-800 flex flex-col items-center justify-center relative group overflow-hidden">
                                    {editingPlayer?.image ? (
@@ -1099,8 +1053,6 @@ const ClubsManagerView: React.FC<{
                                    </div>
                                </div>
                            </div>
-
-                           {/* Stats Grid */}
                            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
                                <div className="flex justify-between items-center mb-4">
                                    <span className="text-xs font-bold text-slate-400">إحصائيات البطاقة</span>
@@ -1134,7 +1086,6 @@ const ClubsManagerView: React.FC<{
                                    ))}
                                </div>
                            </div>
-                           
                            <button 
                                type="button" 
                                onClick={generateAIAvatar}
