@@ -496,6 +496,10 @@ const SettingsView: React.FC<{
     const [isSeeding, setIsSeeding] = useState(false);
     const [seedingMessage, setSeedingMessage] = useState('');
 
+    useEffect(() => {
+        setLocalApiConfig(apiConfig);
+    }, [apiConfig]);
+
     const handleSaveApi = () => {
         setApiConfig(localApiConfig);
         alert('تم حفظ إعدادات الربط البرمجي والمفاتيح بنجاح!');
@@ -726,6 +730,10 @@ const SettingsView: React.FC<{
                         <h3 className="text-lg font-bold text-slate-200 mt-4 pt-4 border-t border-slate-800 mb-2">مخططات الجدول الكاملة</h3>
                         <p className="text-sm text-slate-400 mb-3">إذا كنت تبدأ من جديد، استخدم هذه الأوامر لإنشاء الجداول المطلوبة بأسماء الأعمدة الصحيحة.</p>
                         <div className="space-y-4">
+                             <CodeBlock 
+                                title="جدول `settings` (جديد)"
+                                code={`-- ينشئ جدول الإعدادات (يُشغل مرة واحدة)\nCREATE TABLE settings (\n  id INT PRIMARY KEY,\n  feature_flags JSONB,\n  api_config JSONB,\n  updated_at TIMESTAMPTZ DEFAULT NOW()\n);\n\n-- تفعيل أمان مستوى الصف\nALTER TABLE settings ENABLE ROW LEVEL SECURITY;\n\n-- السماح للجميع بقراءة الإعدادات\nCREATE POLICY "Allow public read access" ON settings FOR SELECT USING (true);\n\n-- السماح للمستخدمين المسجلين بتحديث الإعدادات\nCREATE POLICY "Allow update for authenticated users" ON settings FOR UPDATE USING (auth.role() = 'authenticated');\n\n-- السماح للمستخدمين المسجلين بإدخال الإعدادات للمرة الأولى\nCREATE POLICY "Allow insert for authenticated users" ON settings FOR INSERT WITH CHECK (auth.role() = 'authenticated');\n\n-- اختياري: إدخال صف الإعدادات الافتراضي الأول. سيقوم التطبيق بذلك تلقائيًا عند أول حفظ.\nINSERT INTO settings(id, feature_flags, api_config) VALUES (1, '{}', '{}');`}
+                            />
                             <CodeBlock 
                                 title="جدول `articles`"
                                 code={`CREATE TABLE articles (\n  id TEXT PRIMARY KEY,\n  title TEXT NOT NULL,\n  summary TEXT,\n  content TEXT,\n  "imageUrl" TEXT,\n  category TEXT,\n  date TIMESTAMPTZ DEFAULT NOW(),\n  author TEXT,\n  views INT DEFAULT 0,\n  "isBreaking" BOOLEAN DEFAULT FALSE,\n  "videoEmbedId" TEXT\n);`}
