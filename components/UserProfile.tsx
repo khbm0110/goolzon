@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Shield, LayoutTemplate, Settings, Trophy, Users, Plus, X, Search, LogOut } from 'lucide-react';
+import { User, Shield, LayoutTemplate, Settings, Trophy, Users, Plus, X, Search, LogOut, Loader2 } from 'lucide-react';
 import { Player, ClubProfile } from '../types';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useSettings } from '../contexts/SettingsContext';
+import { getSupabase } from '../services/supabaseClient';
 
 const FORMATION_433 = [
     { id: 0, role: 'GK', top: '85%', left: '50%' },
@@ -22,25 +24,67 @@ const FORMATION_433 = [
 const UserProfile: React.FC = () => {
     const { clubs } = useData();
     const { currentUser, logout } = useAuth();
+    const { apiConfig } = useSettings();
     const navigate = useNavigate();
     const [showTactics, setShowTactics] = useState(true);
-    const [dreamSquad, setDreamSquad] = useState<Record<number, Player & { clubLogo?: string }>>(() => {
-        try {
-            const saved = localStorage.getItem(`goolzon_dream_squad_${currentUser?.id}`);
-            return saved ? JSON.parse(saved) : {};
-        } catch {
-            return {};
-        }
-    });
-
+    const [dreamSquad, setDreamSquad] = useState<Record<number, Player & { clubLogo?: string }>>({});
+    const [isLoadingSquad, setIsLoadingSquad] = useState(true);
     const [activeSlot, setActiveSlot] = useState<number | null>(null);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
 
+    // Effect to load data on mount
     useEffect(() => {
-        if (currentUser) {
+        const loadSquad = async () => {
+            if (!currentUser) {
+                setIsLoadingSquad(false);
+                return;
+            }
+    
+            const supabase = getSupabase(apiConfig.supabaseUrl, apiConfig.supabaseKey);
+            if (supabase) {
+                const { data, error } = await supabase
+                    .from('user_profiles')
+                    .select('dream_squad')
+                    .eq('id', currentUser.id)
+                    .single();
+    
+                if (data && data.dream_squad) {
+                    setDreamSquad(data.dream_squad);
+                } else {
+                    const saved = localStorage.getItem(`goolzon_dream_squad_${currentUser.id}`);
+                    setDreamSquad(saved ? JSON.parse(saved) : {});
+                }
+            } else {
+                const saved = localStorage.getItem(`goolzon_dream_squad_${currentUser.id}`);
+                setDreamSquad(saved ? JSON.parse(saved) : {});
+            }
+            setIsLoadingSquad(false);
+        };
+    
+        loadSquad();
+    }, [currentUser, apiConfig.supabaseUrl, apiConfig.supabaseKey]);
+    
+    // Effect to save data on change
+    useEffect(() => {
+        if (!currentUser || isLoadingSquad) return;
+    
+        const saveSquad = async () => {
+            const supabase = getSupabase(apiConfig.supabaseUrl, apiConfig.supabaseKey);
             localStorage.setItem(`goolzon_dream_squad_${currentUser.id}`, JSON.stringify(dreamSquad));
-        }
-    }, [dreamSquad, currentUser]);
+
+            if (supabase) {
+                const { error } = await supabase
+                    .from('user_profiles')
+                    .upsert({ id: currentUser.id, dream_squad: dreamSquad });
+    
+                if (error) {
+                    console.error("Error saving dream squad to Supabase:", error);
+                }
+            }
+        };
+    
+        saveSquad();
+    }, [dreamSquad, currentUser, apiConfig.supabaseUrl, apiConfig.supabaseKey, isLoadingSquad]);
 
     const allPlayers = clubs.flatMap(c => c.squad.map(p => ({ ...p, clubLogo: c.logo, clubName: c.name })));
 
@@ -117,6 +161,7 @@ const UserProfile: React.FC = () => {
                             squad={dreamSquad} 
                             onSlotClick={handleSlotClick} 
                             onRemovePlayer={handleRemovePlayer}
+                            isLoading={isLoadingSquad}
                         />
                     )}
                 </div>
@@ -175,7 +220,16 @@ const InteractivePitch: React.FC<{
     squad: Record<number, Player & { clubLogo?: string }>;
     onSlotClick: (id: number) => void;
     onRemovePlayer: (e: React.MouseEvent, id: number) => void;
-}> = ({ squad, onSlotClick, onRemovePlayer }) => {
+    isLoading: boolean;
+}> = ({ squad, onSlotClick, onRemovePlayer, isLoading }) => {
+    if (isLoading) {
+        return (
+            <div className="w-full h-full bg-emerald-800 relative overflow-hidden flex justify-center items-center shadow-inner">
+                <Loader2 size={48} className="text-white animate-spin" />
+            </div>
+        );
+    }
+
     return (
         <div className="w-full h-full bg-emerald-800 relative overflow-hidden flex justify-center items-center shadow-inner animate-in fade-in zoom-in-95 duration-500 selection-none">
             <div className="absolute inset-4 border-2 border-white/20 rounded-lg pointer-events-none"></div>
@@ -225,7 +279,6 @@ const InteractivePitch: React.FC<{
     );
 };
 
-// FIX: Added missing PlayerSelectorModal component
 const PlayerSelectorModal: React.FC<{
   players: (Player & { clubLogo?: string; clubName?: string })[];
   onSelect: (player: Player & { clubLogo?: string }) => void;

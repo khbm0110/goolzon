@@ -725,7 +725,6 @@ const SettingsView: React.FC<{
                     </div>
                     <div>
                         <h3 className="text-lg font-bold text-slate-200 mt-4 pt-4 border-t border-slate-800 mb-2">مخططات الجدول الكاملة</h3>
-                        <p className="text-sm text-slate-400 mb-3">إذا كنت تبدأ من جديد، استخدم هذه الأوامر لإنشاء الجداول المطلوبة بأمان.</p>
                         <div className="space-y-4">
                              <CodeBlock 
                                 title="جدول `settings` (مهم)"
@@ -738,6 +737,10 @@ const SettingsView: React.FC<{
                             <CodeBlock 
                                 title="جدول `clubs`"
                                 code={`CREATE TABLE IF NOT EXISTS public.clubs (\n  id TEXT PRIMARY KEY,\n  name TEXT NOT NULL,\n  "englishName" TEXT,\n  logo TEXT,\n  "coverImage" TEXT,\n  founded INT,\n  stadium TEXT,\n  coach TEXT,\n  nickname TEXT,\n  country TEXT,\n  colors JSONB,\n  social JSONB,\n  "fanCount" INT,\n  trophies JSONB\n);`}
+                            />
+                             <CodeBlock 
+                                title="جدول `user_profiles` (لتشكيلة الأحلام)"
+                                code={`-- يخزن تشكيلة أحلام كل مستخدم. من الآمن تشغيل هذا النص عدة مرات.\n\n-- إنشاء الجدول\nCREATE TABLE IF NOT EXISTS public.user_profiles (\n  id TEXT PRIMARY KEY, -- يطابق user ID من التطبيق\n  dream_squad JSONB,\n  updated_at TIMESTAMPTZ DEFAULT NOW()\n);\n\n-- تفعيل أمان مستوى الصف\nALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;\n\n-- حذف السياسات القديمة وإعادة إنشائها\nDROP POLICY IF EXISTS "Public access for all" ON public.user_profiles;\nCREATE POLICY "Public access for all" ON public.user_profiles\nFOR ALL -- يسمح بالقراءة، الإضافة، التحديث، الحذف\nUSING (true)\nWITH CHECK (true);`}
                             />
                              <CodeBlock 
                                 title="تفعيل الوصول للقراءة للعامة (RLS)"

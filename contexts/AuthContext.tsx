@@ -56,7 +56,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     const user: User = {
-        id: Date.now().toString(),
+        id: `user-${username.toLowerCase()}`,
         name: 'مشجع خليجي',
         username: username,
         email: `${username}@example.com`,
@@ -74,7 +74,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           return false;
       }
       const user: User = {
-          id: Date.now().toString(),
+          id: `user-${data.username?.toLowerCase()}`,
           name: data.name || 'User',
           username: data.username || 'user',
           email: data.email || 'user@mail.com',
