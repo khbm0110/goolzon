@@ -30,7 +30,7 @@ interface SettingsContextType {
   featureFlags: FeatureFlags;
   setFeatureFlag: (key: keyof FeatureFlags, value: boolean) => void;
   apiConfig: ApiConfig;
-  setApiConfig: (config: ApiConfig) => void;
+  setApiConfig: (config: ApiConfig) => Promise<boolean>;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -45,8 +45,12 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [bootstrapConfig, setBootstrapConfig] = useState(() => {
     const saved = localStorage.getItem('goolzon_api_config_bootstrap');
     if (saved) {
-      const parsed = JSON.parse(saved);
-      return { supabaseUrl: parsed.supabaseUrl || '', supabaseKey: parsed.supabaseKey || '' };
+      try {
+        const parsed = JSON.parse(saved);
+        return { supabaseUrl: parsed.supabaseUrl || '', supabaseKey: parsed.supabaseKey || '' };
+      } catch {
+        return { supabaseUrl: '', supabaseKey: '' };
+      }
     }
     return { supabaseUrl: '', supabaseKey: '' };
   });
@@ -68,9 +72,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
           setFeatureFlags({ ...INITIAL_FLAGS, ...(data.feature_flags || {}) });
           setApiConfigState({ ...INITIAL_API_CONFIG, ...(data.api_config || {}) });
         } else {
-          console.warn("No settings found in DB. Using initial defaults.");
-          setFeatureFlags(INITIAL_FLAGS);
-          setApiConfigState(INITIAL_API_CONFIG);
+          console.warn("No settings found in DB. Using local defaults.");
         }
       } else {
         // Fallback to localStorage if Supabase is not configured
@@ -83,54 +85,59 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     fetchSettings();
   }, [bootstrapConfig.supabaseUrl, bootstrapConfig.supabaseKey]);
 
-  const setApiConfig = (config: ApiConfig) => {
+  const setApiConfig = async (config: ApiConfig): Promise<boolean> => {
+    const supabase = getSupabase(config.supabaseUrl, config.supabaseKey);
+
+    if (supabase) {
+        const { supabaseUrl, supabaseKey, ...restOfConfig } = config;
+        const { error } = await supabase.from('settings').upsert({
+            id: 1,
+            api_config: restOfConfig,
+            feature_flags: featureFlags
+        });
+
+        if (error) {
+            console.error("Failed to save API config to DB:", error);
+            alert(`فشل حفظ الإعدادات في قاعدة البيانات: ${error.message}\n\nتلميح: هل قمت بتشغيل أكواد SQL من قسم "مساعد مخطط قاعدة البيانات"؟`);
+            return false;
+        }
+    }
+    
+    // If DB save is successful, or if in local-only mode, update state and localStorage.
+    localStorage.setItem('goolzon_api_config_bootstrap', JSON.stringify({ supabaseUrl: config.supabaseUrl, supabaseKey: config.supabaseKey }));
+    localStorage.setItem('goolzon_api_config', JSON.stringify(config));
     setApiConfigState(config);
     setBootstrapConfig({ supabaseUrl: config.supabaseUrl, supabaseKey: config.supabaseKey });
-    
-    // Persist bootstrap keys to a separate localStorage item
-    localStorage.setItem('goolzon_api_config_bootstrap', JSON.stringify({ supabaseUrl: config.supabaseUrl, supabaseKey: config.supabaseKey }));
-    
-    // Also save full config to old key as a fallback
-    localStorage.setItem('goolzon_api_config', JSON.stringify(config));
-
-    const supabase = getSupabase(config.supabaseUrl, config.supabaseKey);
-    if (supabase) {
-      const { supabaseUrl, supabaseKey, ...restOfConfig } = config;
-      supabase.from('settings').upsert({
-        id: 1,
-        api_config: restOfConfig,
-        feature_flags: featureFlags // Also save current flags
-      }).then(({ error }) => {
-        if (error) console.error("Failed to save API config to DB:", error);
-      });
-    }
+    return true;
   };
 
   const setFeatureFlag = (key: keyof FeatureFlags, value: boolean) => {
+    const oldFlags = featureFlags;
     const newFlags = { ...featureFlags, [key]: value };
-    setFeatureFlags(newFlags);
+    setFeatureFlags(newFlags); // Optimistic UI update
 
     localStorage.setItem('goolzon_features', JSON.stringify(newFlags));
 
     const supabase = getSupabase(bootstrapConfig.supabaseUrl, bootstrapConfig.supabaseKey);
     if (supabase) {
-      // FIX: Destructuring from a combined object literal can confuse TypeScript's type inference.
-      // Create an intermediate variable to ensure the type is correctly inferred before destructuring.
-      const fullConfig = { ...apiConfig, ...bootstrapConfig };
-      const { supabaseUrl, supabaseKey, ...restOfConfig } = fullConfig;
+      const { supabaseUrl, supabaseKey, ...restOfConfig } = { ...apiConfig, ...bootstrapConfig };
       supabase.from('settings').upsert({
         id: 1,
         feature_flags: newFlags,
-        api_config: restOfConfig // Also save current api config
-      }).then(({ error }) => {
-        if (error) console.error("Failed to save feature flags to DB:", error);
+        api_config: restOfConfig
+      })
+      // FIX: Safely handle the promise response to prevent destructuring an undefined value, which causes a crash.
+      .then((response) => {
+        if (response?.error) {
+          console.error("Failed to save feature flags to DB:", response.error);
+          alert(`فشل حفظ الميزة: ${response.error.message}`);
+          setFeatureFlags(oldFlags); // Revert on failure
+        }
       });
     }
   };
 
-  // The final config object is a merge of the DB-backed config and the live bootstrap keys
   const finalApiConfig = { ...apiConfig, ...bootstrapConfig };
-
   const value = { featureFlags, setFeatureFlag, apiConfig: finalApiConfig, setApiConfig };
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;

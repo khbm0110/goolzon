@@ -489,20 +489,25 @@ const SettingsView: React.FC<{
     featureFlags: FeatureFlags;
     setFeatureFlag: (key: keyof FeatureFlags, value: boolean) => void;
     apiConfig: ApiConfig;
-    setApiConfig: (config: ApiConfig) => void;
+    setApiConfig: (config: ApiConfig) => Promise<boolean>;
 }> = ({ featureFlags, setFeatureFlag, apiConfig, setApiConfig }) => {
     
     const [localApiConfig, setLocalApiConfig] = useState(apiConfig);
     const [isSeeding, setIsSeeding] = useState(false);
     const [seedingMessage, setSeedingMessage] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         setLocalApiConfig(apiConfig);
     }, [apiConfig]);
 
-    const handleSaveApi = () => {
-        setApiConfig(localApiConfig);
-        alert('تم حفظ إعدادات الربط البرمجي والمفاتيح بنجاح!');
+    const handleSaveApi = async () => {
+        setIsSaving(true);
+        const success = await setApiConfig(localApiConfig);
+        if (success) {
+            alert('تم حفظ الإعدادات بنجاح!');
+        }
+        setIsSaving(false);
     };
     
     const handleSeedDatabase = async () => {
@@ -861,9 +866,11 @@ ON CONFLICT (id) DO NOTHING;`}
                         </div>
                         <button 
                             onClick={handleSaveApi}
-                            className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-bold transition-colors flex items-center gap-2 shadow-lg shadow-blue-900/20"
+                            disabled={isSaving}
+                            className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-bold transition-colors flex items-center gap-2 shadow-lg shadow-blue-900/20 disabled:bg-slate-700 disabled:text-slate-500"
                         >
-                            <Save size={18} /> حفظ جميع الإعدادات
+                            {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                            {isSaving ? 'جاري الحفظ...' : 'حفظ جميع الإعدادات'}
                         </button>
                     </div>
                 </div>
