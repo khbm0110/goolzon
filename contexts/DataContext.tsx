@@ -3,12 +3,13 @@ import { Article, Match, Standing, ClubProfile, Category, Player } from '../type
 import { INITIAL_ARTICLES, CLUB_DATABASE } from '../constants';
 import { fetchLiveMatches, fetchStandings } from '../services/apiFootball';
 import { useSettings } from './SettingsContext';
+import { getSupabase } from '../services/supabaseClient';
 
 interface DataContextType {
   articles: Article[];
-  addArticle: (article: Article) => boolean;
-  updateArticle: (article: Article) => boolean;
-  deleteArticle: (id: string) => boolean;
+  addArticle: (article: Article) => Promise<boolean>;
+  updateArticle: (article: Article) => Promise<boolean>;
+  deleteArticle: (id: string) => Promise<boolean>;
   matches: Match[];
   standings: Standing[];
   clubs: ClubProfile[];
@@ -50,26 +51,109 @@ const useLocalStorageState = <T,>(key: string, defaultValue: T): [T, React.Dispa
 };
 
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { apiConfig } = useSettings();
+  const { apiConfig, supabaseConfig } = useSettings();
   
-  const [articles, setArticles] = useLocalStorageState<Article[]>('goolzon_articles', INITIAL_ARTICLES);
+  const [articles, setArticles] = useState<Article[]>([]);
   const [clubs, setClubs] = useLocalStorageState<ClubProfile[]>('goolzon_clubs', Object.values(CLUB_DATABASE));
   
   const [matches, setMatches] = useState<Match[]>([]);
   const [standings, setStandings] = useState<Standing[]>([]);
   const [isLoadingInitial, setIsLoadingInitial] = useState(true);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
-  const addArticle = (article: Article): boolean => {
+  useEffect(() => {
+    const supabase = getSupabase(supabaseConfig.url, supabaseConfig.anonKey);
+    
+    const fetchInitialData = async () => {
+        setIsLoadingInitial(true);
+
+        // Fetch articles from Supabase
+        if (!supabase) {
+            console.warn("Supabase not configured. Using local fallback data for articles.");
+            setArticles(INITIAL_ARTICLES);
+        } else {
+            console.log("Fetching articles from Supabase...");
+            const { data, error } = await supabase
+                .from('articles')
+                .select('*')
+                .order('date', { ascending: false });
+
+            if (error) {
+                console.error("Error fetching articles:", error);
+                setArticles(INITIAL_ARTICLES);
+            } else if (data) {
+                setArticles(data);
+            }
+        }
+
+        // Fetch matches and standings from API
+        if (apiConfig.keys.matches) {
+            const [liveMatches, leagueStandings] = await Promise.all([
+                fetchLiveMatches(apiConfig.keys.matches, apiConfig.leagueIds),
+                fetchStandings(apiConfig.keys.matches, apiConfig.leagueIds)
+            ]);
+            setMatches(liveMatches);
+            setStandings(leagueStandings);
+        } else {
+            setMatches([]);
+            setStandings([]);
+        }
+
+        setIsLoadingInitial(false);
+        setIsDataLoaded(true);
+    };
+    
+    // This now controls all initial data loading
+    if (!isDataLoaded) {
+       fetchInitialData();
+    }
+  }, [supabaseConfig, apiConfig.keys.matches, apiConfig.leagueIds, isDataLoaded]);
+
+
+  const addArticle = async (article: Article): Promise<boolean> => {
+    const supabase = getSupabase(supabaseConfig.url, supabaseConfig.anonKey);
+    if (!supabase) {
+        setArticles(prev => [article, ...prev]);
+        return true;
+    }
+    const { error } = await supabase.from('articles').insert([article]);
+    if (error) {
+        console.error("Error adding article:", error);
+        alert(`Error: ${error.message}`);
+        return false;
+    }
     setArticles(prev => [article, ...prev]);
     return true;
   };
 
-  const updateArticle = (article: Article): boolean => {
+  const updateArticle = async (article: Article): Promise<boolean> => {
+     const supabase = getSupabase(supabaseConfig.url, supabaseConfig.anonKey);
+     if (!supabase) {
+        setArticles(prev => prev.map(a => a.id === article.id ? article : a));
+        return true;
+     }
+     const { error } = await supabase.from('articles').update(article).eq('id', article.id);
+     if (error) {
+        console.error("Error updating article:", error);
+        alert(`Error: ${error.message}`);
+        return false;
+     }
      setArticles(prev => prev.map(a => a.id === article.id ? article : a));
      return true;
   }
 
-  const deleteArticle = (id: string): boolean => {
+  const deleteArticle = async (id: string): Promise<boolean> => {
+     const supabase = getSupabase(supabaseConfig.url, supabaseConfig.anonKey);
+     if (!supabase) {
+        setArticles(prev => prev.filter(a => a.id !== id));
+        return true;
+     }
+     const { error } = await supabase.from('articles').delete().eq('id', id);
+     if (error) {
+        console.error("Error deleting article:", error);
+        alert(`Error: ${error.message}`);
+        return false;
+     }
      setArticles(prev => prev.filter(a => a.id !== id));
      return true;
   }
@@ -119,25 +203,6 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           return newClubs;
       });
   };
-
-  useEffect(() => {
-    const fetchExternalData = async () => {
-        setIsLoadingInitial(true);
-        if (apiConfig.keys.matches) {
-            const [liveMatches, leagueStandings] = await Promise.all([
-                fetchLiveMatches(apiConfig.keys.matches, apiConfig.leagueIds),
-                fetchStandings(apiConfig.keys.matches, apiConfig.leagueIds)
-            ]);
-            setMatches(liveMatches);
-            setStandings(leagueStandings);
-        } else {
-            setMatches([]);
-            setStandings([]);
-        }
-        setIsLoadingInitial(false);
-    };
-    fetchExternalData();
-  }, [apiConfig.keys.matches, apiConfig.leagueIds]);
 
   const value = {
     articles, addArticle, updateArticle, deleteArticle,

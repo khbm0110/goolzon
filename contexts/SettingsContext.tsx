@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
-import { FeatureFlags, ApiConfig } from '../types';
+import { FeatureFlags, ApiConfig, SupabaseConfig } from '../types';
 
 const INITIAL_FLAGS: FeatureFlags = {
     matches: true,
@@ -23,11 +23,18 @@ const INITIAL_API_CONFIG: ApiConfig = {
     }
 };
 
+const INITIAL_SUPABASE_CONFIG: SupabaseConfig = {
+    url: '',
+    anonKey: ''
+};
+
 interface SettingsContextType {
   featureFlags: FeatureFlags;
   setFeatureFlag: (key: keyof FeatureFlags, value: boolean) => void;
   apiConfig: ApiConfig;
   setApiConfig: (config: ApiConfig) => void;
+  supabaseConfig: SupabaseConfig;
+  setSupabaseConfig: (config: SupabaseConfig) => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -48,11 +55,22 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     const saved = localStorage.getItem('goolzon_api_config');
     return saved ? { ...INITIAL_API_CONFIG, ...JSON.parse(saved) } : INITIAL_API_CONFIG;
   });
+  
+  const [supabaseConfig, setSupabaseConfigState] = useState<SupabaseConfig>(() => {
+    const saved = localStorage.getItem('goolzon_supabase_config');
+    return saved ? { ...INITIAL_SUPABASE_CONFIG, ...JSON.parse(saved) } : INITIAL_SUPABASE_CONFIG;
+  });
 
   const setApiConfig = (config: ApiConfig) => {
     localStorage.setItem('goolzon_api_config', JSON.stringify(config));
     setApiConfigState(config);
-    alert('تم حفظ الإعدادات بنجاح في متصفحك!');
+    alert('تم حفظ إعدادات API بنجاح في متصفحك!');
+  };
+
+  const setSupabaseConfig = (config: SupabaseConfig) => {
+    localStorage.setItem('goolzon_supabase_config', JSON.stringify(config));
+    setSupabaseConfigState(config);
+    alert('تم حفظ إعدادات Supabase بنجاح!');
   };
 
   const setFeatureFlag = (key: keyof FeatureFlags, value: boolean) => {
@@ -61,7 +79,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     setFeatureFlags(newFlags);
   };
 
-  const value = { featureFlags, setFeatureFlag, apiConfig, setApiConfig };
+  const value = { featureFlags, setFeatureFlag, apiConfig, setApiConfig, supabaseConfig, setSupabaseConfig };
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 };

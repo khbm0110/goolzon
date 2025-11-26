@@ -1,5 +1,6 @@
 
 
+
 export enum Category {
   SAUDI = 'السعودية',
   UAE = 'الإمارات',
@@ -37,6 +38,11 @@ export interface ApiConfig {
     scouting: string;     // مفتاح البحث وجلب اللاعبين (للميركاطو)
     gemini: string;       // مفتاح الذكاء الاصطناعي (Gemini)
   };
+}
+
+export interface SupabaseConfig {
+  url: string;
+  anonKey: string;
 }
 
 export interface User {
