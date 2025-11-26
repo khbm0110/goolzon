@@ -24,7 +24,7 @@ export const useUI = () => {
 };
 
 export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { featureFlags, apiConfig } = useSettings();
+  const { featureFlags } = useSettings();
   const { articles, addArticle } = useData();
   
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
@@ -50,13 +50,9 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         }
         return;
     }
-
-    // 2. Check for API Key
-    if (!apiConfig.keys.gemini) {
-        console.warn("AI Autopilot: Paused (No Gemini API Key provided in Admin Dashboard)");
-        return;
-    }
-
+    
+    // The check for the API key is now handled inside generateArticleContent.
+    // If the key is missing, it will return null and log a warning.
     console.log("AI Autopilot: Active and Running...");
 
     const runAutopilot = async () => {
@@ -73,7 +69,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
            
            console.log(`AI Autopilot: Generating content about ${randomTopic}...`);
            
-           const newArticleContent = await generateArticleContent(randomTopic, apiConfig.keys.gemini);
+           const newArticleContent = await generateArticleContent(randomTopic);
            
            if (newArticleContent) {
              // Check for duplicates
@@ -110,6 +106,13 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
              } else {
                  console.log("AI Autopilot: Duplicate content detected, skipping.");
              }
+           } else {
+             console.warn("AI Autopilot: Paused (Failed to generate content, likely missing API Key)");
+             // Stop the interval to prevent repeated failed attempts if key is missing
+             if (autopilotIntervalRef.current) {
+                clearInterval(autopilotIntervalRef.current);
+                autopilotIntervalRef.current = null;
+             }
            }
        } catch (e) {
            console.error("Autopilot Error:", e);
@@ -129,7 +132,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     return () => {
         if (autopilotIntervalRef.current) clearInterval(autopilotIntervalRef.current);
     };
-  }, [isAutopilot, featureFlags.autopilot, apiConfig.keys.gemini, articles, addArticle]);
+  }, [isAutopilot, featureFlags.autopilot, articles, addArticle]);
 
   const value = {
       selectedMatch, setSelectedMatch,

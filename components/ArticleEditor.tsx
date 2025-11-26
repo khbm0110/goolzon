@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Article, Category } from '../types';
 import { Save, X, Wand2, Loader2, Image as ImageIcon } from 'lucide-react';
 import { generateArticleContent } from '../services/geminiService';
-import { useSettings } from '../contexts/SettingsContext';
 
 interface ArticleEditorProps {
     initialData: Partial<Article>;
@@ -15,7 +14,6 @@ const ArticleEditor: React.FC<ArticleEditorProps> = ({ initialData, onSave, onCa
     const [article, setArticle] = useState<Partial<Article>>(initialData);
     const [aiTopic, setAiTopic] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
-    const { apiConfig } = useSettings();
 
     useEffect(() => {
         setArticle(initialData);
@@ -31,13 +29,9 @@ const ArticleEditor: React.FC<ArticleEditorProps> = ({ initialData, onSave, onCa
             alert('Please enter a topic for the AI to write about.');
             return;
         }
-        if (!apiConfig.keys.gemini) {
-            alert('Gemini API key is not set in the settings.');
-            return;
-        }
         setIsGenerating(true);
         try {
-            const generated = await generateArticleContent(aiTopic, apiConfig.keys.gemini);
+            const generated = await generateArticleContent(aiTopic);
             if (generated) {
                 const categoryValues = Object.values(Category) as string[];
                 const safeCategory = categoryValues.includes(generated.category)
@@ -54,7 +48,7 @@ const ArticleEditor: React.FC<ArticleEditorProps> = ({ initialData, onSave, onCa
                     isBreaking: generated.hasNews,
                 }));
             } else {
-                alert('AI failed to generate content. It might be a safe search block or an API issue.');
+                alert('فشل الذكاء الاصطناعي في إنشاء المحتوى. يرجى التأكد من تكوين مفتاح API بشكل صحيح في متغيرات بيئة Vercel والمحاولة مرة أخرى.');
             }
         } catch (error) {
             console.error("AI Generation Error:", error);
@@ -100,14 +94,13 @@ const ArticleEditor: React.FC<ArticleEditorProps> = ({ initialData, onSave, onCa
                     <button
                         type="button"
                         onClick={handleGenerateAI}
-                        disabled={isGenerating || !apiConfig.keys.gemini}
+                        disabled={isGenerating}
                         className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 shadow-lg shadow-indigo-900/20 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
                     >
                         {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <Wand2 size={18} />}
                         {isGenerating ? 'جاري الكتابة...' : 'اكتب يا AI'}
                     </button>
                 </div>
-                {!apiConfig.keys.gemini && <p className="text-xs text-amber-500 mt-2">مفتاح Gemini API غير موجود. يرجى إضافته في الإعدادات لتفعيل هذه الميزة.</p>}
             </div>
 
             {/* Form */}

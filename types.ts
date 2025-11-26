@@ -31,13 +31,6 @@ export interface ApiConfig {
   provider: 'api-football' | 'sportmonks' | 'other';
   leagueIds: string; // Comma separated IDs
   autoSync: boolean;
-  keys: {
-    matches: string;      // مفتاح جدول المباريات
-    results: string;      // مفتاح النتائج المباشرة
-    playersData: string;  // مفتاح تفاصيل اللاعبين (طاقات، صور)
-    scouting: string;     // مفتاح البحث وجلب اللاعبين (للميركاطو)
-    gemini: string;       // مفتاح الذكاء الاصطناعي (Gemini)
-  };
 }
 
 export interface User {

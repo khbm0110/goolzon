@@ -5,6 +5,9 @@ import { fetchLiveMatches, fetchStandings } from '../services/apiFootball';
 import { useSettings } from './SettingsContext';
 import { getSupabase } from '../services/supabaseClient';
 
+// FIX: Cast `import.meta` to `any` to resolve TypeScript error about missing 'env' property.
+const API_FOOTBALL_KEY = (import.meta as any).env.VITE_APIFOOTBALL_KEY;
+
 interface DataContextType {
   articles: Article[];
   addArticle: (article: Article) => Promise<boolean>;
@@ -89,15 +92,15 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
 
         // --- Sports API Data ---
-        if (apiConfig.keys.matches) {
+        if (API_FOOTBALL_KEY) {
             const [liveMatches, leagueStandings] = await Promise.all([
-                fetchLiveMatches(apiConfig.keys.matches, apiConfig.leagueIds),
-                fetchStandings(apiConfig.keys.matches, apiConfig.leagueIds)
+                fetchLiveMatches(API_FOOTBALL_KEY, apiConfig.leagueIds),
+                fetchStandings(API_FOOTBALL_KEY, apiConfig.leagueIds)
             ]);
             setMatches(liveMatches);
             setStandings(leagueStandings);
         } else {
-            console.warn("API-Sports key not configured. Skipping matches and standings fetch.");
+            console.warn("VITE_APIFOOTBALL_KEY not configured. Skipping matches and standings fetch.");
             setMatches([]);
             setStandings([]);
         }
@@ -106,7 +109,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
     
     fetchAllData();
-  }, [apiConfig.keys.matches, apiConfig.leagueIds]);
+  }, [apiConfig.leagueIds]);
 
 
   const addArticle = async (article: Article): Promise<boolean> => {

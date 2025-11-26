@@ -33,7 +33,8 @@ import {
   AlertTriangle,
   Eye,
   Link as LinkIcon,
-  Activity
+  Activity,
+  Info
 } from 'lucide-react';
 import { Article, Category, ClubProfile, Player, PlayerStats, FeatureFlags, ApiConfig } from '../types';
 import { useData } from '../contexts/DataContext';
@@ -469,7 +470,10 @@ const SettingsView: React.FC<{
     const handleSaveApi = async () => {
         setIsSaving(true);
         setApiConfig(localApiConfig);
-        setTimeout(() => setIsSaving(false), 500);
+        setTimeout(() => {
+            setIsSaving(false);
+            alert('تم حفظ الإعدادات بنجاح!');
+        }, 500);
     };
     
     const featuresList: { key: keyof FeatureFlags; label: string; desc: string; icon: any }[] = [
@@ -479,14 +483,6 @@ const SettingsView: React.FC<{
         { key: 'videos', label: 'مكتبة الفيديو', desc: 'قسم خاص لعرض ملخصات المباريات والمحتوى المرئي.', icon: FilePlus },
         { key: 'analysis', label: 'التحليلات والمقالات', desc: 'قسم المقالات التحليلية الطويلة (بخلاف الأخبار العاجلة).', icon: Search },
         { key: 'autopilot', label: 'AI Auto-Pilot 🤖', desc: 'توليد أخبار تلقائي كل 5 دقائق. (يتطلب مفتاح Gemini API صالحاً).', icon: Wand2 },
-    ];
-
-    const apiKeysList = [
-        { key: 'matches', label: 'مفتاح المباريات (API-Sports Dashboard)', desc: 'استخدم المفتاح من v3.football.api-sports.io (Direct Dashboard).', icon: Trophy },
-        { key: 'results', label: 'مفتاح النتائج (Results)', desc: 'يستخدم لجلب النتائج المباشرة والأهداف أثناء المباراة.', icon: CheckCircle2 },
-        { key: 'playersData', label: 'مفتاح بيانات اللاعبين (Players)', desc: 'لجلب تفاصيل اللاعبين، الصور، والطاقات للإحصائيات.', icon: User },
-        { key: 'scouting', label: 'مفتاح البحث (Scouting)', desc: 'يستخدم في سوق الانتقالات للبحث عن لاعبين جدد.', icon: Users },
-        { key: 'gemini', label: 'مفتاح الذكاء الاصطناعي (Gemini)', desc: 'مفتاح خاص لـ Google Gemini لتوليد المقالات والأخبار.', icon: Cpu },
     ];
 
     return (
@@ -534,21 +530,47 @@ const SettingsView: React.FC<{
             </div>
 
             <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
+                <div className="p-6 border-b border-slate-800 bg-slate-950">
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                        <Key className="text-yellow-500" /> مفاتيح API للمصادر الخارجية
+                    </h2>
+                    <p className="text-slate-400 text-sm mt-2">
+                        لأمان أعلى، تم نقل إدارة مفاتيح API إلى متغيرات البيئة في منصة النشر (Vercel).
+                    </p>
+                </div>
+                <div className="p-6 space-y-4">
+                    <div className="bg-slate-950 p-4 rounded-xl border border-amber-500/30 flex items-start gap-3">
+                         <Info size={24} className="text-amber-500 mt-1"/>
+                         <div>
+                             <h3 className="text-amber-400 font-bold">تعليمات هامة</h3>
+                             <p className="text-slate-300 text-sm mt-1">
+                                يجب عليك إضافة المتغيرات التالية في إعدادات مشروعك على Vercel (Settings &gt; Environment Variables).
+                             </p>
+                         </div>
+                    </div>
+                    
+                    <ul className="list-disc list-inside space-y-3 text-slate-400 font-mono text-sm bg-slate-950 p-4 rounded-lg border border-slate-800">
+                        <li><span className="font-sans text-slate-300">لمنفذ Gemini AI:</span> <code className="text-amber-400">API_KEY</code></li>
+                        <li><span className="font-sans text-slate-300">لمنفذ Supabase:</span> <code className="text-amber-400">VITE_SUPABASE_URL</code></li>
+                        <li><span className="font-sans text-slate-300">لمنفذ Supabase:</span> <code className="text-amber-400">VITE_SUPABASE_ANON_KEY</code></li>
+                        <li><span className="font-sans text-slate-300">لمنفذ Sports API:</span> <code className="text-amber-400">VITE_APIFOOTBALL_KEY</code></li>
+                    </ul>
+                     <p className="text-xs text-slate-500 mt-2">
+                        بعد إضافتها، قم بإعادة نشر (Redeploy) المشروع من لوحة تحكم Vercel لتفعيل التغييرات. هذا يضمن بقاء مفاتيحك آمنة وسرية.
+                    </p>
+                </div>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
                 <div className="p-6 border-b border-slate-800 bg-slate-950 flex justify-between items-center">
                     <div>
                         <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                            <Key className="text-yellow-500" /> مفاتيح API للمصادر الخارجية
+                            <Database className="text-blue-500" /> إعدادات مزود البيانات
                         </h2>
                         <p className="text-slate-400 text-sm mt-2">
-                             إدارة مفاتيح الوصول للمصادر المختلفة (المباريات، النتائج، اللاعبين، والذكاء الاصطناعي).
+                             إدارة المصادر التي يتم جلب بيانات المباريات والدوريات منها.
                         </p>
                     </div>
-                    {(Object.values(localApiConfig.keys) as string[]).some(k => k.length > 0) && (
-                        <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 border border-green-500/30 rounded-full">
-                            <CheckCircle2 size={14} className="text-green-500" />
-                            <span className="text-xs font-bold text-green-400">مفاتيح محفوظة</span>
-                        </div>
-                    )}
                 </div>
 
                 <div className="p-6 space-y-8">
@@ -577,35 +599,6 @@ const SettingsView: React.FC<{
                         </div>
                     </div>
 
-                    <div>
-                        <h3 className="text-white font-bold mb-4 flex items-center gap-2 border-b border-slate-800 pb-2">
-                            <Key size={18} className="text-yellow-500"/> إدارة المفاتيح (Granular Keys)
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {apiKeysList.map((item) => (
-                                <div key={item.key} className="space-y-2 group">
-                                    <label className="text-xs font-bold text-slate-300 flex items-center gap-2 group-hover:text-primary transition-colors">
-                                        <item.icon size={14} /> {item.label}
-                                    </label>
-                                    <div className="relative">
-                                        <input 
-                                            type="password"
-                                            value={localApiConfig.keys[item.key as keyof typeof localApiConfig.keys]}
-                                            onChange={e => setLocalApiConfig({
-                                                ...localApiConfig, 
-                                                keys: { ...localApiConfig.keys, [item.key]: e.target.value }
-                                            })}
-                                            placeholder={`أدخل ${item.label}...`}
-                                            className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 pl-10 text-white focus:border-primary outline-none font-mono text-sm transition-all focus:bg-slate-900"
-                                        />
-                                        <div className={`absolute left-3 top-3 w-2 h-2 rounded-full ${localApiConfig.keys[item.key as keyof typeof localApiConfig.keys] ? 'bg-green-500 shadow-[0_0_10px_#22c55e]' : 'bg-red-500'}`}></div>
-                                    </div>
-                                    <p className="text-[10px] text-slate-500">{item.desc}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
                     <div className="pt-4 border-t border-slate-800 flex justify-end gap-4 items-center">
                         <div className="flex items-center gap-3">
                              <div className={`w-10 h-6 rounded-full p-1 cursor-pointer transition-colors ${localApiConfig.autoSync ? 'bg-blue-600' : 'bg-slate-700'}`} onClick={() => setLocalApiConfig({...localApiConfig, autoSync: !localApiConfig.autoSync})}>
@@ -619,11 +612,12 @@ const SettingsView: React.FC<{
                             className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-bold transition-colors flex items-center gap-2 shadow-lg shadow-blue-900/20 disabled:bg-slate-700 disabled:text-slate-500"
                         >
                             {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                            {isSaving ? 'جاري الحفظ...' : 'حفظ جميع الإعدادات'}
+                            {isSaving ? 'جاري الحفظ...' : 'حفظ إعدادات المزود'}
                         </button>
                     </div>
                 </div>
             </div>
+
         </div>
     );
 };

@@ -2,8 +2,9 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 let supabase: SupabaseClient | null = null;
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+// FIX: Cast `import.meta` to `any` to resolve TypeScript error about missing 'env' property.
+const SUPABASE_URL = (import.meta as any).env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
 
 // This function now initializes a singleton client using environment variables.
 // It's safer, more reliable, and standard practice for production apps.

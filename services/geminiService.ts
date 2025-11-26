@@ -2,11 +2,17 @@ import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { getSmartImageUrl } from "./imageService";
 import { MatchDetails } from "../types";
 
-// Helper to get AI instance with dynamic key or fallback to env
-const getAI = (apiKey?: string) => {
-  const key = apiKey || process.env.API_KEY;
-  if (!key) return null;
-  return new GoogleGenAI({ apiKey: key });
+// Helper to get a singleton AI instance.
+let ai: GoogleGenAI | null = null;
+const getAI = () => {
+  if (ai) return ai;
+  // FIX: Per coding guidelines, the API key must be obtained from process.env.API_KEY.
+  if (process.env.API_KEY) {
+    ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    return ai;
+  }
+  console.warn("API_KEY is not configured in environment variables.");
+  return null;
 };
 
 export interface GeneratedArticle {
@@ -18,15 +24,13 @@ export interface GeneratedArticle {
   sources?: { title: string; uri: string }[];
   hasNews?: boolean;
   imageKeyword?: string;
-  // FIX: The imageUrl property was optional, causing a type mismatch with the Article interface where it is required.
-  // Making imageUrl required to ensure type compatibility.
   imageUrl: string;
 }
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-export const fetchDailyHeadlines = async (apiKey?: string): Promise<string[]> => {
-  const ai = getAI(apiKey);
+export const fetchDailyHeadlines = async (): Promise<string[]> => {
+  const ai = getAI();
   if (!ai) return ["فوز الهلال في الدوري", "تألق رونالدو مع النصر", "الدوري الإماراتي يشتعل"];
 
   const today = new Date().toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -75,8 +79,8 @@ export const fetchDailyHeadlines = async (apiKey?: string): Promise<string[]> =>
   }
 };
 
-export const generateArticleContent = async (topic: string, apiKey?: string, retries = 3, excludeTitles: string[] = []): Promise<GeneratedArticle | null> => {
-  const ai = getAI(apiKey);
+export const generateArticleContent = async (topic: string, retries = 3, excludeTitles: string[] = []): Promise<GeneratedArticle | null> => {
+  const ai = getAI();
   if (!ai) {
     console.error("Gemini API key is not configured. Cannot generate article.");
     return null;

@@ -14,13 +14,6 @@ const INITIAL_API_CONFIG: ApiConfig = {
     provider: 'api-football',
     leagueIds: '307, 39, 140, 2, 135, 78, 301', // SA, EPL, LIGA, UCL, SERIEA, BUND, UAE
     autoSync: false,
-    keys: {
-        matches: '',
-        results: '',
-        playersData: '',
-        scouting: '',
-        gemini: ''
-    }
 };
 
 interface SettingsContextType {
