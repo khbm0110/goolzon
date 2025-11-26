@@ -35,7 +35,7 @@ import {
   Link as LinkIcon,
   Activity
 } from 'lucide-react';
-import { Article, Category, ClubProfile, Player, PlayerStats, FeatureFlags, ApiConfig, SupabaseConfig } from '../types';
+import { Article, Category, ClubProfile, Player, PlayerStats, FeatureFlags, ApiConfig } from '../types';
 import { useData } from '../contexts/DataContext';
 import { useSettings } from '../contexts/SettingsContext';
 import TeamLogo from './TeamLogo';
@@ -312,7 +312,7 @@ const AdminDashboard: React.FC = () => {
     clubs, addClub, updateClub, deleteClub, transferPlayer, articles, addArticle, updateArticle, deleteArticle
   } = useData();
   const { 
-    featureFlags, setFeatureFlag, apiConfig, setApiConfig, supabaseConfig, setSupabaseConfig
+    featureFlags, setFeatureFlag, apiConfig, setApiConfig
   } = useSettings();
   
   const [editorData, setEditorData] = useState<Partial<Article>>({});
@@ -445,8 +445,6 @@ const AdminDashboard: React.FC = () => {
                 setFeatureFlag={setFeatureFlag}
                 apiConfig={apiConfig}
                 setApiConfig={setApiConfig}
-                supabaseConfig={supabaseConfig}
-                setSupabaseConfig={setSupabaseConfig}
             />
         )}
       </main>
@@ -459,30 +457,19 @@ const SettingsView: React.FC<{
     setFeatureFlag: (key: keyof FeatureFlags, value: boolean) => void;
     apiConfig: ApiConfig;
     setApiConfig: (config: ApiConfig) => void;
-    supabaseConfig: SupabaseConfig;
-    setSupabaseConfig: (config: SupabaseConfig) => void;
-}> = ({ featureFlags, setFeatureFlag, apiConfig, setApiConfig, supabaseConfig, setSupabaseConfig }) => {
+}> = ({ featureFlags, setFeatureFlag, apiConfig, setApiConfig }) => {
     
     const [localApiConfig, setLocalApiConfig] = useState(apiConfig);
     const [isSaving, setIsSaving] = useState(false);
-    const [localSupabaseConfig, setLocalSupabaseConfig] = useState(supabaseConfig);
-    const [isSavingSupabase, setIsSavingSupabase] = useState(false);
 
     useEffect(() => {
         setLocalApiConfig(apiConfig);
-        setLocalSupabaseConfig(supabaseConfig);
-    }, [apiConfig, supabaseConfig]);
+    }, [apiConfig]);
 
     const handleSaveApi = async () => {
         setIsSaving(true);
         setApiConfig(localApiConfig);
         setTimeout(() => setIsSaving(false), 500);
-    };
-
-    const handleSaveSupabase = () => {
-        setIsSavingSupabase(true);
-        setSupabaseConfig(localSupabaseConfig);
-        setTimeout(() => setIsSavingSupabase(false), 500);
     };
     
     const featuresList: { key: keyof FeatureFlags; label: string; desc: string; icon: any }[] = [
@@ -542,49 +529,6 @@ const SettingsView: React.FC<{
                                 </div>
                             </div>
                         ))}
-                    </div>
-                </div>
-            </div>
-
-            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
-                <div className="p-6 border-b border-slate-800 bg-slate-950">
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                        <Database className="text-green-500" /> قاعدة البيانات (Supabase)
-                    </h2>
-                    <p className="text-slate-400 text-sm mt-2">
-                        ربط التطبيق بقاعدة بيانات Supabase لحفظ المقالات، الأندية، والمستخدمين.
-                    </p>
-                </div>
-                <div className="p-6 space-y-6">
-                    <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-300">Supabase Project URL</label>
-                        <input 
-                            type="text"
-                            value={localSupabaseConfig.url}
-                            onChange={e => setLocalSupabaseConfig({ ...localSupabaseConfig, url: e.target.value })}
-                            placeholder="https://<project-id>.supabase.co"
-                            className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-green-500 outline-none font-mono"
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-300">Supabase Anon Key</label>
-                        <input 
-                            type="password"
-                            value={localSupabaseConfig.anonKey}
-                            onChange={e => setLocalSupabaseConfig({ ...localSupabaseConfig, anonKey: e.target.value })}
-                            placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                            className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-green-500 outline-none font-mono"
-                        />
-                    </div>
-                    <div className="pt-4 border-t border-slate-800 flex justify-end">
-                        <button 
-                            onClick={handleSaveSupabase}
-                            disabled={isSavingSupabase}
-                            className="bg-green-600 hover:bg-green-500 text-white px-8 py-3 rounded-xl font-bold transition-colors flex items-center gap-2 shadow-lg shadow-green-900/20 disabled:bg-slate-700 disabled:text-slate-500"
-                        >
-                            {isSavingSupabase ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                            {isSavingSupabase ? 'جاري الحفظ...' : 'حفظ إعدادات Supabase'}
-                        </button>
                     </div>
                 </div>
             </div>

@@ -1,6 +1,20 @@
 import React from 'react';
 
-export const NewsCardSkeleton: React.FC<{ featured?: boolean }> = ({ featured = false }) => {
+export const NewsCardSkeleton: React.FC<{ featured?: boolean; compact?: boolean }> = ({ featured = false, compact = false }) => {
+  // FIX: Added a compact prop to support a different skeleton layout, matching the NewsCard component.
+  if (compact) {
+    return (
+      <div className="flex gap-4 items-start mb-4">
+        <div className="w-24 h-24 flex-shrink-0 rounded-lg bg-slate-800 animate-pulse"></div>
+        <div className="flex-1 space-y-3 py-1">
+          <div className="h-3 w-1/3 bg-slate-800 rounded animate-pulse"></div>
+          <div className="h-4 w-full bg-slate-800 rounded animate-pulse"></div>
+          <div className="h-4 w-3/4 bg-slate-800 rounded animate-pulse"></div>
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <div className={`bg-slate-900 rounded-xl border border-slate-800 overflow-hidden ${featured ? 'md:col-span-2 md:row-span-2' : ''}`}>
       <div className={`bg-slate-800 animate-pulse ${featured ? 'h-64 md:h-96' : 'h-32 md:h-48'}`} />

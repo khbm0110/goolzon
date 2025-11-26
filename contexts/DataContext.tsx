@@ -51,7 +51,7 @@ const useLocalStorageState = <T,>(key: string, defaultValue: T): [T, React.Dispa
 };
 
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { apiConfig, supabaseConfig } = useSettings();
+  const { apiConfig } = useSettings();
   
   const [articles, setArticles] = useState<Article[]>([]);
   const [clubs, setClubs] = useLocalStorageState<ClubProfile[]>('goolzon_clubs', Object.values(CLUB_DATABASE));
@@ -60,16 +60,17 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [standings, setStandings] = useState<Standing[]>([]);
   const [isLoadingInitial, setIsLoadingInitial] = useState(true);
 
-  // This effect will run when supabaseConfig changes, ensuring data is re-fetched.
+  // This effect will run once on mount to fetch all necessary data.
+  // It relies on the getSupabase() singleton which reads from env vars.
   useEffect(() => {
-    const supabase = getSupabase(supabaseConfig.url, supabaseConfig.anonKey);
+    const supabase = getSupabase(); // Get client from env vars
     
     const fetchAllData = async () => {
         setIsLoadingInitial(true);
 
         // --- Articles Data ---
         if (!supabase) {
-            console.warn("Supabase is not configured. Falling back to local initial articles.");
+            console.warn("Supabase is not configured via env vars. Falling back to local initial articles.");
             setArticles(INITIAL_ARTICLES);
         } else {
             console.log("Attempting to fetch articles from Supabase...");
@@ -105,11 +106,11 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
     
     fetchAllData();
-  }, [supabaseConfig, apiConfig.keys.matches, apiConfig.leagueIds]);
+  }, [apiConfig.keys.matches, apiConfig.leagueIds]);
 
 
   const addArticle = async (article: Article): Promise<boolean> => {
-    const supabase = getSupabase(supabaseConfig.url, supabaseConfig.anonKey);
+    const supabase = getSupabase();
     if (!supabase) {
         console.warn("Supabase not configured. Adding article to local state only.");
         setArticles(prev => [article, ...prev]);
@@ -126,7 +127,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const updateArticle = async (article: Article): Promise<boolean> => {
-     const supabase = getSupabase(supabaseConfig.url, supabaseConfig.anonKey);
+     const supabase = getSupabase();
      if (!supabase) {
         console.warn("Supabase not configured. Updating article in local state only.");
         setArticles(prev => prev.map(a => a.id === article.id ? article : a));
@@ -143,7 +144,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }
 
   const deleteArticle = async (id: string): Promise<boolean> => {
-     const supabase = getSupabase(supabaseConfig.url, supabaseConfig.anonKey);
+     const supabase = getSupabase();
      if (!supabase) {
         console.warn("Supabase not configured. Deleting article from local state only.");
         setArticles(prev => prev.filter(a => a.id !== id));

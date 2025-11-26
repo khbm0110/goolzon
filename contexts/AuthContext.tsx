@@ -1,7 +1,6 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { User } from '../types';
 import { getSupabase } from '../services/supabaseClient';
-import { useSettings } from './SettingsContext';
 
 const ADMIN_EMAIL = 'admin@goolzon.dev';
 
@@ -24,7 +23,6 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { supabaseConfig } = useSettings();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   
@@ -32,10 +30,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const saved = localStorage.getItem('goolzon_followed');
     return saved ? JSON.parse(saved) : [];
   });
-
+  
+  // This effect now depends on nothing, as getSupabase handles its own initialization.
+  // It runs once on mount.
   useEffect(() => {
-    const supabase = getSupabase(supabaseConfig.url, supabaseConfig.anonKey);
+    const supabase = getSupabase();
     if (!supabase) {
+        // If Supabase isn't configured via env vars, clear any existing user state
+        // except for the local admin fallback.
         if (currentUser?.id !== 'local-admin') {
             setCurrentUser(null);
             setIsAdmin(false);
@@ -66,7 +68,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     });
 
-    // Initial check
+    // Initial check to see if a user is already logged in
     const checkUser = async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -87,7 +89,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     checkUser();
 
     return () => subscription.unsubscribe();
-  }, [supabaseConfig]);
+  }, []);
 
   const toggleFollow = (teamName: string) => {
      setFollowedTeams(prev => {
@@ -98,10 +100,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const login = async (email: string, pass: string) => {
-    const supabase = getSupabase(supabaseConfig.url, supabaseConfig.anonKey);
+    const supabase = getSupabase();
     const isAdminAttempt = email === ADMIN_EMAIL;
 
-    // Case 1: Supabase is configured
+    // Case 1: Supabase is configured via Environment Variables
     if (supabase) {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
         if (error) {
@@ -110,9 +112,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return { success: true, isAdmin: isAdminAttempt };
     }
     
-    // Case 2: Supabase is NOT configured - Admin Fallback Login
+    // Case 2: Supabase is NOT configured - Admin Fallback Login for initial setup
     if (isAdminAttempt && pass === 'admin123') {
-        console.warn("Performing local fallback login for admin setup.");
+        console.warn("Performing local fallback login for admin setup. Configure Supabase ENV variables to enable real auth.");
         const adminProfile: User = {
             id: 'local-admin',
             email: ADMIN_EMAIL,
@@ -132,7 +134,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const register = async (data: Partial<User>) => {
-    const supabase = getSupabase(supabaseConfig.url, supabaseConfig.anonKey);
+    const supabase = getSupabase();
     if (!supabase) return { success: false, error: 'النظام غير مهيأ حالياً. يرجى مراجعة مسؤول الموقع.' };
     
     if (!data.email || !data.password) return { success: false, error: 'البريد الإلكتروني وكلمة المرور مطلوبان.' };
@@ -159,7 +161,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logout = async () => {
-    const supabase = getSupabase(supabaseConfig.url, supabaseConfig.anonKey);
+    const supabase = getSupabase();
     // Sign out from Supabase only if it's configured and the user isn't the local admin
     if (supabase && currentUser && currentUser.id !== 'local-admin') {
       await supabase.auth.signOut();

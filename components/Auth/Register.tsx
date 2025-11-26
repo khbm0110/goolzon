@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User as UserIcon, Mail, Lock, AtSign, Loader2, AlertCircle, Trophy, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useSettings } from '../../contexts/SettingsContext';
+// FIX: The useSettings hook does not provide supabaseConfig.
+// The correct way to check for Supabase configuration is by using the getSupabase service.
+import { getSupabase } from '../../services/supabaseClient';
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
   const { register } = useAuth();
-  const { supabaseConfig } = useSettings();
-  const isSupabaseConfigured = !!(supabaseConfig && supabaseConfig.url && supabaseConfig.anonKey);
+  const isSupabaseConfigured = !!getSupabase();
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');

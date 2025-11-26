@@ -40,11 +40,6 @@ export interface ApiConfig {
   };
 }
 
-export interface SupabaseConfig {
-  url: string;
-  anonKey: string;
-}
-
 export interface User {
   id: string;
   name: string;
