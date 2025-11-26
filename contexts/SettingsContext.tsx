@@ -127,10 +127,10 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
         api_config: restOfConfig
       })
       // FIX: Safely handle the promise response to prevent destructuring an undefined value, which causes a crash.
-      .then((response) => {
-        if (response?.error) {
-          console.error("Failed to save feature flags to DB:", response.error);
-          alert(`فشل حفظ الميزة: ${response.error.message}`);
+      .then(({ error } = {}) => {
+        if (error) {
+          console.error("Failed to save feature flags to DB:", error);
+          alert(`فشل حفظ الميزة: ${error.message}`);
           setFeatureFlags(oldFlags); // Revert on failure
         }
       });

@@ -28,6 +28,16 @@ export const useData = () => {
   return context;
 };
 
+// Helper to generate detailed error alerts
+const createErrorAlert = (error: any, operation: string): string => {
+    const isRlsError = error.code === '42501';
+    const detail = isRlsError
+        ? 'هذا على الأرجح بسبب مشكلة في صلاحيات الأمان (RLS). يرجى تشغيل "إصلاح شامل لصلاحيات الوصول" من لوحة التحكم -> الإعدادات.'
+        : `التفاصيل: ${error.details || 'لا توجد تفاصيل إضافية.'}`;
+    return `فشل ${operation}: ${error.message}\n\n${detail}`;
+};
+
+
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { apiConfig } = useSettings();
   const [articles, setArticles] = useState<Article[]>([]);
@@ -39,31 +49,20 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const addArticle = async (article: Article): Promise<boolean> => {
     const supabase = getSupabase(apiConfig.supabaseUrl, apiConfig.supabaseKey);
     if (!supabase) {
-        alert("Supabase is not configured. Article saved locally only.");
+        alert("لم يتم تكوين Supabase. سيتم حفظ المقال محلياً فقط (سيختفي عند تحديث الصفحة).");
         setArticles(prev => [article, ...prev]);
         return true;
     }
     
-    // Explicitly map to the database schema to prevent unknown columns
-    // This fixes the error where extra properties like 'hasNews' were sent.
     const articleForDb = {
-        id: article.id,
-        title: article.title,
-        summary: article.summary,
-        content: article.content,
-        imageUrl: article.imageUrl,
-        category: article.category,
-        date: article.date,
-        author: article.author,
-        views: article.views,
-        isBreaking: article.isBreaking ?? false,
-        videoEmbedId: article.videoEmbedId || null,
+        id: article.id, title: article.title, summary: article.summary, content: article.content,
+        imageUrl: article.imageUrl, category: article.category, date: article.date, author: article.author,
+        views: article.views, isBreaking: article.isBreaking ?? false, videoEmbedId: article.videoEmbedId || null,
     };
 
     const { error } = await supabase.from('articles').insert(articleForDb);
     if (error) {
-        console.error("Supabase add article error:", error);
-        alert(`Failed to save article: ${error.message}`);
+        alert(createErrorAlert(error, 'حفظ المقال'));
         return false;
     }
     setArticles(prev => [article, ...prev]);
@@ -71,55 +70,42 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const updateArticle = async (article: Article): Promise<boolean> => {
-     setArticles(prev => prev.map(a => a.id === article.id ? article : a));
-     
      const supabase = getSupabase(apiConfig.supabaseUrl, apiConfig.supabaseKey);
      if (!supabase) {
         console.warn("Supabase not configured. Article updated locally only.");
+        setArticles(prev => prev.map(a => a.id === article.id ? article : a));
         return true;
      }
 
      const articleForDb = {
-        id: article.id,
-        title: article.title,
-        summary: article.summary,
-        content: article.content,
-        imageUrl: article.imageUrl,
-        category: article.category,
-        date: article.date,
-        author: article.author,
-        views: article.views,
-        isBreaking: article.isBreaking ?? false,
-        videoEmbedId: article.videoEmbedId || null,
+        id: article.id, title: article.title, summary: article.summary, content: article.content,
+        imageUrl: article.imageUrl, category: article.category, date: article.date, author: article.author,
+        views: article.views, isBreaking: article.isBreaking ?? false, videoEmbedId: article.videoEmbedId || null,
     };
 
      const { error } = await supabase.from('articles').update(articleForDb).eq('id', article.id);
      if (error) {
-        console.error("Supabase update article error:", error);
-        alert(`Failed to update article: ${error.message}`);
+        alert(createErrorAlert(error, 'تحديث المقال'));
         return false;
      }
-
+     setArticles(prev => prev.map(a => a.id === article.id ? article : a));
      return true;
   }
 
   const deleteArticle = async (id: string): Promise<boolean> => {
-     setArticles(prev => prev.filter(a => a.id !== id));
-
      const supabase = getSupabase(apiConfig.supabaseUrl, apiConfig.supabaseKey);
      if (!supabase) {
         console.warn("Supabase not configured. Article deleted locally only.");
+        setArticles(prev => prev.filter(a => a.id !== id));
         return true;
      }
 
      const { error } = await supabase.from('articles').delete().eq('id', id);
      if (error) {
-        console.error("Supabase delete article error:", error);
-        alert(`Failed to delete article: ${error.message}`);
-        // Optionally revert local state
+        alert(createErrorAlert(error, 'حذف المقال'));
         return false;
      }
-
+     setArticles(prev => prev.filter(a => a.id !== id));
      return true;
   }
 
@@ -129,17 +115,13 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       const { squad, englishName, coverImage, fanCount, ...clubData } = club;
       const clubForDb = {
-          ...clubData,
-          "englishName": englishName,
-          "coverImage": coverImage,
-          "fanCount": fanCount,
+          ...clubData, "englishName": englishName, "coverImage": coverImage, "fanCount": fanCount,
       };
       
       const { error } = await supabase.from('clubs').insert(clubForDb);
       
       if (error) {
-          console.error("Supabase add club error:", error);
-          alert(`Failed to save club: ${error.message}`);
+          alert(createErrorAlert(error, 'إضافة النادي'));
           return false;
       }
       setClubs(prev => [...prev, club]);
@@ -150,21 +132,15 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const supabase = getSupabase(apiConfig.supabaseUrl, apiConfig.supabaseKey);
       if (!supabase) { alert("Supabase not configured."); return false; }
 
-      // We only update the club's metadata, not the squad in this operation
-      // Squad updates are handled via transferPlayer for now.
       const { squad, englishName, coverImage, fanCount, ...clubData } = club;
       const clubForDb = {
-          ...clubData,
-          "englishName": englishName,
-          "coverImage": coverImage,
-          "fanCount": fanCount,
+          ...clubData, "englishName": englishName, "coverImage": coverImage, "fanCount": fanCount,
       };
 
       const { error } = await supabase.from('clubs').update(clubForDb).eq('id', club.id);
       
       if (error) {
-          console.error("Supabase update club error:", error);
-          alert(`Failed to update club: ${error.message}`);
+          alert(createErrorAlert(error, 'تحديث النادي'));
           return false;
       }
       setClubs(prev => prev.map(c => c.id === club.id ? club : c));
@@ -178,8 +154,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const { error } = await supabase.from('clubs').delete().eq('id', id);
       
       if (error) {
-          console.error("Supabase delete club error:", error);
-          alert(`Failed to delete club: ${error.message}`);
+          alert(createErrorAlert(error, 'حذف النادي'));
           return false;
       }
       setClubs(prev => prev.filter(c => c.id !== id));
@@ -187,8 +162,6 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const transferPlayer = (playerId: string, sourceClubId: string, targetClubId: string, price: number) => {
-      // This is a local-only operation for now as there's no player table in Supabase yet.
-      // A full implementation would involve updating player records in a 'players' table.
       setClubs(prevClubs => {
           const newClubs = prevClubs.map(c => ({...c, squad: [...c.squad]}));
           const sourceClub = newClubs.find(c => c.id === sourceClubId);
@@ -213,7 +186,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               isBreaking: true,
           };
 
-          addArticle(transferArticle); // Add a news article about the transfer
+          addArticle(transferArticle);
           targetClub.squad.push(player);
           return newClubs;
       });
@@ -234,8 +207,6 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             if (clubsError) console.error("Supabase clubs error:", clubsError);
             
             setArticles(dbArticles || []);
-            // For now, we use local squad data as it's not in the DB yet.
-            // A production app would fetch players and join them.
             const clubsWithSquads = (dbClubs || []).map(dbClub => {
                 const localClub = CLUB_DATABASE[dbClub.id];
                 return { ...dbClub, squad: localClub ? localClub.squad : [] };
@@ -243,7 +214,6 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setClubs(clubsWithSquads);
         } else {
             console.warn("Supabase not configured. Application will run with no initial data.");
-            // Start with empty data if Supabase isn't configured, instead of mock data.
             setArticles([]);
             setClubs([]);
         }

@@ -699,24 +699,34 @@ const SettingsView: React.FC<{
                     </p>
                 </div>
                 <div className="p-6 space-y-4">
-                     <div>
-                        <h3 className="text-lg font-bold text-amber-400 mb-2">إصلاح سريع: خطأ "Could not find 'coverImage' column"</h3>
-                        <p className="text-sm text-slate-400 mb-3">
-                            إذا واجهت هذا الخطأ، قم بتشغيل الأمر التالي في محرر Supabase SQL لإضافة العمود المفقود بأمان.
-                        </p>
-                        <CodeBlock 
-                            code={`-- Adds the "coverImage" column if it doesn't already exist\nALTER TABLE public.clubs ADD COLUMN IF NOT EXISTS "coverImage" TEXT;`} 
-                        />
-                    </div>
                      <div className="text-sm text-red-400 bg-red-900/30 border border-red-800 p-4 rounded-lg">
                         <h3 className="text-lg font-bold text-red-300 mb-2 flex items-center gap-2">
-                            <AlertTriangle /> إصلاح خطأ "violates row-level security policy"
+                            <AlertTriangle /> إصلاح شامل لصلاحيات الوصول (RLS)
                         </h3>
                         <p className="text-sm text-red-200 mb-3">
-                            يحدث هذا الخطأ لأن سياسات الأمان تمنع إضافة البيانات. قم بتشغيل هذا الأمر للسماح بعمليات الإضافة (`INSERT`).
+                            إذا فشلت عمليات الحفظ (للمقالات، الأندية، الإعدادات)، فمن المحتمل أن تكون المشكلة في صلاحيات الوصول. قم بتشغيل هذا الكود الشامل مرة واحدة لإصلاح كل شيء.
                         </p>
                         <CodeBlock 
-                            code={`-- Allows anyone to insert into the clubs table. Safe to run multiple times.\nDROP POLICY IF EXISTS "Allow public insert access" ON public.clubs;\nCREATE POLICY "Allow public insert access" ON public.clubs FOR INSERT WITH CHECK (true);\n\n-- Allows anyone to insert into the articles table. Safe to run multiple times.\nDROP POLICY IF EXISTS "Allow public insert access" ON public.articles;\nCREATE POLICY "Allow public insert access" ON public.articles FOR INSERT WITH CHECK (true);`}
+                            code={`-- 1. ARTICLES TABLE
+ALTER TABLE public.articles ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public access for all on articles" ON public.articles;
+CREATE POLICY "Public access for all on articles" ON public.articles FOR ALL USING (true) WITH CHECK (true);
+
+-- 2. CLUBS TABLE
+ALTER TABLE public.clubs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public access for all on clubs" ON public.clubs;
+CREATE POLICY "Public access for all on clubs" ON public.clubs FOR ALL USING (true) WITH CHECK (true);
+
+-- 3. SETTINGS TABLE
+ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public access for all on settings" ON public.settings;
+CREATE POLICY "Public access for all on settings" ON public.settings FOR ALL USING (true) WITH CHECK (true);
+
+-- 4. USER PROFILES TABLE (for Dream Squad)
+ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public access for all on user_profiles" ON public.user_profiles;
+CREATE POLICY "Public access for all on user_profiles" ON public.user_profiles FOR ALL USING (true) WITH CHECK (true);
+`}
                         />
                     </div>
                     <div className="text-sm text-amber-400 bg-amber-900/30 border border-amber-800 p-4 rounded-lg flex items-start gap-3">
@@ -729,40 +739,8 @@ const SettingsView: React.FC<{
                         </div>
                     </div>
                     <div>
-                        <h3 className="text-lg font-bold text-slate-200 mt-4 pt-4 border-t border-slate-800 mb-2">مخططات الجدول الكاملة</h3>
+                        <h3 className="text-lg font-bold text-slate-200 mt-4 pt-4 border-t border-slate-800 mb-2">مخططات الجدول الكاملة (للمرجعية)</h3>
                         <div className="space-y-4">
-                             <CodeBlock 
-                                title="جدول `settings` (مهم)"
-                                code={`-- Creates the settings table and its security policies. Safe to run multiple times.
-
--- Create table if it doesn't exist
-CREATE TABLE IF NOT EXISTS public.settings (
-  id INT PRIMARY KEY,
-  feature_flags JSONB,
-  api_config JSONB,
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Enable Row Level Security
-ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
-
--- Drop old policies to avoid conflicts
-DROP POLICY IF EXISTS "Allow public read access" ON public.settings;
-DROP POLICY IF EXISTS "Allow update for authenticated users" ON public.settings;
-DROP POLICY IF EXISTS "Allow insert for authenticated users" ON public.settings;
-DROP POLICY IF EXISTS "Public access for all" ON public.settings;
-
--- Create a single policy that allows anyone to read, write, and update.
--- This is necessary because the admin panel does not use Supabase Auth.
-CREATE POLICY "Public access for all" ON public.settings
-FOR ALL
-USING (true)
-WITH CHECK (true);
-
--- Insert the initial settings row (id=1) if it doesn't exist
-INSERT INTO public.settings(id, feature_flags, api_config) VALUES (1, '{}', '{}')
-ON CONFLICT (id) DO NOTHING;`}
-                            />
                             <CodeBlock 
                                 title="جدول `articles`"
                                 code={`CREATE TABLE IF NOT EXISTS public.articles (\n  id TEXT PRIMARY KEY,\n  title TEXT NOT NULL,\n  summary TEXT,\n  content TEXT,\n  "imageUrl" TEXT,\n  category TEXT,\n  date TIMESTAMPTZ DEFAULT NOW(),\n  author TEXT,\n  views INT DEFAULT 0,\n  "isBreaking" BOOLEAN DEFAULT FALSE,\n  "videoEmbedId" TEXT\n);`}
@@ -773,11 +751,11 @@ ON CONFLICT (id) DO NOTHING;`}
                             />
                              <CodeBlock 
                                 title="جدول `user_profiles` (لتشكيلة الأحلام)"
-                                code={`-- يخزن تشكيلة أحلام كل مستخدم. من الآمن تشغيل هذا النص عدة مرات.\n\n-- إنشاء الجدول\nCREATE TABLE IF NOT EXISTS public.user_profiles (\n  id TEXT PRIMARY KEY, -- يطابق user ID من التطبيق\n  dream_squad JSONB,\n  updated_at TIMESTAMPTZ DEFAULT NOW()\n);\n\n-- تفعيل أمان مستوى الصف\nALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;\n\n-- حذف السياسات القديمة وإعادة إنشائها\nDROP POLICY IF EXISTS "Public access for all" ON public.user_profiles;\nCREATE POLICY "Public access for all" ON public.user_profiles\nFOR ALL -- يسمح بالقراءة، الإضافة، التحديث، الحذف\nUSING (true)\nWITH CHECK (true);`}
+                                code={`CREATE TABLE IF NOT EXISTS public.user_profiles (\n  id TEXT PRIMARY KEY,\n  dream_squad JSONB,\n  updated_at TIMESTAMPTZ DEFAULT NOW()\n);`}
                             />
-                             <CodeBlock 
-                                title="تفعيل الوصول للقراءة للعامة (RLS)"
-                                code={`-- يجعل جداول المقالات والأندية قابلة للقراءة للعامة. من الآمن تشغيل هذا النص البرمجي عدة مرات.\n\n-- 1. تمكين أمان مستوى الصف (RLS)\nALTER TABLE public.articles ENABLE ROW LEVEL SECURITY;\nALTER TABLE public.clubs ENABLE ROW LEVEL SECURITY;\n\n-- 2. حذف السياسة القديمة إذا كانت موجودة لتجنب الأخطاء\nDROP POLICY IF EXISTS "Allow public read access" ON public.articles;\nDROP POLICY IF EXISTS "Allow public read access" ON public.clubs;\n\n-- 3. إنشاء سياسة للسماح للجميع بالقراءة (SELECT)\nCREATE POLICY "Allow public read access" ON public.articles FOR SELECT USING (true);\nCREATE POLICY "Allow public read access" ON public.clubs FOR SELECT USING (true);`}
+                            <CodeBlock 
+                                title="جدول `settings`"
+                                code={`CREATE TABLE IF NOT EXISTS public.settings (\n  id INT PRIMARY KEY DEFAULT 1,\n  feature_flags JSONB,\n  api_config JSONB,\n  updated_at TIMESTAMPTZ DEFAULT NOW()\n);\n-- Insert the initial row if it doesn't exist\nINSERT INTO public.settings(id) VALUES (1) ON CONFLICT (id) DO NOTHING;`}
                             />
                         </div>
                     </div>
