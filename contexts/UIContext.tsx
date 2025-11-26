@@ -5,7 +5,7 @@ import { useSettings } from './SettingsContext';
 import { useData } from './DataContext';
 import { generateArticleContent } from '../services/geminiService';
 
-const AUTOPILOT_INTERVAL = 300000;
+const AUTOPILOT_INTERVAL = 300000; // 5 Minutes
 
 interface UIContextType {
   selectedMatch: Match | null;
@@ -29,7 +29,8 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { articles, addArticle } = useData();
   
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
-  const [isAutopilot, setIsAutopilot] = useState(featureFlags.autopilot);
+  // Local state for "Pause/Resume" - defaults to true if feature is enabled
+  const [isAutopilot, setIsAutopilot] = useState(true);
   const [isAIGenerating, setIsAIGenerating] = useState(false);
   const [lastAIUpdate, setLastAIUpdate] = useState<Date | null>(null);
 
@@ -39,47 +40,89 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     setIsAutopilot(prev => !prev);
   };
 
+  // Effect to handle Autopilot Logic
   useEffect(() => {
-    if (!isAutopilot || !featureFlags.autopilot) {
-        if (autopilotIntervalRef.current) clearInterval(autopilotIntervalRef.current);
+    // 1. Check if Master Switch (Admin) is OFF OR Local Switch (Header) is OFF
+    if (!featureFlags.autopilot || !isAutopilot) {
+        if (autopilotIntervalRef.current) {
+            console.log("AI Autopilot: Stopped (Disabled by Admin or User)");
+            clearInterval(autopilotIntervalRef.current);
+            autopilotIntervalRef.current = null;
+        }
         return;
     }
 
+    // 2. Check for API Key
+    if (!apiConfig.keys.gemini) {
+        console.warn("AI Autopilot: Paused (No Gemini API Key provided in Admin Dashboard)");
+        return;
+    }
+
+    console.log("AI Autopilot: Active and Running...");
+
     const runAutopilot = async () => {
+       if (isAIGenerating) return; // Prevent overlapping runs
+
        setIsAIGenerating(true);
        try {
            const trendingTopics = [
              'الدوري السعودي', 'الهلال', 'النصر', 'كريستيانو رونالدو', 
-             'الدوري الإماراتي', 'العين', 'السد القطري', 'المنتخب السعودي'
+             'الدوري الإماراتي', 'العين', 'السد القطري', 'المنتخب السعودي',
+             'دوري أبطال آسيا', 'انتقالات اللاعبين الخليج', 'الاتحاد السعودي'
            ];
            const randomTopic = trendingTopics[Math.floor(Math.random() * trendingTopics.length)];
            
+           console.log(`AI Autopilot: Generating content about ${randomTopic}...`);
+           
            const newArticleContent = await generateArticleContent(randomTopic, apiConfig.keys.gemini);
-           if (newArticleContent && !articles.some(a => a.title === newArticleContent.title)) {
-             const categoryValues = Object.values(Category) as string[];
-             const safeCategory = categoryValues.includes(newArticleContent.category)
-               ? newArticleContent.category as Category
-               : Category.SAUDI;
+           
+           if (newArticleContent) {
+             // Check for duplicates
+             const isDuplicate = articles.some(a => 
+                 a.title === newArticleContent.title || 
+                 (newArticleContent.title.includes(a.title.substring(0, 20)))
+             );
 
-             const newArticle: Article = {
-                 id: Date.now().toString(),
-                 ...newArticleContent,
-                 category: safeCategory,
-                 date: new Date().toISOString(),
-                 views: 0,
-                 author: 'AI Reporter'
-             };
-             await addArticle(newArticle);
+             if (!isDuplicate) {
+                 const categoryValues = Object.values(Category) as string[];
+                 const safeCategory = categoryValues.includes(newArticleContent.category)
+                   ? newArticleContent.category as Category
+                   : Category.SAUDI;
+
+                 const newArticle: Article = {
+                     id: `ai-${Date.now()}`,
+                     ...newArticleContent,
+                     category: safeCategory,
+                     date: new Date().toISOString(),
+                     views: 1, // Start with 1 view
+                     author: 'AI Reporter 🤖',
+                     isBreaking: newArticleContent.hasNews // Use AI determination for breaking news
+                 };
+                 
+                 const success = await addArticle(newArticle);
+                 if (success) {
+                    console.log("AI Autopilot: Article published successfully!");
+                    setLastAIUpdate(new Date());
+                 }
+             } else {
+                 console.log("AI Autopilot: Duplicate content detected, skipping.");
+             }
            }
        } catch (e) {
            console.error("Autopilot Error:", e);
        } finally {
            setIsAIGenerating(false);
-           setLastAIUpdate(new Date());
        }
     };
     
+    // Run immediately on first enable (if not too soon)
+    if (!lastAIUpdate) {
+        runAutopilot();
+    }
+    
+    // Set Interval
     autopilotIntervalRef.current = setInterval(runAutopilot, AUTOPILOT_INTERVAL);
+    
     return () => {
         if (autopilotIntervalRef.current) clearInterval(autopilotIntervalRef.current);
     };

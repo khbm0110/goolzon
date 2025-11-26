@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { 
   LayoutDashboard, 
@@ -260,7 +261,7 @@ const SettingsView: React.FC<{
         { key: 'mercato', label: 'سوق الانتقالات', desc: 'نظام محاكاة شراء وبيع اللاعبين وتوليد أخبار الانتقالات.', icon: ArrowRightLeft },
         { key: 'videos', label: 'مكتبة الفيديو', desc: 'قسم خاص لعرض ملخصات المباريات والمحتوى المرئي.', icon: FilePlus },
         { key: 'analysis', label: 'التحليلات والمقالات', desc: 'قسم المقالات التحليلية الطويلة (بخلاف الأخبار العاجلة).', icon: Search },
-        { key: 'autopilot', label: 'AI Auto-Pilot', desc: 'نظام الذكاء الاصطناعي لتوليد الأخبار تلقائياً.', icon: Wand2 },
+        { key: 'autopilot', label: 'AI Auto-Pilot 🤖', desc: 'توليد أخبار تلقائي كل 5 دقائق. (يتطلب مفتاح Gemini API صالحاً).', icon: Wand2 },
     ];
 
     const apiKeysList = [
@@ -541,10 +542,12 @@ const SettingsView: React.FC<{
     );
 };
 
+// ... ClubsManagerView and MercatoView (omitted for brevity, assume unchanged unless specified) ...
 const MercatoView: React.FC<{
     clubs: ClubProfile[];
     onTransfer: (pid: string, sid: string, tid: string, price: number) => void;
 }> = ({ clubs, onTransfer }) => {
+    // ... Existing implementation
     const [selectedClubId, setSelectedClubId] = useState<string>(clubs[0]?.id || '');
     const [searchQuery, setSearchQuery] = useState('');
     const [transferModal, setTransferModal] = useState<{player: Player, sourceClub: ClubProfile} | null>(null);
@@ -704,6 +707,7 @@ const ClubsManagerView: React.FC<{
   onUpdate: (c: ClubProfile) => Promise<boolean>;
   onDelete: (id: string) => Promise<boolean>;
 }> = ({ clubs, onAdd, onUpdate, onDelete }) => {
+    // ... Existing implementation ...
   const [editingClub, setEditingClub] = useState<Partial<ClubProfile> | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
