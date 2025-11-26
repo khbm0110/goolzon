@@ -4,27 +4,28 @@ let supabase: SupabaseClient | null = null;
 let currentUrl: string | undefined;
 let currentKey: string | undefined;
 
-// This function now ensures that if credentials change, a new client is created.
-// This prevents stale clients from being used after settings are updated or after a page refresh.
+// This function ensures that if credentials change, a new client is created,
+// preventing stale clients from being used after settings are updated.
 export const getSupabase = (url?: string, key?: string): SupabaseClient | null => {
   // Condition to create a new client:
-  // 1. We have a URL and a Key.
-  // 2. Either there's no existing client, OR the provided URL/Key are different from the current ones.
+  // 1. We have a valid URL and Key.
+  // 2. EITHER there's no existing client, OR the provided URL/Key are different from the current ones.
   if (url && key && (!supabase || url !== currentUrl || key !== currentKey)) {
     try {
-      console.log("Creating/Re-creating Supabase client...");
+      console.log("Creating/Re-creating Supabase client instance...");
       supabase = createClient(url, key);
       currentUrl = url;
       currentKey = key;
     } catch (error) {
       console.error("Error creating Supabase client:", error);
-      // Reset on failure
+      // Reset on failure to prevent using a faulty client.
       supabase = null;
       currentUrl = undefined;
       currentKey = undefined;
     }
   } else if (!url || !key) {
-    // If no credentials are provided, ensure we don't use a stale client.
+    // If no credentials are provided (e.g., cleared from settings),
+    // ensure we disconnect and don't use a stale client.
     if (supabase) {
         console.log("Disconnecting Supabase client due to missing credentials.");
     }

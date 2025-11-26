@@ -728,7 +728,35 @@ const SettingsView: React.FC<{
                         <div className="space-y-4">
                              <CodeBlock 
                                 title="جدول `settings` (مهم)"
-                                code={`-- ينشئ جدول الإعدادات وسياسات الأمان الخاصة به. من الآمن تشغيل هذا النص عدة مرات.\n\n-- إنشاء الجدول فقط إذا لم يكن موجودًا\nCREATE TABLE IF NOT EXISTS public.settings (\n  id INT PRIMARY KEY,\n  feature_flags JSONB,\n  api_config JSONB,\n  updated_at TIMESTAMPTZ DEFAULT NOW()\n);\n\n-- تفعيل أمان مستوى الصف\nALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;\n\n-- حذف السياسات القديمة وإعادة إنشائها لضمان عدم حدوث أخطاء\nDROP POLICY IF EXISTS "Allow public read access" ON public.settings;\nCREATE POLICY "Allow public read access" ON public.settings FOR SELECT USING (true);\n\nDROP POLICY IF EXISTS "Allow update for authenticated users" ON public.settings;\nCREATE POLICY "Allow update for authenticated users" ON public.settings FOR UPDATE USING (auth.role() = 'authenticated');\n\nDROP POLICY IF EXISTS "Allow insert for authenticated users" ON public.settings;\nCREATE POLICY "Allow insert for authenticated users" ON public.settings FOR INSERT WITH CHECK (auth.role() = 'authenticated');\n\n-- إدخال صف الإعدادات الأولي (id=1) إذا لم يكن موجودًا\nINSERT INTO public.settings(id, feature_flags, api_config) VALUES (1, '{}', '{}')\nON CONFLICT (id) DO NOTHING;`}
+                                code={`-- Creates the settings table and its security policies. Safe to run multiple times.
+
+-- Create table if it doesn't exist
+CREATE TABLE IF NOT EXISTS public.settings (
+  id INT PRIMARY KEY,
+  feature_flags JSONB,
+  api_config JSONB,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable Row Level Security
+ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
+
+-- Drop old policies to avoid conflicts
+DROP POLICY IF EXISTS "Allow public read access" ON public.settings;
+DROP POLICY IF EXISTS "Allow update for authenticated users" ON public.settings;
+DROP POLICY IF EXISTS "Allow insert for authenticated users" ON public.settings;
+DROP POLICY IF EXISTS "Public access for all" ON public.settings;
+
+-- Create a single policy that allows anyone to read, write, and update.
+-- This is necessary because the admin panel does not use Supabase Auth.
+CREATE POLICY "Public access for all" ON public.settings
+FOR ALL
+USING (true)
+WITH CHECK (true);
+
+-- Insert the initial settings row (id=1) if it doesn't exist
+INSERT INTO public.settings(id, feature_flags, api_config) VALUES (1, '{}', '{}')
+ON CONFLICT (id) DO NOTHING;`}
                             />
                             <CodeBlock 
                                 title="جدول `articles`"
