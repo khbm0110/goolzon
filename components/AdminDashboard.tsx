@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   Menu, 
@@ -30,7 +30,10 @@ import {
   Users,
   Loader2,
   UploadCloud,
-  AlertTriangle
+  AlertTriangle,
+  Eye,
+  Link as LinkIcon,
+  Activity
 } from 'lucide-react';
 import { Article, Category, ClubProfile, Player, PlayerStats, FeatureFlags, ApiConfig } from '../types';
 import { useData } from '../contexts/DataContext';
@@ -39,6 +42,221 @@ import TeamLogo from './TeamLogo';
 import { getSupabase } from '../services/supabaseClient';
 import { INITIAL_ARTICLES, CLUB_DATABASE } from '../constants';
 import ArticleEditor from './ArticleEditor';
+import { Link } from 'react-router-dom';
+
+// --- Reusable Hook for Local Storage ---
+const useLocalStorage = <T,>(key: string, initialValue: T): [T, (value: T) => void] => {
+    const [storedValue, setStoredValue] = useState<T>(() => {
+        try {
+            const item = window.localStorage.getItem(key);
+            return item ? JSON.parse(item) : initialValue;
+        } catch (error) {
+            console.log(error);
+            return initialValue;
+        }
+    });
+
+    const setValue = (value: T) => {
+        try {
+            const valueToStore = value instanceof Function ? value(storedValue) : value;
+            setStoredValue(valueToStore);
+            window.localStorage.setItem(key, JSON.stringify(valueToStore));
+        } catch (error) {
+            console.log(error);
+        }
+    };
+
+    return [storedValue, setValue];
+};
+
+
+// --- Dashboard View Components ---
+const StatCard: React.FC<{ icon: React.ElementType, title: string, value: string | number, color: string }> = ({ icon: Icon, title, value, color }) => (
+    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex items-start justify-between">
+        <div>
+            <p className="text-sm text-slate-400 font-bold mb-1">{title}</p>
+            <p className="text-3xl font-black text-white">{value}</p>
+        </div>
+        <div className={`p-3 rounded-lg bg-${color}/10 text-${color}`}>
+            <Icon size={24} />
+        </div>
+    </div>
+);
+
+const DashboardView: React.FC<{
+    onNavigate: (view: any) => void;
+    onEditArticle: (article: Article) => void;
+}> = ({ onNavigate, onEditArticle }) => {
+    const { articles, clubs } = useData();
+    const totalPlayers = clubs.reduce((sum, club) => sum + (club.squad?.length || 0), 0);
+    const totalViews = articles.reduce((sum, article) => sum + article.views, 0);
+
+    return (
+        <div className="animate-in fade-in duration-300 space-y-8">
+            <div>
+                <h1 className="text-3xl font-black text-white mb-2">لوحة القيادة</h1>
+                <p className="text-slate-400">نظرة عامة على أداء موقعك.</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatCard icon={FilePlus} title="إجمالي المقالات" value={articles.length} color="primary" />
+                <StatCard icon={Eye} title="إجمالي المشاهدات" value={totalViews.toLocaleString()} color="blue-500" />
+                <StatCard icon={Shield} title="الأندية المسجلة" value={clubs.length} color="amber-500" />
+                <StatCard icon={Users} title="إجمالي اللاعبين" value={totalPlayers} color="indigo-500" />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl">
+                    <div className="p-4 border-b border-slate-800">
+                        <h3 className="font-bold text-white flex items-center gap-2"><Activity size={18}/>آخر النشاطات</h3>
+                    </div>
+                    <div className="divide-y divide-slate-800">
+                        {articles.slice(0, 5).map(article => (
+                            <div key={article.id} className="p-4 flex justify-between items-center hover:bg-slate-800/50">
+                                <div>
+                                    <span className="text-xs bg-slate-800 px-2 py-1 rounded text-primary">{article.category}</span>
+                                    <p className="font-bold text-slate-200 mt-1">{article.title}</p>
+                                    <p className="text-xs text-slate-500">{article.author} • {new Date(article.date).toLocaleDateString('ar-SA')}</p>
+                                </div>
+                                <button onClick={() => onEditArticle(article)} className="p-2 text-slate-500 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors">
+                                    <Edit size={16} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                <div className="space-y-6">
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                         <h3 className="font-bold text-white mb-4">إجراءات سريعة</h3>
+                         <div className="space-y-3">
+                             <button onClick={() => onNavigate('EDITOR')} className="w-full flex items-center gap-3 p-3 bg-slate-800 hover:bg-slate-700 rounded-lg text-left text-white font-bold transition-colors">
+                                <FilePlus className="text-primary"/> إضافة مقال جديد
+                             </button>
+                             <button onClick={() => onNavigate('CLUBS')} className="w-full flex items-center gap-3 p-3 bg-slate-800 hover:bg-slate-700 rounded-lg text-left text-white font-bold transition-colors">
+                                <Shield className="text-amber-500"/> إدارة الأندية
+                             </button>
+                             <Link to="/" target="_blank" className="w-full flex items-center gap-3 p-3 bg-slate-800 hover:bg-slate-700 rounded-lg text-left text-white font-bold transition-colors">
+                                <LinkIcon className="text-indigo-500"/> عرض الموقع المباشر
+                             </Link>
+                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+// --- SEO View ---
+interface SeoSettings {
+    title: string;
+    description: string;
+    keywords: string;
+}
+const SEOView: React.FC = () => {
+    const [settings, setSettings] = useLocalStorage<SeoSettings>('gs_seo_settings', {
+        title: 'Gulf Sports | الكرة الخليجية',
+        description: 'المصدر الأول لأخبار الرياضة الخليجية. تغطية شاملة للدوري السعودي، الإماراتي، القطري، الكويتي، العماني، والبحريني مع نتائج مباشرة وتحليلات وفيديو.',
+        keywords: 'كرة قدم, الخليج, السعودية, الإمارات, قطر, الكويت, عمان, البحرين, رياضة'
+    });
+     const [localSettings, setLocalSettings] = useState(settings);
+
+    const handleSave = (e: React.FormEvent) => {
+        e.preventDefault();
+        setSettings(localSettings);
+        alert('تم حفظ إعدادات SEO بنجاح!');
+    };
+
+    return (
+        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
+            <div className="p-6 border-b border-slate-800 bg-slate-950">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2"><Globe className="text-primary" /> إعدادات SEO</h2>
+                <p className="text-slate-400 text-sm mt-2">تحكم في كيفية ظهور موقعك في محركات البحث مثل جوجل.</p>
+            </div>
+            <form onSubmit={handleSave} className="p-6 space-y-6">
+                <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-300">عنوان الموقع (Title Tag)</label>
+                    <input value={localSettings.title} onChange={e => setLocalSettings({...localSettings, title: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-primary outline-none" />
+                </div>
+                <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-300">الوصف التعريفي (Meta Description)</label>
+                    <textarea value={localSettings.description} onChange={e => setLocalSettings({...localSettings, description: e.target.value})} rows={4} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-primary outline-none" />
+                </div>
+                 <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-300">الكلمات المفتاحية (Meta Keywords)</label>
+                    <input value={localSettings.keywords} onChange={e => setLocalSettings({...localSettings, keywords: e.target.value})} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-primary outline-none" placeholder="كلمة, أخرى, فاصلة" />
+                </div>
+                <div className="pt-6 border-t border-slate-800 flex justify-end">
+                    <button type="submit" className="px-8 py-3 rounded-xl bg-primary text-slate-900 font-black hover:bg-emerald-400 transition-colors flex items-center gap-2">
+                        <Save size={18} /> حفظ الإعدادات
+                    </button>
+                </div>
+            </form>
+        </div>
+    );
+};
+
+// --- Ads View ---
+interface AdSettings {
+    enabled: boolean;
+    headerCode: string;
+    articleCode: string;
+    sidebarCode: string;
+}
+const AdsView: React.FC = () => {
+    const [settings, setSettings] = useLocalStorage<AdSettings>('gs_ad_settings', {
+        enabled: false, headerCode: '', articleCode: '', sidebarCode: ''
+    });
+    const [localSettings, setLocalSettings] = useState(settings);
+
+    const handleSave = (e: React.FormEvent) => {
+        e.preventDefault();
+        setSettings(localSettings);
+        alert('تم حفظ إعدادات الإعلانات بنجاح!');
+    };
+
+    return (
+        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
+            <div className="p-6 border-b border-slate-800 bg-slate-950">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2"><DollarSign className="text-primary" /> إدارة الإعلانات</h2>
+                <p className="text-slate-400 text-sm mt-2">ضع أكواد الإعلانات من منصتك (مثل Google AdSense) هنا.</p>
+            </div>
+            <form onSubmit={handleSave} className="p-6 space-y-6">
+                <div className="flex items-center gap-4 bg-slate-950 p-4 rounded-xl border border-slate-800">
+                    <button type="button" onClick={() => setLocalSettings({...localSettings, enabled: !localSettings.enabled})} className={`transition-colors ${localSettings.enabled ? 'text-primary' : 'text-slate-500'}`}>
+                        {localSettings.enabled ? <ToggleRight size={32} /> : <ToggleLeft size={32} />}
+                    </button>
+                    <div>
+                        <h3 className="font-bold text-white">الحالة العامة للإعلانات</h3>
+                        <p className="text-xs text-slate-400">
+                            {localSettings.enabled ? 'الإعلانات مفعلة وستظهر في الموقع.' : 'الإعلانات معطلة حالياً.'}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-300">كود بانر الهيدر (728x90)</label>
+                    <textarea value={localSettings.headerCode} onChange={e => setLocalSettings({...localSettings, headerCode: e.target.value})} rows={4} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-primary outline-none font-mono" placeholder="<script>...</script>" />
+                </div>
+                 <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-300">كود إعلان داخل المقال (Responsive)</label>
+                    <textarea value={localSettings.articleCode} onChange={e => setLocalSettings({...localSettings, articleCode: e.target.value})} rows={4} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-primary outline-none font-mono" placeholder="<ins>...</ins>" />
+                </div>
+                 <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-300">كود إعلان الشريط الجانبي (300x250)</label>
+                    <textarea value={localSettings.sidebarCode} onChange={e => setLocalSettings({...localSettings, sidebarCode: e.target.value})} rows={4} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:border-primary outline-none font-mono" />
+                </div>
+
+                <div className="pt-6 border-t border-slate-800 flex justify-end">
+                    <button type="submit" className="px-8 py-3 rounded-xl bg-primary text-slate-900 font-black hover:bg-emerald-400 transition-colors flex items-center gap-2">
+                        <Save size={18} /> حفظ الإعدادات
+                    </button>
+                </div>
+            </form>
+        </div>
+    );
+};
+
+// --- Main Admin Dashboard Component ---
 
 const ContentListView: React.FC<{
     articles: Article[];
@@ -99,16 +317,7 @@ const AdminDashboard: React.FC = () => {
     featureFlags, setFeatureFlag, apiConfig, setApiConfig 
   } = useSettings();
   
-  // Editor State
-  const [editorData, setEditorData] = useState<Partial<Article>>({
-    title: '',
-    summary: '',
-    content: '',
-    imageUrl: '',
-    category: Category.SAUDI,
-    author: 'محرر Gulf Sports',
-    videoEmbedId: ''
-  });
+  const [editorData, setEditorData] = useState<Partial<Article>>({});
   const [editorMode, setEditorMode] = useState<'NEW' | 'EDIT'>('NEW');
 
   const handleEditClick = (article: Article) => {
@@ -125,13 +334,8 @@ const AdminDashboard: React.FC = () => {
 
   const handleNewClick = () => {
     setEditorData({
-      title: '',
-      summary: '',
-      content: '',
-      imageUrl: '',
-      category: Category.SAUDI,
-      author: 'محرر Gulf Sports',
-      videoEmbedId: ''
+      title: '', summary: '', content: '', imageUrl: '',
+      category: Category.SAUDI, author: 'محرر Gulf Sports', videoEmbedId: ''
     });
     setEditorMode('NEW');
     setActiveView('EDITOR');
@@ -142,10 +346,8 @@ const AdminDashboard: React.FC = () => {
     if (editorMode === 'NEW') {
         const newArticle: Article = {
             ...articleData,
-            id: `usr-${Date.now()}`,
-            date: new Date().toISOString(),
-            views: 0,
-            isBreaking: articleData.isBreaking || false,
+            id: `usr-${Date.now()}`, date: new Date().toISOString(),
+            views: 0, isBreaking: articleData.isBreaking || false,
             author: articleData.author || 'محرر Gulf Sports',
         };
         success = await addArticle(newArticle);
@@ -161,7 +363,7 @@ const AdminDashboard: React.FC = () => {
 
   const navItems = [
     { id: 'DASHBOARD', label: 'لوحة القيادة', icon: LayoutDashboard },
-    { id: 'EDITOR', label: editorMode === 'EDIT' ? 'تعديل مقال' : 'إضافة مقال', icon: FilePlus },
+    { id: 'EDITOR', label: 'إضافة مقال', icon: FilePlus },
     { id: 'LIST', label: 'إدارة المحتوى', icon: List },
     { id: 'CLUBS', label: 'إدارة الأندية', icon: Shield, hidden: !featureFlags.clubs },
     { id: 'MERCATO', label: 'سوق الانتقالات', icon: ArrowRightLeft, hidden: !featureFlags.mercato },
@@ -199,12 +401,12 @@ const AdminDashboard: React.FC = () => {
            ))}
         </nav>
         <div className="p-4 border-t border-slate-800">
-           {isSidebarOpen && <div className="text-xs text-slate-600 text-center">Gulf Sports CMS v1.2</div>}
+           {isSidebarOpen && <div className="text-xs text-slate-600 text-center">Gulf Sports CMS v1.3</div>}
         </div>
       </aside>
 
       <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'mr-64' : 'mr-20'} p-6`}>
-        {activeView === 'DASHBOARD' && <div className="text-white text-center p-10 bg-slate-900 rounded-xl border border-slate-800">مرحباً بك في لوحة التحكم</div>}
+        {activeView === 'DASHBOARD' && <DashboardView onNavigate={setActiveView} onEditArticle={handleEditClick} />}
         {activeView === 'EDITOR' && (
             <ArticleEditor 
                 initialData={editorData}
@@ -220,6 +422,8 @@ const AdminDashboard: React.FC = () => {
                 onDelete={handleDeleteArticle} 
             />
         )}
+         {activeView === 'SEO' && <SEOView />}
+         {activeView === 'ADS' && <AdsView />}
         
         {activeView === 'CLUBS' && featureFlags.clubs && (
            <ClubsManagerView 
@@ -632,16 +836,13 @@ const SettingsView: React.FC<{
     );
 };
 
-// ... ClubsManagerView and MercatoView (omitted for brevity, assume unchanged unless specified) ...
 const MercatoView: React.FC<{
     clubs: ClubProfile[];
     onTransfer: (pid: string, sid: string, tid: string, price: number) => void;
 }> = ({ clubs, onTransfer }) => {
-    // ... Existing implementation
     const [selectedClubId, setSelectedClubId] = useState<string>(clubs[0]?.id || '');
     const [searchQuery, setSearchQuery] = useState('');
     const [transferModal, setTransferModal] = useState<{player: Player, sourceClub: ClubProfile} | null>(null);
-    const [targetClubId, setTargetClubId] = useState('');
     const [transferPrice, setTransferPrice] = useState(10);
 
     const activeClub = clubs.find(c => c.id === selectedClubId);
@@ -797,7 +998,6 @@ const ClubsManagerView: React.FC<{
   onUpdate: (c: ClubProfile) => Promise<boolean>;
   onDelete: (id: string) => Promise<boolean>;
 }> = ({ clubs, onAdd, onUpdate, onDelete }) => {
-    // ... Existing implementation ...
   const [editingClub, setEditingClub] = useState<Partial<ClubProfile> | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
