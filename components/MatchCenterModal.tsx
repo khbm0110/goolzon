@@ -6,8 +6,8 @@ import { Match, MatchDetails, MatchEvent } from '../types';
 import TeamLogo from './TeamLogo';
 import { fetchFixtureDetails } from '../services/apiFootball';
 
-// FIX: Cast `import.meta` to `any` to resolve TypeScript error about missing 'env' property.
-const API_FOOTBALL_KEY = (import.meta as any).env.VITE_APIFOOTBALL_KEY;
+// Environment variables are read from `process.env` for broader compatibility.
+const API_FOOTBALL_KEY = process.env.VITE_APIFOOTBALL_KEY;
 
 interface MatchCenterModalProps {
   match: Match | null;

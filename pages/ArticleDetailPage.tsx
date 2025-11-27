@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
@@ -60,7 +61,7 @@ const ArticleDetailPage: React.FC = () => {
     ];
 
     return (
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <div className="container mx-auto px-4 py-8 max-w-4xl text-right">
             <div className="mb-6">
                 <span className="inline-block px-3 py-1 rounded bg-slate-800 text-primary font-bold text-xs mb-3 border border-slate-700">{article.category}</span>
                 <h1 className="text-3xl md:text-5xl font-black text-white mt-2 leading-tight lg:leading-tight">{article.title}</h1>
@@ -71,7 +72,7 @@ const ArticleDetailPage: React.FC = () => {
             </div>
             
             {article.category === Category.VIDEO && article.videoEmbedId ? (
-                 <div className="aspect-video w-full rounded-xl overflow-hidden mb-8 bg-black shadow-2xl border border-slate-800">
+                 <div className="aspect-video w-full max-w-3xl mx-auto rounded-xl overflow-hidden mb-8 bg-black shadow-2xl border border-slate-800">
                     <iframe 
                         className="w-full h-full"
                         src={`https://www.youtube.com/embed/${article.videoEmbedId}`} 
@@ -80,13 +81,13 @@ const ArticleDetailPage: React.FC = () => {
                     ></iframe>
                  </div>
             ) : (
-                <div className="w-full h-[300px] md:h-[500px] rounded-xl overflow-hidden mb-8 bg-slate-800 shadow-2xl relative">
+                <div className="w-full max-w-3xl mx-auto h-[300px] md:h-[500px] rounded-xl overflow-hidden mb-8 bg-slate-800 shadow-2xl relative">
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent opacity-50"></div>
                     <img src={article.imageUrl} alt={article.title} className="w-full h-full object-cover" />
                 </div>
             )}
             
-            <div className="prose prose-invert prose-lg max-w-none text-slate-300 leading-relaxed font-sans">
+            <div dir="rtl" className="prose prose-invert prose-lg max-w-none text-slate-300 leading-relaxed font-sans text-right">
                 <p className="text-xl font-bold text-white mb-8 leading-9 border-r-4 border-primary pr-6 bg-slate-900/30 py-4 rounded-r">{article.summary}</p>
                 <div dangerouslySetInnerHTML={{__html: article.content.replace(/\n/g, '<br/>')}} />
             </div>

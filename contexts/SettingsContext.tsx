@@ -7,7 +7,7 @@ const INITIAL_FLAGS: FeatureFlags = {
     mercato: true,
     videos: true,
     analysis: true,
-    autopilot: true
+    autopilot: false
 };
 
 const INITIAL_API_CONFIG: ApiConfig = {

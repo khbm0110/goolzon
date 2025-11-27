@@ -5,8 +5,8 @@ import { fetchLiveMatches, fetchStandings } from '../services/apiFootball';
 import { useSettings } from './SettingsContext';
 import { getSupabase } from '../services/supabaseClient';
 
-// FIX: Cast `import.meta` to `any` to resolve TypeScript error about missing 'env' property.
-const API_FOOTBALL_KEY = (import.meta as any).env.VITE_APIFOOTBALL_KEY;
+// Environment variables are read from `process.env` for broader compatibility.
+const API_FOOTBALL_KEY = process.env.VITE_APIFOOTBALL_KEY;
 
 interface DataContextType {
   articles: Article[];
