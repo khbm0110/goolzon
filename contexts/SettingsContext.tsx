@@ -1,5 +1,5 @@
 
-import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useContext, ReactNode } from 'react';
 import { FeatureFlags, ApiConfig } from '../types';
 
 const INITIAL_FLAGS: FeatureFlags = {
@@ -8,7 +8,7 @@ const INITIAL_FLAGS: FeatureFlags = {
     videos: true,
     analysis: true,
     autopilot: false,
-    userSystem: true // Enabled by default for production launch
+    userSystem: true // Enabled for production to allow Login/Register
 };
 
 const INITIAL_API_CONFIG: ApiConfig = {

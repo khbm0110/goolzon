@@ -75,7 +75,7 @@ const Login: React.FC = () => {
                 required
                 value={formData.email}
                 onChange={handleChange}
-                placeholder="admin@goolzon.dev"
+                placeholder="name@example.com"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-primary outline-none transition-colors"
                 style={{ direction: 'ltr', textAlign: 'right' }}
               />
@@ -105,7 +105,7 @@ const Login: React.FC = () => {
           <button 
             type="submit" 
             disabled={isLoading}
-            className="w-full bg-primary hover:bg-emerald-400 text-slate-900 font-black py-4 rounded-xl transition-all hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] mt-6 flex items-center justify-center"
+            className="w-full bg-primary hover:bg-emerald-400 text-slate-900 font-black py-4 rounded-xl transition-all hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] mt-6 flex items-center justify-center disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
           >
             {isLoading ? <Loader2 className="animate-spin" /> : 'دخول'}
           </button>

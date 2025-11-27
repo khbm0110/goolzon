@@ -1,15 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User as UserIcon, Mail, Lock, AtSign, Loader2, AlertCircle, Trophy, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { User as UserIcon, Mail, Lock, AtSign, Loader2, AlertCircle, Trophy, CheckCircle2, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-// FIX: The useSettings hook does not provide supabaseConfig.
-// The correct way to check for Supabase configuration is by using the getSupabase service.
-import { getSupabase } from '../../services/supabaseClient';
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
   const { register } = useAuth();
-  const isSupabaseConfigured = !!getSupabase();
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -62,32 +59,29 @@ const Register: React.FC = () => {
       });
 
       if (result.success) {
+        // Successful registration usually signs in automatically or asks for email verification
         navigate('/profile');
       } else {
         setError(result.error || 'حدث خطأ غير متوقع');
       }
     } catch (err: any) {
-        setError(err.message || 'فشل في التسجيل. حاول مرة أخرى.');
+        setError(err.message || 'فشل في التسجيل. تأكد من الاتصال بالإنترنت.');
     } finally {
         setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-slate-950">
+    <div className="min-h-screen relative flex items-center justify-center overflow-hidden bg-slate-950 p-4">
       
       {/* 1. STADIUM BACKGROUND */}
       <div className="absolute inset-0 z-0">
           <img 
             src="https://images.unsplash.com/photo-1522778119026-d647f0565c6a?auto=format&fit=crop&q=80&w=1200" 
             alt="Stadium" 
-            className="w-full h-full object-cover opacity-40 scale-110 animate-[pulse_10s_ease-in-out_infinite]"
+            className="w-full h-full object-cover opacity-30 scale-110 animate-[pulse_10s_ease-in-out_infinite]"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/80 to-slate-900/80 backdrop-blur-sm"></div>
-          
-          {/* Animated Spotlights */}
-          <div className="absolute top-0 left-1/4 w-32 h-full bg-emerald-500/5 rotate-12 blur-3xl animate-[pulse_4s_ease-in-out_infinite]"></div>
-          <div className="absolute top-0 right-1/4 w-32 h-full bg-primary/5 -rotate-12 blur-3xl animate-[pulse_5s_ease-in-out_infinite_1s]"></div>
       </div>
 
       {/* 2. THE CONTRACT CARD (PITCH STYLE) */}
@@ -100,25 +94,11 @@ const Register: React.FC = () => {
 
         <div className="bg-slate-900/80 backdrop-blur-xl border border-emerald-500/30 rounded-3xl shadow-2xl overflow-hidden">
             
-            {/* Pitch Lines Decoration */}
-            <div className="absolute inset-0 pointer-events-none opacity-10">
-                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 border-2 border-white rounded-full"></div>
-                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-px h-full bg-white/50"></div>
-                 <div className="absolute top-0 left-0 w-full h-full border-2 border-white m-4 rounded-xl"></div>
-            </div>
-
             <div className="p-8 pt-16 relative z-10">
                 <div className="text-center mb-8">
                     <h1 className="text-3xl font-black text-white mb-2 tracking-tight">عقد انضمام لاعب</h1>
                     <p className="text-emerald-400 font-bold text-sm uppercase tracking-widest">الموسم الجديد {new Date().getFullYear()}</p>
                 </div>
-
-                {!isSupabaseConfigured && (
-                  <div className="bg-amber-500/10 border border-amber-500/50 rounded-xl p-4 mb-6 flex items-center gap-3 text-amber-200 text-sm">
-                      <AlertTriangle size={20} />
-                      ميزة تسجيل لاعبين جدد غير متاحة حالياً. يرجى المحاولة لاحقاً.
-                  </div>
-                )}
 
                 {error && (
                     <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-4 mb-6 flex items-center gap-3 text-red-200 text-sm animate-pulse">
@@ -141,7 +121,7 @@ const Register: React.FC = () => {
                                     required
                                     value={formData.name}
                                     onChange={handleChange}
-                                    disabled={!isSupabaseConfigured || isLoading}
+                                    disabled={isLoading}
                                     className="w-full bg-slate-950/50 border border-slate-700 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none transition-all focus:bg-slate-900 focus:shadow-[0_0_15px_rgba(16,185,129,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
                                     placeholder="الاسم"
                                 />
@@ -157,7 +137,7 @@ const Register: React.FC = () => {
                                     required
                                     value={formData.username}
                                     onChange={handleChange}
-                                    disabled={!isSupabaseConfigured || isLoading}
+                                    disabled={isLoading}
                                     className="w-full bg-slate-950/50 border border-slate-700 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none transition-all focus:bg-slate-900 focus:shadow-[0_0_15px_rgba(16,185,129,0.1)] text-left disabled:opacity-50 disabled:cursor-not-allowed"
                                     style={{direction: 'ltr'}}
                                     placeholder="username"
@@ -177,7 +157,7 @@ const Register: React.FC = () => {
                                 required
                                 value={formData.email}
                                 onChange={handleChange}
-                                disabled={!isSupabaseConfigured || isLoading}
+                                disabled={isLoading}
                                 className="w-full bg-slate-950/50 border border-slate-700 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none transition-all focus:bg-slate-900 focus:shadow-[0_0_15px_rgba(16,185,129,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
                                 placeholder="name@example.com"
                             />
@@ -195,7 +175,7 @@ const Register: React.FC = () => {
                                 required
                                 value={formData.password}
                                 onChange={handleChange}
-                                disabled={!isSupabaseConfigured || isLoading}
+                                disabled={isLoading}
                                 className="w-full bg-slate-950/50 border border-slate-700 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none transition-all focus:bg-slate-900 focus:shadow-[0_0_15px_rgba(16,185,129,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
                                 placeholder="••••••••"
                             />
@@ -211,7 +191,7 @@ const Register: React.FC = () => {
                                 required
                                 value={formData.confirmPassword}
                                 onChange={handleChange}
-                                disabled={!isSupabaseConfigured || isLoading}
+                                disabled={isLoading}
                                 className="w-full bg-slate-950/50 border border-slate-700 rounded-xl p-3 pr-10 text-white focus:border-emerald-500 outline-none transition-all focus:bg-slate-900 focus:shadow-[0_0_15px_rgba(16,185,129,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
                                 placeholder="تأكيد كلمة المرور"
                             />
@@ -220,7 +200,7 @@ const Register: React.FC = () => {
 
                     <button 
                         type="submit" 
-                        disabled={!isSupabaseConfigured || isLoading}
+                        disabled={isLoading}
                         className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-900 font-black text-lg py-4 rounded-xl transition-all hover:scale-[1.02] shadow-[0_0_25px_rgba(16,185,129,0.4)] mt-4 flex items-center justify-center gap-2 group disabled:bg-slate-700 disabled:from-slate-700 disabled:to-slate-600 disabled:text-slate-500 disabled:shadow-none disabled:hover:scale-100 disabled:cursor-not-allowed"
                     >
                         {isLoading ? <Loader2 className="animate-spin" /> : (
@@ -230,16 +210,14 @@ const Register: React.FC = () => {
                             </>
                         )}
                     </button>
-                </form>
-
-                <div className="mt-8 pt-6 border-t border-slate-800 text-center">
-                    <p className="text-slate-400 text-sm">
-                        وقعت عقداً سابقاً؟{' '}
-                        <Link to="/login" className="text-emerald-400 font-bold hover:text-emerald-300 hover:underline transition-colors">
-                             الدخول لغرفة الملابس
+                    
+                    <div className="text-center mt-4 text-sm text-slate-400">
+                        لديك حساب بالفعل؟ {' '}
+                        <Link to="/login" className="text-emerald-400 font-bold hover:underline">
+                            سجل الدخول هنا
                         </Link>
-                    </p>
-                </div>
+                    </div>
+                </form>
             </div>
         </div>
       </div>
