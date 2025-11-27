@@ -3,9 +3,6 @@ import React, { createContext, useState, useContext, ReactNode, useEffect } from
 import { User, Player } from '../types';
 import { getSupabase } from '../services/supabaseClient';
 
-// We rely on the Database Role now, but keep this for emergency local fallback if needed
-const FALLBACK_DEV_ADMIN = 'admin@goolzon.dev';
-
 interface AuthContextType {
   currentUser: User | null;
   isAdmin: boolean;
@@ -38,14 +35,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const supabase = getSupabase();
     if (!supabase) {
+        console.warn("Supabase client is not initialized.");
         setProfileLoading(false);
-        // Fallback for local admin without Supabase
-        if (currentUser?.id === 'local-admin') {
-            setIsAdmin(true);
-        } else {
-            setCurrentUser(null);
-            setIsAdmin(false);
-        }
         return;
     }
 
@@ -168,64 +159,49 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const login = async (email: string, pass: string) => {
     const supabase = getSupabase();
     
-    if (supabase) {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
-        if (error) {
-            return { success: false, error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة.' };
-        }
-        
-        // Immediately check for admin role and update local state to avoid race conditions
-        let isAdminUser = false;
-        
-        if (data.user) {
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', data.user.id)
-                .single();
-            
-            if (profile) {
-                 const userRole = profile.role || 'user';
-                 isAdminUser = userRole === 'admin';
-                 
-                 // Manual state update to ensure ProtectedRoute passes immediately before the auth listener fires
-                 const appUser: User = {
-                    id: data.user.id,
-                    email: data.user.email || '',
-                    name: profile.name || 'مستخدم',
-                    username: profile.username || 'user',
-                    avatar: profile.avatar,
-                    joinDate: data.user.created_at || new Date().toISOString(),
-                    role: userRole,
-                    password: '',
-                };
-                setCurrentUser(appUser);
-                setIsAdmin(isAdminUser);
-                setFollowedTeams(profile.followed_teams || []);
-                setDreamSquad(profile.dream_squad || {});
-                setProfileLoading(false);
-            }
-        }
+    if (!supabase) {
+        return { success: false, error: 'خدمة الاتصال بقاعدة البيانات غير متوفرة. تأكد من إعدادات VITE_SUPABASE_URL.' };
+    }
 
-        return { success: true, isAdmin: isAdminUser };
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+    if (error) {
+        return { success: false, error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة.' };
     }
     
-    // Fallback for local testing without Supabase
-    if (email === FALLBACK_DEV_ADMIN && pass === 'admin123') {
-        const adminProfile: User = {
-            id: 'local-admin',
-            email: FALLBACK_DEV_ADMIN, name: 'المدير (إعداد)', username: 'admin_setup',
-            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=admin`,
-            joinDate: new Date().toISOString(), password: '',
-            role: 'admin'
-        };
-        setCurrentUser(adminProfile);
-        setIsAdmin(true);
-        setProfileLoading(false);
-        return { success: true, isAdmin: true };
+    // Immediately check for admin role and update local state to avoid race conditions
+    let isAdminUser = false;
+    
+    if (data.user) {
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', data.user.id)
+            .single();
+        
+        if (profile) {
+                const userRole = profile.role || 'user';
+                isAdminUser = userRole === 'admin';
+                
+                // Manual state update to ensure ProtectedRoute passes immediately before the auth listener fires
+                const appUser: User = {
+                id: data.user.id,
+                email: data.user.email || '',
+                name: profile.name || 'مستخدم',
+                username: profile.username || 'user',
+                avatar: profile.avatar,
+                joinDate: data.user.created_at || new Date().toISOString(),
+                role: userRole,
+                password: '',
+            };
+            setCurrentUser(appUser);
+            setIsAdmin(isAdminUser);
+            setFollowedTeams(profile.followed_teams || []);
+            setDreamSquad(profile.dream_squad || {});
+            setProfileLoading(false);
+        }
     }
 
-    return { success: false, error: 'النظام غير مهيأ حالياً. يرجى مراجعة مسؤول الموقع.' };
+    return { success: true, isAdmin: isAdminUser };
   };
 
   const register = async (data: Partial<User>) => {
@@ -255,7 +231,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logout = async () => {
     const supabase = getSupabase();
-    if (supabase && currentUser && currentUser.id !== 'local-admin') {
+    if (supabase) {
       await supabase.auth.signOut();
     }
     setCurrentUser(null);
