@@ -174,19 +174,39 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return { success: false, error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة.' };
         }
         
-        // Immediately check for admin role to facilitate correct redirection in the UI
+        // Immediately check for admin role and update local state to avoid race conditions
         let isAdminUser = false;
+        
         if (data.user) {
             const { data: profile } = await supabase
                 .from('profiles')
-                .select('role')
+                .select('*')
                 .eq('id', data.user.id)
                 .single();
-            isAdminUser = profile?.role === 'admin';
+            
+            if (profile) {
+                 const userRole = profile.role || 'user';
+                 isAdminUser = userRole === 'admin';
+                 
+                 // Manual state update to ensure ProtectedRoute passes immediately before the auth listener fires
+                 const appUser: User = {
+                    id: data.user.id,
+                    email: data.user.email || '',
+                    name: profile.name || 'مستخدم',
+                    username: profile.username || 'user',
+                    avatar: profile.avatar,
+                    joinDate: data.user.created_at || new Date().toISOString(),
+                    role: userRole,
+                    password: '',
+                };
+                setCurrentUser(appUser);
+                setIsAdmin(isAdminUser);
+                setFollowedTeams(profile.followed_teams || []);
+                setDreamSquad(profile.dream_squad || {});
+                setProfileLoading(false);
+            }
         }
 
-        // The onAuthStateChange listener will eventually update the global state,
-        // but returning isAdmin here allows immediate redirection logic.
         return { success: true, isAdmin: isAdminUser };
     }
     

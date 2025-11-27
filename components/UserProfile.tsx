@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { User, Shield, LayoutTemplate, Settings, Trophy, Users, Plus, X, Search, LogOut, Loader2, Share2, Download } from 'lucide-react';
 import { Player, ClubProfile } from '../types';
@@ -116,11 +117,7 @@ const UserProfile: React.FC = () => {
                Ref is attached here.
             */}
             <div ref={exportRef} className="relative h-[550px] md:h-[600px] bg-slate-900 group border-b border-slate-800 overflow-hidden">
-                {/* Controls Area - Hidden during export by overlay logic or manual exclusion if refined, 
-                    but simpler to just keep them floating or position them so they look okay. 
-                    Actually, we'll keep the top buttons but maybe hide them via a class toggle if we strictly wanted a clean image.
-                    For now, capturing the whole card usually looks cool with the "UI" feel.
-                */}
+                {/* Controls Area */}
                 <div className="absolute top-24 right-4 z-50 flex flex-col gap-2" data-html2canvas-ignore>
                     <button 
                         onClick={() => setShowTactics(!showTactics)}
@@ -166,6 +163,11 @@ const UserProfile: React.FC = () => {
                         <div className="text-center md:text-right pb-2 flex-1">
                             <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
                                 <h1 className="text-3xl md:text-4xl font-black text-white">{currentUser.name}</h1>
+                                {currentUser.role === 'admin' && (
+                                    <span className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border border-red-400 shadow-lg shadow-red-900/50">
+                                        ADMIN
+                                    </span>
+                                )}
                                 {showTactics && (
                                     <div className="bg-yellow-500 text-slate-900 text-xs font-black px-2 py-0.5 rounded shadow-lg transform rotate-3">
                                         OVR {averageRating}
