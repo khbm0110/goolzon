@@ -25,7 +25,7 @@ export const useUI = () => {
 
 export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { featureFlags } = useSettings();
-  const { articles, addArticle } = useData();
+  const { articles, addArticle, matches } = useData();
   
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   // Local state for "Pause/Resume" - defaults to true if feature is enabled
@@ -69,7 +69,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
            
            console.log(`AI Autopilot: Generating content about ${randomTopic}...`);
            
-           const newArticleContent = await generateArticleContent(randomTopic);
+           const newArticleContent = await generateArticleContent(randomTopic, matches);
            
            if (newArticleContent) {
              // Check for duplicates
@@ -92,6 +92,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                      imageUrl: newArticleContent.imageUrl,
                      sources: newArticleContent.sources,
                      category: safeCategory,
+                     // FIX: Removed duplicate 'new' keyword.
                      date: new Date().toISOString(),
                      author: 'AI Reporter 🤖',
                      views: 1,
@@ -107,12 +108,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                  console.log("AI Autopilot: Duplicate content detected, skipping.");
              }
            } else {
-             console.warn("AI Autopilot: Paused (Failed to generate content, likely missing API Key)");
-             // Stop the interval to prevent repeated failed attempts if key is missing
-             if (autopilotIntervalRef.current) {
-                clearInterval(autopilotIntervalRef.current);
-                autopilotIntervalRef.current = null;
-             }
+             console.warn("AI Autopilot: Paused (Failed to generate content, likely missing API Key or validation failed)");
            }
        } catch (e) {
            console.error("Autopilot Error:", e);
@@ -132,7 +128,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     return () => {
         if (autopilotIntervalRef.current) clearInterval(autopilotIntervalRef.current);
     };
-  }, [isAutopilot, featureFlags.autopilot, articles, addArticle]);
+  }, [isAutopilot, featureFlags.autopilot, articles, addArticle, matches]);
 
   const value = {
       selectedMatch, setSelectedMatch,

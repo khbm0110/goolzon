@@ -1,6 +1,6 @@
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { getSmartImageUrl } from "./imageService";
-import { MatchDetails } from "../types";
+import { Match, ExtractedMatchFacts } from "../types";
 import { getGeminiApiKeyForTopic, getGeminiApiKeyForHeadlines } from './keyManager';
 
 export interface GeneratedArticle {
@@ -16,6 +16,54 @@ export interface GeneratedArticle {
 }
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Step 2 of the Triple-Check system: Extracts facts from generated text.
+const extractFactsFromArticleContent = async (apiKey: string, content: string): Promise<ExtractedMatchFacts | null> => {
+    const ai = new GoogleGenAI({ apiKey });
+    const prompt = `
+        You are a data extraction robot. Analyze the following sports article text.
+        Your only job is to extract the match result if it exists.
+
+        RULES:
+        1. If the article is clearly about a specific match with a final score, extract the home team, away team, home score, and away score.
+        2. If the article is NOT about a specific match result (e.g., it's a transfer rumor, analysis, or general news), you MUST return null for home_score and away_score.
+        3. The team names should be the Arabic names mentioned in the text.
+        4. Return ONLY a single JSON object. Do not add any other text.
+
+        Article Text:
+        """
+        ${content}
+        """
+
+        JSON Output format:
+        {
+          "home_team": "...",
+          "away_team": "...",
+          "home_score": ...,
+          "away_score": ...
+        }
+    `;
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
+        const text = response.text?.trim();
+        if (!text) return null;
+
+        let jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        const firstBrace = jsonString.indexOf('{');
+        const lastBrace = jsonString.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace !== -1) {
+            jsonString = jsonString.substring(firstBrace, lastBrace + 1);
+            return JSON.parse(jsonString);
+        }
+        return null;
+    } catch (e) {
+        console.error("Error extracting facts:", e);
+        return null;
+    }
+};
 
 export const fetchDailyHeadlines = async (): Promise<string[]> => {
   const apiKey = getGeminiApiKeyForHeadlines();
@@ -72,11 +120,11 @@ export const fetchDailyHeadlines = async (): Promise<string[]> => {
   }
 };
 
-export const generateArticleContent = async (topic: string, retries = 3, excludeTitles: string[] = []): Promise<GeneratedArticle | null> => {
+export const generateArticleContent = async (topic: string, allMatches: Match[], retries = 3): Promise<GeneratedArticle | null> => {
   const apiKey = getGeminiApiKeyForTopic(topic);
   if (!apiKey) {
     console.error("Gemini API key is not configured. Cannot generate article.");
-    return null;
+    throw new Error("API Key for Gemini is not configured.");
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -111,6 +159,7 @@ export const generateArticleContent = async (topic: string, retries = 3, exclude
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
+      // Step 1: Generate the article
       const response = await ai.models.generateContent({
         model,
         contents: prompt,
@@ -135,13 +184,40 @@ export const generateArticleContent = async (topic: string, retries = 3, exclude
         jsonString = jsonString.substring(firstBrace, lastBrace + 1);
       }
       
-      let articleData;
+      let articleData: GeneratedArticle;
       try {
         articleData = JSON.parse(jsonString);
       } catch (e) {
         console.error("JSON Parse Error:", e);
-        if (attempt === retries) return null;
+        if (attempt === retries) throw new Error("Failed to parse AI response as JSON after multiple retries.");
         continue;
+      }
+      
+      // --- Step 2 & 3: Extract & Validate ---
+      console.log("Validation Step: Extracting facts from generated content...");
+      const extractedFacts = await extractFactsFromArticleContent(apiKey, articleData.content);
+
+      // If it's a non-match report (rumor, analysis), skip validation. This is key.
+      if (!extractedFacts || extractedFacts.home_score === null || extractedFacts.away_score === null) {
+          console.log("Validation Step: Article is not a match result. Skipping score validation.");
+      } else {
+          console.log("Validation Step: Match result detected. Comparing with source of truth.", extractedFacts);
+          const sourceOfTruth = allMatches.find(m => 
+              m.status === 'FINISHED' &&
+              (topic.includes(m.homeTeam) || extractedFacts.home_team?.includes(m.homeTeam)) &&
+              (topic.includes(m.awayTeam) || extractedFacts.away_team?.includes(m.awayTeam))
+          );
+          
+          if (sourceOfTruth) {
+              if (sourceOfTruth.scoreHome !== extractedFacts.home_score || sourceOfTruth.scoreAway !== extractedFacts.away_score) {
+                  const errorMsg = `فشل التحقق: النتيجة في المقال (${extractedFacts.home_score}-${extractedFacts.away_score}) لا تطابق النتيجة الصحيحة (${sourceOfTruth.scoreHome}-${sourceOfTruth.scoreAway}).`;
+                  console.error(errorMsg);
+                  throw new Error(errorMsg);
+              }
+              console.log("Validation Step: Success! Scores are consistent.");
+          } else {
+              console.warn("Validation Step: Could not find a matching finished game in data to verify against.");
+          }
       }
 
       const invalidTitles = ["لا توجد أخبار", "لا جديد", "لم يتم العثور", "No news"];
@@ -163,11 +239,14 @@ export const generateArticleContent = async (topic: string, retries = 3, exclude
 
       if (isQuotaError) {
         console.warn(`Gemini Quota Exceeded. Pausing.`);
-        return null; 
+        throw new Error("Gemini quota exceeded.");
       }
       
-      if (attempt < retries) await sleep(attempt * 2000);
-      else return null;
+      if (attempt < retries) {
+        await sleep(attempt * 2000);
+      } else {
+        throw error; // Rethrow the last error to be caught by the UI
+      }
     }
   }
 

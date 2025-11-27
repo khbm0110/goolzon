@@ -312,7 +312,7 @@ const AdminDashboard: React.FC = () => {
   const [activeView, setActiveView] = useState<'DASHBOARD' | 'EDITOR' | 'LIST' | 'SEO' | 'ADS' | 'CLUBS' | 'MERCATO' | 'SETTINGS'>('DASHBOARD');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { 
-    clubs, addClub, updateClub, deleteClub, transferPlayer, articles, addArticle, updateArticle, deleteArticle
+    clubs, addClub, updateClub, deleteClub, transferPlayer, articles, addArticle, updateArticle, deleteArticle, matches
   } = useData();
   const { 
     featureFlags, setFeatureFlag, apiConfig, setApiConfig
@@ -414,6 +414,7 @@ const AdminDashboard: React.FC = () => {
                 onSave={handleSaveArticle}
                 onCancel={() => setActiveView('LIST')}
                 mode={editorMode}
+                matches={matches}
             />
         )}
         {activeView === 'LIST' && (

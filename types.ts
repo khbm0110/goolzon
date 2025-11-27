@@ -186,3 +186,10 @@ export interface ClubProfile {
   trophies: { name: string; count: number }[];
   country: Category;
 }
+
+export interface ExtractedMatchFacts {
+  home_team: string | null;
+  away_team: string | null;
+  home_score: number | null;
+  away_score: number | null;
+}
