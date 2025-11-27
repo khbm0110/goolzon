@@ -6,9 +6,6 @@ import { Match, MatchDetails, MatchEvent } from '../types';
 import TeamLogo from './TeamLogo';
 import { fetchFixtureDetails } from '../services/apiFootball';
 
-// Environment variables are read from `process.env` for broader compatibility.
-const API_FOOTBALL_KEY = process.env.VITE_APIFOOTBALL_KEY;
-
 interface MatchCenterModalProps {
   match: Match | null;
   onClose: () => void;
@@ -25,6 +22,8 @@ const MatchCenterModal: React.FC<MatchCenterModalProps> = ({ match, onClose }) =
       setDetails(null); // Reset details when a new match is opened
       
       const loadDetails = async () => {
+          // Environment variables are read at runtime for broader compatibility.
+          const API_FOOTBALL_KEY = process.env.VITE_APIFOOTBALL_KEY;
           let data: MatchDetails | null = null;
           
           if (API_FOOTBALL_KEY) {

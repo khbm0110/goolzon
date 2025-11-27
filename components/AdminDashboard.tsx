@@ -34,7 +34,8 @@ import {
   Eye,
   Link as LinkIcon,
   Activity,
-  Info
+  Info,
+  RefreshCw
 } from 'lucide-react';
 import { Article, Category, ClubProfile, Player, PlayerStats, FeatureFlags, ApiConfig } from '../types';
 import { useData } from '../contexts/DataContext';
@@ -453,6 +454,22 @@ const AdminDashboard: React.FC = () => {
   );
 };
 
+// Helper function to check if current date is within a transfer window
+const isWithinTransferWindow = () => {
+    // These would be read from env vars in a real scenario
+    const today = new Date();
+    const currentMonth = today.getMonth() + 1; // getMonth() is 0-indexed
+    const currentDay = today.getDate();
+
+    // Summer window: July 1st to September 1st (approx)
+    const isSummer = (currentMonth === 7) || (currentMonth === 8) || (currentMonth === 9 && currentDay === 1);
+    // Winter window: January 1st to January 31st
+    const isWinter = currentMonth === 1;
+
+    return isSummer || isWinter;
+};
+
+
 const SettingsView: React.FC<{
     featureFlags: FeatureFlags;
     setFeatureFlag: (key: keyof FeatureFlags, value: boolean) => void;
@@ -462,6 +479,10 @@ const SettingsView: React.FC<{
     
     const [localApiConfig, setLocalApiConfig] = useState(apiConfig);
     const [isSaving, setIsSaving] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [syncMessage, setSyncMessage] = useState('');
+
+    const inWindow = isWithinTransferWindow();
 
     useEffect(() => {
         setLocalApiConfig(apiConfig);
@@ -474,6 +495,25 @@ const SettingsView: React.FC<{
             setIsSaving(false);
             alert('تم حفظ الإعدادات بنجاح!');
         }, 500);
+    };
+
+    const handleManualSync = async () => {
+        setIsSyncing(true);
+        setSyncMessage('');
+        try {
+            const response = await fetch('/api/sync-squads');
+            const data = await response.json();
+            if (response.ok) {
+                setSyncMessage(data.message || 'تمت المزامنة بنجاح!');
+            } else {
+                throw new Error(data.error || 'فشل في المزامنة');
+            }
+        } catch (error: any) {
+            setSyncMessage(`خطأ: ${error.message}`);
+        } finally {
+            setIsSyncing(false);
+            setTimeout(() => setSyncMessage(''), 5000); // Clear message after 5 seconds
+        }
     };
     
     const featuresList: { key: keyof FeatureFlags; label: string; desc: string; icon: any }[] = [
@@ -535,29 +575,92 @@ const SettingsView: React.FC<{
                         <Key className="text-yellow-500" /> مفاتيح API للمصادر الخارجية
                     </h2>
                     <p className="text-slate-400 text-sm mt-2">
-                        لأمان أعلى، تم نقل إدارة مفاتيح API إلى متغيرات البيئة في منصة النشر (Vercel).
+                        لأمان أعلى، تدار مفاتيح API عبر متغيرات البيئة في منصة النشر (مثل Vercel).
                     </p>
                 </div>
                 <div className="p-6 space-y-4">
                     <div className="bg-slate-950 p-4 rounded-xl border border-amber-500/30 flex items-start gap-3">
                          <Info size={24} className="text-amber-500 mt-1"/>
                          <div>
-                             <h3 className="text-amber-400 font-bold">تعليمات هامة</h3>
+                             <h3 className="text-amber-400 font-bold">نظام المفاتيح المتعددة لـ Gemini</h3>
                              <p className="text-slate-300 text-sm mt-1">
-                                يجب عليك إضافة المتغيرات التالية في إعدادات مشروعك على Vercel (Settings &gt; Environment Variables).
+                                تم تحديث النظام لدعم مفاتيح API متعددة من Gemini، مما يسمح بتخصيص مفتاح لكل فئة من الأخبار. يمكنك تعيين كل المتغيرات أو بعضها.
                              </p>
                          </div>
                     </div>
                     
-                    <ul className="list-disc list-inside space-y-3 text-slate-400 font-mono text-sm bg-slate-950 p-4 rounded-lg border border-slate-800">
-                        <li><span className="font-sans text-slate-300">لمنفذ Gemini AI:</span> <code className="text-amber-400">API_KEY</code></li>
-                        <li><span className="font-sans text-slate-300">لمنفذ Supabase:</span> <code className="text-amber-400">VITE_SUPABASE_URL</code></li>
-                        <li><span className="font-sans text-slate-300">لمنفذ Supabase:</span> <code className="text-amber-400">VITE_SUPABASE_ANON_KEY</code></li>
-                        <li><span className="font-sans text-slate-300">لمنفذ Sports API:</span> <code className="text-amber-400">VITE_APIFOOTBALL_KEY</code></li>
-                    </ul>
+                    <div className="bg-slate-950 p-6 rounded-lg border border-slate-800">
+                        <h4 className="font-bold text-white mb-4">متغيرات Gemini AI (اختياري)</h4>
+                        <ul className="list-disc list-inside space-y-3 text-slate-400 font-mono text-sm">
+                            <li><code className="text-amber-400">GEMINI_API_KEY_ARABIC_LEAGUES</code> <span className="font-sans text-slate-500">- لأخبار الدوريات العربية</span></li>
+                            <li><code className="text-amber-400">GEMINI_API_KEY_ENGLISH_LEAGUES</code> <span className="font-sans text-slate-500">- لأخبار الدوريات الإنجليزية والأوروبية</span></li>
+                            <li><code className="text-amber-400">GEMINI_API_KEY_SPANISH_LEAGUES</code> <span className="font-sans text-slate-500">- لأخبار الدوري الإسباني</span></li>
+                            <li><code className="text-amber-400">GEMINI_API_KEY_DEFAULT</code> <span className="font-sans text-slate-500">- مفتاح افتراضي سيتم استخدامه إذا لم يتوفر مفتاح متخصص</span></li>
+                        </ul>
+                    </div>
+                    
+                    <div className="bg-slate-950 p-6 rounded-lg border border-slate-800">
+                        <h4 className="font-bold text-white mb-4">المتغيرات الأساسية (مطلوب)</h4>
+                        <ul className="list-disc list-inside space-y-3 text-slate-400 font-mono text-sm">
+                            <li><code className="text-amber-400">API_KEY</code> <span className="font-sans text-slate-500">- مفتاح Gemini العام (سيُستخدم كخيار احتياطي نهائي)</span></li>
+                            <li><code className="text-amber-400">VITE_SUPABASE_URL</code> <span className="font-sans text-slate-500">- رابط Supabase</span></li>
+                            <li><code className="text-amber-400">VITE_SUPABASE_ANON_KEY</code> <span className="font-sans text-slate-500">- مفتاح Supabase العام</span></li>
+                            <li><code className="text-amber-400">VITE_APIFOOTBALL_KEY</code> <span className="font-sans text-slate-500">- مفتاح API-Football للمباريات</span></li>
+                        </ul>
+                    </div>
+
                      <p className="text-xs text-slate-500 mt-2">
-                        بعد إضافتها، قم بإعادة نشر (Redeploy) المشروع من لوحة تحكم Vercel لتفعيل التغييرات. هذا يضمن بقاء مفاتيحك آمنة وسرية.
+                        بعد إضافة المتغيرات في Vercel، قم بإعادة نشر (Redeploy) المشروع لتفعيل التغييرات.
                     </p>
+                </div>
+            </div>
+
+             <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
+                <div className="p-6 border-b border-slate-800 bg-slate-950">
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                        <Cpu className="text-cyan-400" /> محرك المزامنة التلقائي (Sync Engine)
+                    </h2>
+                    <p className="text-slate-400 text-sm mt-2">
+                        يعمل هذا النظام في الخلفية لمزامنة بيانات الفرق واللاعبين تلقائياً مع المصادر العالمية.
+                    </p>
+                </div>
+                <div className="p-6 space-y-6">
+                    <div className={`p-4 rounded-xl border flex items-center justify-between ${inWindow ? 'bg-emerald-950/50 border-emerald-500/30' : 'bg-slate-950 border-slate-800'}`}>
+                        <div>
+                            <h4 className={`font-bold ${inWindow ? 'text-emerald-400' : 'text-slate-300'}`}>حالة المزامنة التلقائية</h4>
+                            <p className="text-xs text-slate-400">يعمل النظام تلقائياً كل 12 ساعة فقط أثناء فترات الانتقالات الرسمية.</p>
+                        </div>
+                        <div className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2 ${inWindow ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-400'}`}>
+                            <span className={`w-2 h-2 rounded-full ${inWindow ? 'bg-emerald-500 animate-pulse' : 'bg-slate-500'}`}></span>
+                            {inWindow ? 'نشط' : 'متوقف'}
+                        </div>
+                    </div>
+                    <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
+                        <h4 className="font-bold text-white mb-2">متغيرات فترات الانتقالات (اختياري)</h4>
+                         <p className="text-xs text-slate-400 mb-3">أضف هذه المتغيرات في Vercel لتحديد أوقات عمل المزامنة التلقائية. استخدم صيغة <code className="text-amber-400 font-mono">MM-DD</code>.</p>
+                        <ul className="list-disc list-inside space-y-2 text-slate-400 font-mono text-sm">
+                            <li><code className="text-amber-400">TRANSFER_WINDOW_SUMMER_START</code> (مثال: 07-01)</li>
+                            <li><code className="text-amber-400">TRANSFER_WINDOW_SUMMER_END</code> (مثال: 09-01)</li>
+                            <li><code className="text-amber-400">TRANSFER_WINDOW_WINTER_START</code> (مثال: 01-01)</li>
+                            <li><code className="text-amber-400">TRANSFER_WINDOW_WINTER_END</code> (مثال: 02-01)</li>
+                        </ul>
+                    </div>
+                     <div className="border-t border-slate-800 pt-6 flex justify-between items-center">
+                        <div className="flex-1">
+                            <h4 className="font-bold text-white">المزامنة اليدوية</h4>
+                            <p className="text-xs text-slate-500">
+                                {syncMessage || 'يمكنك تشغيل المزامنة يدوياً في أي وقت لتحديث البيانات فوراً.'}
+                            </p>
+                        </div>
+                        <button 
+                            onClick={handleManualSync}
+                            disabled={isSyncing}
+                            className="bg-cyan-600 hover:bg-cyan-500 text-white px-6 py-3 rounded-xl font-bold transition-colors flex items-center gap-2 shadow-lg shadow-cyan-900/20 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
+                        >
+                            {isSyncing ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
+                            {isSyncing ? 'جاري المزامنة...' : 'مزامنة الآن'}
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -799,6 +902,7 @@ const ClubsManagerView: React.FC<{
   const handleAddNew = () => {
     setEditingClub({
       id: '', name: '', englishName: '', logo: '', country: Category.SAUDI, founded: new Date().getFullYear(),
+      apiFootballId: 0,
       colors: { primary: '#10b981', secondary: '#0f172a', text: '#ffffff' },
       stadium: '', coach: '', fanCount: 1000, squad: [], trophies: []
     });
@@ -949,7 +1053,7 @@ const ClubsManagerView: React.FC<{
                     <label className="text-xs font-bold text-slate-400">اسم النادي (عربي)</label>
                     <input 
                       type="text" 
-                      value={editingClub?.name}
+                      value={editingClub?.name || ''}
                       onChange={e => setEditingClub({...editingClub, name: e.target.value})}
                       className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-white focus:border-primary outline-none"
                       required
@@ -959,10 +1063,19 @@ const ClubsManagerView: React.FC<{
                     <label className="text-xs font-bold text-slate-400">الاسم (إنجليزي - للرابط)</label>
                     <input 
                       type="text" 
-                      value={editingClub?.englishName}
+                      value={editingClub?.englishName || ''}
                       onChange={e => setEditingClub({...editingClub, englishName: e.target.value})}
                       className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-white focus:border-primary outline-none"
                       required
+                    />
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400">API-Football ID</label>
+                    <input 
+                      type="number" 
+                      value={editingClub?.apiFootballId || ''}
+                      onChange={e => setEditingClub({...editingClub, apiFootballId: parseInt(e.target.value)})}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-white focus:border-primary outline-none"
                     />
                  </div>
                  <div className="space-y-2">
@@ -970,7 +1083,7 @@ const ClubsManagerView: React.FC<{
                     <div className="flex gap-2">
                         <input 
                         type="text" 
-                        value={editingClub?.logo}
+                        value={editingClub?.logo || ''}
                         onChange={e => setEditingClub({...editingClub, logo: e.target.value})}
                         className="flex-1 bg-slate-950 border border-slate-800 rounded-lg p-3 text-white focus:border-primary outline-none"
                         />
@@ -983,7 +1096,7 @@ const ClubsManagerView: React.FC<{
                     <label className="text-xs font-bold text-slate-400">رابط الغلاف</label>
                     <input 
                         type="text" 
-                        value={editingClub?.coverImage}
+                        value={editingClub?.coverImage || ''}
                         onChange={e => setEditingClub({...editingClub, coverImage: e.target.value})}
                         className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-white focus:border-primary outline-none"
                     />
@@ -991,7 +1104,7 @@ const ClubsManagerView: React.FC<{
                  <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-400">الدولة</label>
                     <select 
-                       value={editingClub?.country}
+                       value={editingClub?.country || ''}
                        onChange={e => setEditingClub({...editingClub, country: e.target.value as Category})}
                        className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-white focus:border-primary outline-none"
                     >
@@ -1004,7 +1117,7 @@ const ClubsManagerView: React.FC<{
                     <label className="text-xs font-bold text-slate-400">المدرب</label>
                     <input 
                       type="text" 
-                      value={editingClub?.coach}
+                      value={editingClub?.coach || ''}
                       onChange={e => setEditingClub({...editingClub, coach: e.target.value})}
                       className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-white focus:border-primary outline-none"
                     />
@@ -1014,7 +1127,7 @@ const ClubsManagerView: React.FC<{
                     <div className="flex items-center gap-2">
                         <input 
                         type="color" 
-                        value={editingClub?.colors?.primary}
+                        value={editingClub?.colors?.primary || '#10b981'}
                         onChange={e => setEditingClub({
                             ...editingClub, 
                             colors: { ...editingClub.colors!, primary: e.target.value }
@@ -1023,7 +1136,7 @@ const ClubsManagerView: React.FC<{
                         />
                         <input 
                         type="text" 
-                        value={editingClub?.colors?.primary}
+                        value={editingClub?.colors?.primary || '#10b981'}
                         onChange={e => setEditingClub({
                             ...editingClub, 
                             colors: { ...editingClub.colors!, primary: e.target.value }
@@ -1115,7 +1228,7 @@ const ClubsManagerView: React.FC<{
                                <div className="flex-1 space-y-3">
                                    <input 
                                        placeholder="اسم اللاعب"
-                                       value={editingPlayer?.name}
+                                       value={editingPlayer?.name || ''}
                                        onChange={e => setEditingPlayer({...editingPlayer, name: e.target.value})}
                                        className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-white text-sm"
                                    />
@@ -1123,7 +1236,7 @@ const ClubsManagerView: React.FC<{
                                        <input 
                                            placeholder="#"
                                            type="number"
-                                           value={editingPlayer?.number}
+                                           value={editingPlayer?.number || ''}
                                            onChange={e => setEditingPlayer({...editingPlayer, number: parseInt(e.target.value)})}
                                            className="w-16 bg-slate-950 border border-slate-800 rounded p-2 text-white text-sm text-center"
                                        />
@@ -1146,7 +1259,7 @@ const ClubsManagerView: React.FC<{
                                        <span className="text-xs text-slate-500">التقييم العام</span>
                                        <input 
                                            type="number"
-                                           value={editingPlayer?.rating}
+                                           value={editingPlayer?.rating || ''}
                                            onChange={e => setEditingPlayer({...editingPlayer, rating: parseInt(e.target.value)})}
                                            className="w-14 bg-slate-800 border border-slate-700 rounded p-1 text-center text-primary font-bold"
                                        />

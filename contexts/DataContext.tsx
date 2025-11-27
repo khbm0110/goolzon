@@ -5,9 +5,6 @@ import { fetchLiveMatches, fetchStandings } from '../services/apiFootball';
 import { useSettings } from './SettingsContext';
 import { getSupabase } from '../services/supabaseClient';
 
-// Environment variables are read from `process.env` for broader compatibility.
-const API_FOOTBALL_KEY = process.env.VITE_APIFOOTBALL_KEY;
-
 interface DataContextType {
   articles: Article[];
   addArticle: (article: Article) => Promise<boolean>;
@@ -16,10 +13,10 @@ interface DataContextType {
   matches: Match[];
   standings: Standing[];
   clubs: ClubProfile[];
-  addClub: (club: ClubProfile) => boolean;
-  updateClub: (club: ClubProfile) => boolean;
-  deleteClub: (id: string) => boolean;
-  transferPlayer: (playerId: string, sourceClubId: string, targetClubId: string, price: number) => void;
+  addClub: (club: ClubProfile) => Promise<boolean>;
+  updateClub: (club: ClubProfile) => Promise<boolean>;
+  deleteClub: (id: string) => Promise<boolean>;
+  transferPlayer: (playerId: string, sourceClubId: string, targetClubId: string, price: number) => Promise<void>;
   isLoadingInitial: boolean;
 }
 
@@ -31,67 +28,52 @@ export const useData = () => {
   return context;
 };
 
-const useLocalStorageState = <T,>(key: string, defaultValue: T): [T, React.Dispatch<React.SetStateAction<T>>] => {
-    const [state, setState] = useState<T>(() => {
-        try {
-            const storedValue = localStorage.getItem(key);
-            return storedValue ? JSON.parse(storedValue) : defaultValue;
-        } catch (error) {
-            console.error(`Error reading localStorage key “${key}”:`, error);
-            return defaultValue;
-        }
-    });
-
-    useEffect(() => {
-        try {
-            localStorage.setItem(key, JSON.stringify(state));
-        } catch (error) {
-            console.error(`Error setting localStorage key “${key}”:`, error);
-        }
-    }, [key, state]);
-
-    return [state, setState];
-};
-
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { apiConfig } = useSettings();
   
   const [articles, setArticles] = useState<Article[]>([]);
-  const [clubs, setClubs] = useLocalStorageState<ClubProfile[]>('goolzon_clubs', Object.values(CLUB_DATABASE));
+  const [clubs, setClubs] = useState<ClubProfile[]>([]);
   
   const [matches, setMatches] = useState<Match[]>([]);
   const [standings, setStandings] = useState<Standing[]>([]);
   const [isLoadingInitial, setIsLoadingInitial] = useState(true);
 
-  // This effect will run once on mount to fetch all necessary data.
-  // It relies on the getSupabase() singleton which reads from env vars.
   useEffect(() => {
-    const supabase = getSupabase(); // Get client from env vars
+    const supabase = getSupabase();
     
     const fetchAllData = async () => {
         setIsLoadingInitial(true);
 
-        // --- Articles Data ---
+        // --- Articles & Clubs Data from Supabase ---
         if (!supabase) {
-            console.warn("Supabase is not configured via env vars. Falling back to local initial articles.");
+            console.warn("Supabase not configured. Falling back to local data.");
             setArticles(INITIAL_ARTICLES);
+            setClubs(Object.values(CLUB_DATABASE));
         } else {
-            console.log("Attempting to fetch articles from Supabase...");
-            const { data, error } = await supabase
-                .from('articles')
-                .select('*')
-                .order('date', { ascending: false });
+            console.log("Attempting to fetch data from Supabase...");
+            const [articlesRes, clubsRes] = await Promise.all([
+                supabase.from('articles').select('*').order('date', { ascending: false }),
+                supabase.from('clubs').select('*')
+            ]);
 
-            if (error) {
-                console.error("Error fetching articles from Supabase:", error);
-                setArticles(INITIAL_ARTICLES); // Fallback on error
-            } else if (data) {
-                console.log("Successfully fetched articles from Supabase.", data.length);
-                setArticles(data);
+            if (articlesRes.error) {
+                console.error("Error fetching articles from Supabase:", articlesRes.error);
+                setArticles(INITIAL_ARTICLES);
+            } else {
+                setArticles(articlesRes.data);
+            }
+
+            if (clubsRes.error) {
+                console.error("Error fetching clubs from Supabase:", clubsRes.error);
+                setClubs(Object.values(CLUB_DATABASE));
+            } else {
+                setClubs(clubsRes.data);
             }
         }
 
         // --- Sports API Data ---
+        // Environment variables are read at runtime for broader compatibility.
+        const API_FOOTBALL_KEY = process.env.VITE_APIFOOTBALL_KEY as string;
         if (API_FOOTBALL_KEY) {
             const [liveMatches, leagueStandings] = await Promise.all([
                 fetchLiveMatches(API_FOOTBALL_KEY, apiConfig.leagueIds),
@@ -101,8 +83,6 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setStandings(leagueStandings);
         } else {
             console.warn("VITE_APIFOOTBALL_KEY not configured. Skipping matches and standings fetch.");
-            setMatches([]);
-            setStandings([]);
         }
 
         setIsLoadingInitial(false);
@@ -115,98 +95,118 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const addArticle = async (article: Article): Promise<boolean> => {
     const supabase = getSupabase();
     if (!supabase) {
-        console.warn("Supabase not configured. Adding article to local state only.");
         setArticles(prev => [article, ...prev]);
         return true;
     }
     const { error } = await supabase.from('articles').insert([article]);
     if (error) {
-        console.error("Error adding article to Supabase:", error);
-        alert(`Supabase Error: ${error.message}`);
-        return false;
+        console.error("Supabase Error:", error); return false;
     }
-    setArticles(prev => [article, ...prev]); // Optimistic update
+    setArticles(prev => [article, ...prev]);
     return true;
   };
 
   const updateArticle = async (article: Article): Promise<boolean> => {
      const supabase = getSupabase();
      if (!supabase) {
-        console.warn("Supabase not configured. Updating article in local state only.");
         setArticles(prev => prev.map(a => a.id === article.id ? article : a));
         return true;
      }
      const { error } = await supabase.from('articles').update(article).eq('id', article.id);
      if (error) {
-        console.error("Error updating article in Supabase:", error);
-        alert(`Supabase Error: ${error.message}`);
-        return false;
+        console.error("Supabase Error:", error); return false;
      }
-     setArticles(prev => prev.map(a => a.id === article.id ? article : a)); // Optimistic update
+     setArticles(prev => prev.map(a => a.id === article.id ? article : a));
      return true;
   }
 
   const deleteArticle = async (id: string): Promise<boolean> => {
      const supabase = getSupabase();
      if (!supabase) {
-        console.warn("Supabase not configured. Deleting article from local state only.");
         setArticles(prev => prev.filter(a => a.id !== id));
         return true;
      }
      const { error } = await supabase.from('articles').delete().eq('id', id);
      if (error) {
-        console.error("Error deleting article from Supabase:", error);
-        alert(`Supabase Error: ${error.message}`);
-        return false;
+        console.error("Supabase Error:", error); return false;
      }
-     setArticles(prev => prev.filter(a => a.id !== id)); // Optimistic update
+     setArticles(prev => prev.filter(a => a.id !== id));
      return true;
   }
 
-  const addClub = (club: ClubProfile): boolean => {
+  const addClub = async (club: ClubProfile): Promise<boolean> => {
+      const supabase = getSupabase();
+      if (!supabase) {
+          setClubs(prev => [...prev, club]);
+          return true;
+      }
+      const { error } = await supabase.from('clubs').insert([club]);
+      if (error) {
+          console.error("Supabase Error:", error); return false;
+      }
       setClubs(prev => [...prev, club]);
       return true;
   };
 
-  const updateClub = (club: ClubProfile): boolean => {
+  const updateClub = async (club: ClubProfile): Promise<boolean> => {
+      const supabase = getSupabase();
+      if (!supabase) {
+          setClubs(prev => prev.map(c => c.id === club.id ? club : c));
+          return true;
+      }
+      const { error } = await supabase.from('clubs').update(club).eq('id', club.id);
+      if (error) {
+          console.error("Supabase Error:", error); return false;
+      }
       setClubs(prev => prev.map(c => c.id === club.id ? club : c));
       return true;
   };
 
-  const deleteClub = (id: string): boolean => {
+  const deleteClub = async (id: string): Promise<boolean> => {
+      const supabase = getSupabase();
+      if (!supabase) {
+          setClubs(prev => prev.filter(c => c.id !== id));
+          return true;
+      }
+      const { error } = await supabase.from('clubs').delete().eq('id', id);
+      if (error) {
+          console.error("Supabase Error:", error); return false;
+      }
       setClubs(prev => prev.filter(c => c.id !== id));
       return true;
   };
 
-  const transferPlayer = (playerId: string, sourceClubId: string, targetClubId: string, price: number) => {
-      setClubs(prevClubs => {
-          const newClubs = prevClubs.map(c => ({...c, squad: [...c.squad]}));
-          const sourceClub = newClubs.find(c => c.id === sourceClubId);
-          const targetClub = newClubs.find(c => c.id === targetClubId);
-          if (!sourceClub || !targetClub) return prevClubs;
+  const transferPlayer = async (playerId: string, sourceClubId: string, targetClubId: string, price: number) => {
+      const sourceClub = clubs.find(c => c.id === sourceClubId);
+      const targetClub = clubs.find(c => c.id === targetClubId);
+      if (!sourceClub || !targetClub) return;
 
-          const playerIndex = sourceClub.squad.findIndex(p => p.id === playerId);
-          if (playerIndex === -1) return prevClubs;
+      const playerIndex = sourceClub.squad.findIndex(p => p.id === playerId);
+      if (playerIndex === -1) return;
 
-          const [player] = sourceClub.squad.splice(playerIndex, 1);
-          
-          const transferArticle: Article = {
-              id: `transfer-${Date.now()}`,
-              title: `رسمياً: ${player.name} ينتقل من ${sourceClub.name} إلى ${targetClub.name} مقابل ${price} مليون`,
-              summary: `أعلن نادي ${targetClub.name} اليوم عن تعاقده مع اللاعب ${player.name} قادماً من ${sourceClub.name} في صفقة بلغت قيمتها ${price} مليون يورو.`,
-              content: `في خطوة لتعزيز صفوفه، أتم نادي ${targetClub.name} إجراءات ضم النجم ${player.name}.`,
-              imageUrl: player.image || targetClub.coverImage,
-              category: targetClub.country,
-              date: new Date().toISOString(),
-              author: 'Bot الانتقالات',
-              views: Math.floor(Math.random() * 5000) + 1000,
-              isBreaking: true,
-          };
+      const [player] = sourceClub.squad.splice(playerIndex, 1);
+      targetClub.squad.push(player);
 
-          addArticle(transferArticle);
-          targetClub.squad.push(player);
-          return newClubs;
-      });
+      // Persist changes to Supabase
+      await Promise.all([
+          updateClub(sourceClub),
+          updateClub(targetClub)
+      ]);
+      
+      const transferArticle: Article = {
+          id: `transfer-${Date.now()}`,
+          title: `رسمياً: ${player.name} ينتقل من ${sourceClub.name} إلى ${targetClub.name} مقابل ${price} مليون`,
+          summary: `أعلن نادي ${targetClub.name} اليوم عن تعاقده مع اللاعب ${player.name} قادماً من ${sourceClub.name}.`,
+          content: `في خطوة لتعزيز صفوفه، أتم نادي ${targetClub.name} إجراءات ضم النجم ${player.name}.`,
+          imageUrl: player.image || targetClub.coverImage,
+          category: targetClub.country,
+          date: new Date().toISOString(),
+          author: 'Bot الانتقالات',
+          views: Math.floor(Math.random() * 5000) + 1000,
+          isBreaking: true,
+      };
+
+      await addArticle(transferArticle);
   };
 
   const value = {

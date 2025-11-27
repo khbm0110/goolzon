@@ -31,6 +31,7 @@ export const CLUB_DATABASE: Record<string, ClubProfile> = {
     id: 'nassr',
     name: 'النصر',
     englishName: 'Al-Nassr',
+    apiFootballId: 2935,
     logo: 'https://upload.wikimedia.org/wikipedia/en/a/a1/Al_Nassr_FC_Logo.svg',
     coverImage: 'https://images.unsplash.com/photo-1510563800743-aed236490d94?auto=format&fit=crop&q=80&w=1200', // Yellow stadium vibe
     founded: 1955,
@@ -55,6 +56,7 @@ export const CLUB_DATABASE: Record<string, ClubProfile> = {
     id: 'hilal',
     name: 'الهلال',
     englishName: 'Al-Hilal',
+    apiFootballId: 639,
     logo: 'https://upload.wikimedia.org/wikipedia/en/f/fa/Al_Hilal_SFC_logo.svg',
     coverImage: 'https://images.unsplash.com/photo-1522778119026-d647f0565c6a?auto=format&fit=crop&q=80&w=1200', // Blue vibe
     founded: 1957,
@@ -80,6 +82,7 @@ export const CLUB_DATABASE: Record<string, ClubProfile> = {
     id: 'generic',
     name: 'النادي',
     englishName: 'Club',
+    apiFootballId: 0,
     logo: '',
     coverImage: 'https://images.unsplash.com/photo-1522778119026-d647f0565c6a?auto=format&fit=crop&q=80&w=1200',
     founded: 2000,

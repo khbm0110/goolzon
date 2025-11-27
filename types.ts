@@ -144,6 +144,7 @@ export interface ClubProfile {
   id: string;
   name: string;
   englishName: string;
+  apiFootballId: number;
   logo: string;
   coverImage: string;
   founded: number;

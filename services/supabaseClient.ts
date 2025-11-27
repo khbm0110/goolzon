@@ -2,10 +2,6 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 let supabase: SupabaseClient | null = null;
 
-// Environment variables are read from `process.env` for broader compatibility.
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
-
 // This function now initializes a singleton client using environment variables.
 // It's safer, more reliable, and standard practice for production apps.
 export const getSupabase = (): SupabaseClient | null => {
@@ -13,6 +9,10 @@ export const getSupabase = (): SupabaseClient | null => {
   if (supabase) {
     return supabase;
   }
+
+  // Environment variables are read inside the function for runtime reliability.
+  const SUPABASE_URL = process.env.VITE_SUPABASE_URL as string;
+  const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY as string;
 
   // If environment variables are available, create the client.
   if (SUPABASE_URL && SUPABASE_ANON_KEY) {

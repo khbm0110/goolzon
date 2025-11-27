@@ -1,4 +1,10 @@
 {
+  "crons": [
+    {
+      "path": "/api/sync-squads",
+      "schedule": "0 */12 * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",

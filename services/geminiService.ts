@@ -1,19 +1,7 @@
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { getSmartImageUrl } from "./imageService";
 import { MatchDetails } from "../types";
-
-// Helper to get a singleton AI instance.
-let ai: GoogleGenAI | null = null;
-const getAI = () => {
-  if (ai) return ai;
-  // FIX: Per coding guidelines, the API key must be obtained from process.env.API_KEY.
-  if (process.env.API_KEY) {
-    ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    return ai;
-  }
-  console.warn("API_KEY is not configured in environment variables.");
-  return null;
-};
+import { getGeminiApiKeyForTopic, getGeminiApiKeyForHeadlines } from './keyManager';
 
 export interface GeneratedArticle {
   title: string;
@@ -30,8 +18,13 @@ export interface GeneratedArticle {
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const fetchDailyHeadlines = async (): Promise<string[]> => {
-  const ai = getAI();
-  if (!ai) return ["فوز الهلال في الدوري", "تألق رونالدو مع النصر", "الدوري الإماراتي يشتعل"];
+  const apiKey = getGeminiApiKeyForHeadlines();
+  if (!apiKey) {
+    console.warn("No Gemini API key configured for headlines. Cannot fetch.");
+    return ["فوز الهلال في الدوري", "تألق رونالدو مع النصر", "الدوري الإماراتي يشتعل"];
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
 
   const today = new Date().toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   
@@ -80,11 +73,13 @@ export const fetchDailyHeadlines = async (): Promise<string[]> => {
 };
 
 export const generateArticleContent = async (topic: string, retries = 3, excludeTitles: string[] = []): Promise<GeneratedArticle | null> => {
-  const ai = getAI();
-  if (!ai) {
+  const apiKey = getGeminiApiKeyForTopic(topic);
+  if (!apiKey) {
     console.error("Gemini API key is not configured. Cannot generate article.");
     return null;
   }
+
+  const ai = new GoogleGenAI({ apiKey });
 
   const today = new Date().toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const model = 'gemini-2.5-flash';

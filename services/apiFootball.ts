@@ -1,6 +1,6 @@
 
 
-import { Match, Category, MatchDetails, Standing, MatchEvent } from '../types';
+import { Match, Category, MatchDetails, Standing, MatchEvent, Player } from '../types';
 
 const BASE_URL = 'https://v3.football.api-sports.io';
 
@@ -223,6 +223,43 @@ export const fetchStandings = async (apiKey: string, leagueIds: string): Promise
 
     } catch (e) {
         console.error("Failed to fetch standings:", e);
+        return [];
+    }
+};
+
+export const fetchTeamSquad = async (apiKey: string, teamId: number): Promise<Player[]> => {
+    if (!apiKey || !teamId) return [];
+    const headers = getHeaders(apiKey);
+    
+    try {
+        const response = await fetch(`${BASE_URL}/players/squads?team=${teamId}`, { headers });
+        if (!response.ok) {
+            console.error(`API-Football error for team ${teamId}: ${response.status}`);
+            return [];
+        }
+        const data = await response.json();
+        if (!data.response?.[0]?.players) return [];
+
+        const posMap: Record<string, Player['position']> = {
+            'Goalkeeper': 'GK',
+            'Defender': 'DEF',
+            'Midfielder': 'MID',
+            'Attacker': 'FWD'
+        };
+
+        return data.response[0].players.map((p: any) => ({
+            id: `apif-${p.id}`,
+            name: p.name,
+            number: p.number || 0,
+            position: posMap[p.position] || 'MID',
+            rating: 75, // Default rating, can be customized later
+            image: p.photo,
+            // Nationality might not be available in squad endpoint, depends on API
+            nationality: p.nationality || '', 
+            stats: { pac: 70, sho: 70, pas: 70, dri: 70, def: 50, phy: 60 } // Default stats
+        }));
+    } catch (e) {
+        console.error(`Failed to fetch squad for team ${teamId}:`, e);
         return [];
     }
 };

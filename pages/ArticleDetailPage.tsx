@@ -1,5 +1,3 @@
-
-
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
@@ -61,8 +59,8 @@ const ArticleDetailPage: React.FC = () => {
     ];
 
     return (
-        <div className="container mx-auto px-4 py-8 max-w-4xl text-right">
-            <div className="mb-6">
+        <div className="container mx-auto px-4 py-8 max-w-4xl" dir="rtl">
+            <div className="mb-6 text-right">
                 <span className="inline-block px-3 py-1 rounded bg-slate-800 text-primary font-bold text-xs mb-3 border border-slate-700">{article.category}</span>
                 <h1 className="text-3xl md:text-5xl font-black text-white mt-2 leading-tight lg:leading-tight">{article.title}</h1>
                 <div className="flex items-center text-slate-400 mt-6 text-sm space-x-6 space-x-reverse border-y border-slate-800 py-4">
@@ -87,7 +85,7 @@ const ArticleDetailPage: React.FC = () => {
                 </div>
             )}
             
-            <div dir="rtl" className="prose prose-invert prose-lg max-w-none text-slate-300 leading-relaxed font-sans text-right">
+            <div className="prose prose-invert prose-lg max-w-none text-slate-300 leading-relaxed font-sans text-right">
                 <p className="text-xl font-bold text-white mb-8 leading-9 border-r-4 border-primary pr-6 bg-slate-900/30 py-4 rounded-r">{article.summary}</p>
                 <div dangerouslySetInnerHTML={{__html: article.content.replace(/\n/g, '<br/>')}} />
             </div>
@@ -148,7 +146,7 @@ const ArticleDetailPage: React.FC = () => {
                 </div>
             </div>
 
-            <div className="pt-6 flex flex-wrap gap-2">
+            <div className="pt-6 flex flex-wrap gap-2 text-right">
                 <span className="text-sm text-slate-500 ml-2">كلمات مفتاحية:</span>
                 {['دوري أبطال آسيا', 'الدوري المحلي', 'الخليج', 'كرة قدم'].map(tag => (
                     <span key={tag} className="px-3 py-1 bg-slate-900 text-slate-400 text-xs rounded-full hover:bg-slate-800 hover:text-white transition-colors cursor-pointer">
@@ -157,7 +155,7 @@ const ArticleDetailPage: React.FC = () => {
                 ))}
             </div>
 
-            <div className="mt-12">
+            <div className="mt-12 text-right">
                 <h2 className="text-2xl font-bold text-white mb-6 border-b border-slate-800 pb-3">التعليقات ({mockComments.length})</h2>
 
                 <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 mb-8">

@@ -22,35 +22,18 @@ const FORMATION_433 = [
 
 const UserProfile: React.FC = () => {
     const { clubs } = useData();
-    const { currentUser, logout } = useAuth();
+    const { currentUser, logout, dreamSquad, updateDreamSquad, profileLoading } = useAuth();
     const navigate = useNavigate();
     const [showTactics, setShowTactics] = useState(true);
-    const [isLoadingSquad, setIsLoadingSquad] = useState(true);
     const [activeSlot, setActiveSlot] = useState<number | null>(null);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
-
-    const [dreamSquad, setDreamSquad] = useState<Record<number, Player & { clubLogo?: string }>>(() => {
-        if (!currentUser) return {};
-        const saved = localStorage.getItem(`goolzon_dream_squad_${currentUser.id}`);
-        return saved ? JSON.parse(saved) : {};
-    });
-
-    // Effect to load data on mount
-    useEffect(() => {
-        if (!currentUser) {
-            setIsLoadingSquad(false);
-            return;
-        }
-        const saved = localStorage.getItem(`goolzon_dream_squad_${currentUser.id}`);
-        setDreamSquad(saved ? JSON.parse(saved) : {});
-        setIsLoadingSquad(false);
-    }, [currentUser]);
     
-    // Effect to save data on change
+    // Local state for squad to provide immediate UI feedback
+    const [localDreamSquad, setLocalDreamSquad] = useState(dreamSquad);
+
     useEffect(() => {
-        if (!currentUser || isLoadingSquad) return;
-        localStorage.setItem(`goolzon_dream_squad_${currentUser.id}`, JSON.stringify(dreamSquad));
-    }, [dreamSquad, currentUser, isLoadingSquad]);
+        setLocalDreamSquad(dreamSquad);
+    }, [dreamSquad]);
 
     const allPlayers = clubs.flatMap(c => c.squad.map(p => ({ ...p, clubLogo: c.logo, clubName: c.name })));
 
@@ -61,7 +44,9 @@ const UserProfile: React.FC = () => {
 
     const handleSelectPlayer = (player: Player & { clubLogo?: string }) => {
         if (activeSlot !== null) {
-            setDreamSquad(prev => ({ ...prev, [activeSlot]: player }));
+            const newSquad = { ...localDreamSquad, [activeSlot]: player };
+            setLocalDreamSquad(newSquad);
+            updateDreamSquad(newSquad); // Sync with Supabase
             setIsSelectorOpen(false);
             setActiveSlot(null);
         }
@@ -69,19 +54,19 @@ const UserProfile: React.FC = () => {
 
     const handleRemovePlayer = (e: React.MouseEvent, slotId: number) => {
         e.stopPropagation();
-        setDreamSquad(prev => {
-            const newState = { ...prev };
-            delete newState[slotId];
-            return newState;
-        });
+        const newSquad = { ...localDreamSquad };
+        delete newSquad[slotId];
+        setLocalDreamSquad(newSquad);
+        updateDreamSquad(newSquad); // Sync with Supabase
     };
+
 
     const handleLogout = () => {
         logout();
         navigate('/');
     };
 
-    const squadPlayers = Object.values(dreamSquad) as (Player & { clubLogo?: string })[];
+    const squadPlayers = Object.values(localDreamSquad) as (Player & { clubLogo?: string })[];
     const totalRating = squadPlayers.reduce((acc: number, player) => acc + (player.rating || 0), 0);
     const averageRating = squadPlayers.length > 0 ? Math.round(totalRating / 11) : 0;
 
@@ -124,10 +109,10 @@ const UserProfile: React.FC = () => {
                         </>
                     ) : (
                         <InteractivePitch 
-                            squad={dreamSquad} 
+                            squad={localDreamSquad} 
                             onSlotClick={handleSlotClick} 
                             onRemovePlayer={handleRemovePlayer}
-                            isLoading={isLoadingSquad}
+                            isLoading={profileLoading}
                         />
                     )}
                 </div>
@@ -162,7 +147,7 @@ const UserProfile: React.FC = () => {
                             <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center">
                                 <span className="text-slate-500 text-xs font-bold block mb-1">عدد اللاعبين</span>
                                 <span className="text-2xl font-black text-white">
-                                    {Object.values(dreamSquad).length} / 11
+                                    {Object.values(localDreamSquad).length} / 11
                                 </span>
                             </div>
                         </div>
