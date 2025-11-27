@@ -81,9 +81,6 @@ export default async function handler(request: any, response: any) {
         ? articleData.category
         : Category.SAUDI;
       
-      // Since we don't have access to imageService logic fully here (browser-only sometimes), 
-      // we might need to inline specific image logic or mock it. 
-      // For now, we use a generic placeholder or the logic if imports work (Node support).
       const imageUrl = getSmartImageUrl(articleData.imageKeyword || topic); 
 
       const newArticle = {

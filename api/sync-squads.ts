@@ -8,6 +8,7 @@ import { ClubProfile, Player } from '../types';
 export default async function handler(request: any, response: any) {
   // --- Security Check ---
   // We expect an Authorization header: "Bearer <CRON_SECRET>"
+  // This allows calls from Supabase pg_net or manual authenticated calls
   const authHeader = request.headers['authorization'];
   const expectedSecret = `Bearer ${process.env.CRON_SECRET}`;
 
@@ -17,12 +18,15 @@ export default async function handler(request: any, response: any) {
   }
 
   // --- Economic Check: Only run during transfer windows for AUTOMATED runs ---
-  if (!isWithinTransferWindow()) {
+  // If "force" query param is present, skip window check
+  const forceRun = request.query && request.query.force === 'true';
+
+  if (!forceRun && !isWithinTransferWindow()) {
       console.log("Sync Engine: Skipped job, outside of transfer window.");
       return response.status(200).json({ message: "Sync skipped: Not a transfer window." });
   }
 
-  console.log("Sync Engine: Job running within transfer window.");
+  console.log("Sync Engine: Job running...");
 
   const supabase = getSupabase();
   const apiKey = process.env.VITE_APIFOOTBALL_KEY;

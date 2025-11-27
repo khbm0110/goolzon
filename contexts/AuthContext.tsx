@@ -160,7 +160,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const supabase = getSupabase();
     
     if (!supabase) {
-        return { success: false, error: 'خدمة الاتصال بقاعدة البيانات غير متوفرة. تأكد من إعدادات VITE_SUPABASE_URL.' };
+        return { success: false, error: 'النظام غير مهيأ. تأكد من إعداد متغيرات البيئة (VITE_SUPABASE_URL).' };
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
@@ -206,7 +206,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const register = async (data: Partial<User>) => {
     const supabase = getSupabase();
-    if (!supabase) return { success: false, error: 'النظام غير مهيأ حالياً.' };
+    if (!supabase) return { success: false, error: 'النظام غير مهيأ. تأكد من إعداد متغيرات البيئة (VITE_SUPABASE_URL).' };
     
     if (!data.email || !data.password) return { success: false, error: 'البريد الإلكتروني وكلمة المرور مطلوبان.' };
 
