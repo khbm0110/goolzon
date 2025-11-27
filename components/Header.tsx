@@ -1,10 +1,9 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Search, Trophy, Activity, Youtube, Calendar, Zap, Bell, User as UserIcon, LogIn, Shield } from 'lucide-react';
+import { Menu, X, Search, Trophy, Activity, Youtube, Calendar, Bell, User as UserIcon, LogIn } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
-import { useUI } from '../contexts/UIContext';
 
 interface HeaderProps {
   onSearchClick?: () => void;
@@ -12,7 +11,7 @@ interface HeaderProps {
   onToggleAutopilot?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onSearchClick, isAutopilotEnabled, onToggleAutopilot }) => {
+const Header: React.FC<HeaderProps> = ({ onSearchClick }) => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const { currentUser, followedTeams } = useAuth();
@@ -76,22 +75,6 @@ const Header: React.FC<HeaderProps> = ({ onSearchClick, isAutopilotEnabled, onTo
 
           {/* Actions */}
           <div className="flex items-center space-x-3 space-x-reverse">
-             {featureFlags.autopilot && (
-                 <button 
-                    onClick={onToggleAutopilot}
-                    className={`hidden xl:flex items-center px-3 py-1 rounded-full border transition-all cursor-pointer ${
-                      isAutopilotEnabled 
-                        ? 'bg-emerald-900/30 border-emerald-500/50' 
-                        : 'bg-slate-900 border-slate-800 opacity-70 hover:opacity-100'
-                    }`}
-                 >
-                    <Zap size={12} className={`ml-2 ${isAutopilotEnabled ? 'text-emerald-400 fill-emerald-400' : 'text-slate-500'}`} />
-                    <span className={`text-[10px] font-bold ${isAutopilotEnabled ? 'text-emerald-400' : 'text-slate-500'}`}>
-                       AI Auto: {isAutopilotEnabled ? 'ON' : 'OFF'}
-                    </span>
-                 </button>
-             )}
-
              {/* Notifications */}
              <div className="relative group cursor-pointer hidden sm:block">
                 <Bell size={20} className="text-slate-300 group-hover:text-primary transition-colors" />
@@ -172,17 +155,6 @@ const Header: React.FC<HeaderProps> = ({ onSearchClick, isAutopilotEnabled, onTo
               </Link>
             ))}
             <div className="border-t border-slate-800 my-2 pt-2">
-                {featureFlags.autopilot && (
-                    <button 
-                      onClick={() => { onToggleAutopilot && onToggleAutopilot(); setIsOpen(false); }}
-                      className={`flex items-center w-full px-3 py-2 text-base font-medium ${
-                        isAutopilotEnabled ? 'text-emerald-400' : 'text-slate-400'
-                      }`}
-                    >
-                       <Zap size={16} className="ml-2" />
-                       AI Autopilot: {isAutopilotEnabled ? 'ON' : 'OFF'}
-                    </button>
-                )}
                 {featureFlags.userSystem && (
                   currentUser ? (
                     <Link to="/profile" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-slate-300 hover:text-white font-bold text-primary">

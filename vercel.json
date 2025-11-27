@@ -1,3 +1,4 @@
+
 {
   "crons": [
     {
@@ -7,6 +8,10 @@
     {
       "path": "/api/sync-performance",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/generate-news",
+      "schedule": "*/15 * * * *"
     }
   ],
   "rewrites": [

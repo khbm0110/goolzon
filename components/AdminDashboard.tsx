@@ -35,9 +35,10 @@ import {
   Activity,
   Info,
   RefreshCw,
-  BarChart2
+  BarChart2,
+  Handshake
 } from 'lucide-react';
-import { Article, Category, ClubProfile, Player, PlayerStats, FeatureFlags, ApiConfig } from '../types';
+import { Article, Category, ClubProfile, Player, PlayerStats, FeatureFlags, ApiConfig, Sponsor } from '../types';
 import { useData } from '../contexts/DataContext';
 import { useSettings } from '../contexts/SettingsContext';
 import TeamLogo from './TeamLogo';
@@ -256,6 +257,79 @@ const AdsView: React.FC = () => {
     );
 };
 
+const SponsorsView: React.FC = () => {
+    const { sponsors, addSponsor, deleteSponsor } = useData();
+    const [newSponsor, setNewSponsor] = useState<Partial<Sponsor>>({ name: '', logo: '', url: '', active: true });
+
+    const handleAdd = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if(!newSponsor.name || !newSponsor.logo) return;
+        
+        await addSponsor({
+            id: Date.now().toString(),
+            name: newSponsor.name,
+            logo: newSponsor.logo,
+            url: newSponsor.url || '#',
+            active: true
+        });
+        setNewSponsor({ name: '', logo: '', url: '', active: true });
+    };
+
+    return (
+        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
+             <div className="p-6 border-b border-slate-800 bg-slate-950">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2"><Handshake className="text-primary" /> إدارة الرعاة (Sponsors)</h2>
+                <p className="text-slate-400 text-sm mt-2">أضف شعارات الشركات الراعية لتظهر في أسفل الموقع.</p>
+            </div>
+            
+            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Form */}
+                <form onSubmit={handleAdd} className="space-y-4 bg-slate-950 p-4 rounded-xl border border-slate-800 h-fit">
+                    <h3 className="font-bold text-white">إضافة راعي جديد</h3>
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-400">اسم الشركة</label>
+                        <input value={newSponsor.name} onChange={e => setNewSponsor({...newSponsor, name: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm" placeholder="مثال: طيران الإمارات" required />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-400">رابط الشعار (URL)</label>
+                        <div className="flex gap-2">
+                             <input value={newSponsor.logo} onChange={e => setNewSponsor({...newSponsor, logo: e.target.value})} className="flex-1 bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm" placeholder="https://..." required />
+                             {newSponsor.logo && <div className="w-10 h-10 bg-white rounded flex items-center justify-center"><img src={newSponsor.logo} className="h-8 w-8 object-contain"/></div>}
+                        </div>
+                    </div>
+                     <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-400">رابط الموقع (اختياري)</label>
+                        <input value={newSponsor.url} onChange={e => setNewSponsor({...newSponsor, url: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm" placeholder="https://..." />
+                    </div>
+                    <button type="submit" className="w-full bg-primary text-slate-900 font-bold py-2 rounded hover:bg-emerald-400 transition-colors">إضافة</button>
+                </form>
+
+                {/* List */}
+                <div className="space-y-3">
+                     <h3 className="font-bold text-white">الرعاة الحاليين</h3>
+                     {sponsors.length === 0 && <p className="text-slate-500 text-sm">لا يوجد رعاة حالياً.</p>}
+                     {sponsors.map(sponsor => (
+                         <div key={sponsor.id} className="flex items-center justify-between p-3 bg-slate-800 rounded-lg border border-slate-700">
+                             <div className="flex items-center gap-3">
+                                 <div className="w-12 h-12 bg-white rounded flex items-center justify-center p-1">
+                                     <img src={sponsor.logo} alt={sponsor.name} className="w-full h-full object-contain" />
+                                 </div>
+                                 <div>
+                                     <p className="font-bold text-white text-sm">{sponsor.name}</p>
+                                     <a href={sponsor.url} target="_blank" className="text-xs text-primary hover:underline truncate max-w-[150px] block">{sponsor.url}</a>
+                                 </div>
+                             </div>
+                             <button onClick={() => deleteSponsor(sponsor.id)} className="p-2 text-slate-500 hover:text-red-500 bg-slate-900 hover:bg-red-500/10 rounded-lg transition-colors">
+                                 <Trash2 size={16} />
+                             </button>
+                         </div>
+                     ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // --- Main Admin Dashboard Component ---
 
 const ContentListView: React.FC<{
@@ -308,7 +382,7 @@ const ContentListView: React.FC<{
 };
 
 const AdminDashboard: React.FC = () => {
-  const [activeView, setActiveView] = useState<'DASHBOARD' | 'EDITOR' | 'LIST' | 'SEO' | 'ADS' | 'CLUBS' | 'SETTINGS'>('DASHBOARD');
+  const [activeView, setActiveView] = useState<'DASHBOARD' | 'EDITOR' | 'LIST' | 'SEO' | 'ADS' | 'CLUBS' | 'SETTINGS' | 'SPONSORS'>('DASHBOARD');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { 
     clubs, addClub, updateClub, deleteClub, articles, addArticle, updateArticle, deleteArticle, matches
@@ -368,6 +442,7 @@ const AdminDashboard: React.FC = () => {
     { id: 'CLUBS', label: 'إدارة الأندية', icon: Shield, hidden: !featureFlags.clubs },
     { id: 'SEO', label: 'إعدادات SEO', icon: Globe },
     { id: 'ADS', label: 'إدارة الإعلانات', icon: DollarSign },
+    { id: 'SPONSORS', label: 'الرعاة', icon: Handshake },
     { id: 'SETTINGS', label: 'الإعدادات والميزات', icon: Settings },
   ].filter(item => !item.hidden);
 
@@ -424,6 +499,7 @@ const AdminDashboard: React.FC = () => {
         )}
          {activeView === 'SEO' && <SEOView />}
          {activeView === 'ADS' && <AdsView />}
+         {activeView === 'SPONSORS' && <SponsorsView />}
         
         {activeView === 'CLUBS' && featureFlags.clubs && (
            <ClubsManagerView 

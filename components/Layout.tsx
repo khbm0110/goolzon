@@ -4,6 +4,7 @@ import Header from './Header';
 import MatchTicker from './MatchTicker';
 import SearchModal from './SearchModal';
 import MatchCenterModal from './MatchCenterModal';
+import SponsorsBanner from './SponsorsBanner';
 import { useData } from '../contexts/DataContext';
 import { useUI } from '../contexts/UIContext';
 import { useSettings } from '../contexts/SettingsContext';
@@ -45,7 +46,9 @@ const Layout: React.FC<{children: React.ReactNode}> = ({ children }) => {
         {children}
       </main>
 
-      <footer className="bg-slate-900 border-t border-slate-800 py-12 mt-12 mb-16 md:mb-0">
+      <SponsorsBanner />
+
+      <footer className="bg-slate-900 border-t border-slate-800 py-12 mt-0 mb-16 md:mb-0">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="col-span-1 md:col-span-2">

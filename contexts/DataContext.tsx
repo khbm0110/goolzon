@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
-import { Article, Match, Standing, ClubProfile, Category, Player } from '../types';
+import { Article, Match, Standing, ClubProfile, Category, Player, Sponsor } from '../types';
 import { INITIAL_ARTICLES, CLUB_DATABASE } from '../constants';
 import { fetchLiveMatches, fetchStandings } from '../services/apiFootball';
 import { useSettings } from './SettingsContext';
@@ -16,6 +16,9 @@ interface DataContextType {
   addClub: (club: ClubProfile) => Promise<boolean>;
   updateClub: (club: ClubProfile) => Promise<boolean>;
   deleteClub: (id: string) => Promise<boolean>;
+  sponsors: Sponsor[];
+  addSponsor: (sponsor: Sponsor) => Promise<boolean>;
+  deleteSponsor: (id: string) => Promise<boolean>;
   isLoadingInitial: boolean;
 }
 
@@ -27,11 +30,19 @@ export const useData = () => {
   return context;
 };
 
+// Initial Mock Sponsors
+const INITIAL_SPONSORS: Sponsor[] = [
+    { id: '1', name: 'طيران الخليج', logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/e/e9/Gulf_Air_Logo.svg/1200px-Gulf_Air_Logo.svg.png', url: '#', active: true },
+    { id: '2', name: 'stc', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/STC_Logo_2019.svg/1200px-STC_Logo_2019.svg.png', url: '#', active: true },
+    { id: '3', name: 'أرامكو', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Aramco_Logo.svg/1200px-Aramco_Logo.svg.png', url: '#', active: true },
+];
+
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { apiConfig } = useSettings();
   
   const [articles, setArticles] = useState<Article[]>([]);
   const [clubs, setClubs] = useState<ClubProfile[]>([]);
+  const [sponsors, setSponsors] = useState<Sponsor[]>(INITIAL_SPONSORS);
   
   const [matches, setMatches] = useState<Match[]>([]);
   const [standings, setStandings] = useState<Standing[]>([]);
@@ -48,6 +59,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             console.warn("Supabase not configured. Falling back to local data.");
             setArticles(INITIAL_ARTICLES);
             setClubs(Object.values(CLUB_DATABASE));
+            // Sponsors stay as local mock for now unless we add a table
         } else {
             console.log("Attempting to fetch data from Supabase...");
             const [articlesRes, clubsRes] = await Promise.all([
@@ -175,11 +187,23 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return true;
   };
 
+  // Sponsor Logic (Local only for now to keep it simple, or map to a generic table later)
+  const addSponsor = async (sponsor: Sponsor): Promise<boolean> => {
+      setSponsors(prev => [...prev, sponsor]);
+      return true;
+  };
+
+  const deleteSponsor = async (id: string): Promise<boolean> => {
+      setSponsors(prev => prev.filter(s => s.id !== id));
+      return true;
+  };
+
   const value = {
     articles, addArticle, updateArticle, deleteArticle,
     matches,
     standings,
     clubs, addClub, updateClub, deleteClub,
+    sponsors, addSponsor, deleteSponsor,
     isLoadingInitial
   };
 

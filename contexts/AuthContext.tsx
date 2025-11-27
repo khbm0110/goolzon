@@ -1,8 +1,10 @@
+
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { User, Player } from '../types';
 import { getSupabase } from '../services/supabaseClient';
 
-const ADMIN_EMAIL = 'admin@goolzon.dev';
+// We rely on the Database Role now, but keep this for emergency local fallback if needed
+const FALLBACK_DEV_ADMIN = 'admin@goolzon.dev';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -49,7 +51,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const manageUserProfile = async (authUser: any) => {
         setProfileLoading(true);
-        const isUserAdmin = authUser.email === ADMIN_EMAIL;
         
         // 1. Check for an existing profile
         const { data: profileData, error: profileError } = await supabase
@@ -60,7 +61,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
         let finalProfileData = profileData;
 
-        // 2. If no profile exists, create one
+        // 2. If no profile exists, create one (Default role: user)
         if (profileError && profileError.code === 'PGRST116') { // 'PGRST116' is Supabase code for "Not Found"
             console.log("No profile found for user, creating one...");
             const { data: newProfile, error: createError } = await supabase
@@ -71,6 +72,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     name: authUser.user_metadata?.name || authUser.email?.split('@')[0],
                     username: authUser.user_metadata?.username || authUser.email?.split('@')[0],
                     avatar: authUser.user_metadata?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${authUser.id}`,
+                    role: 'user', // Default role
                     followed_teams: [],
                     dream_squad: {}
                 })
@@ -87,17 +89,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         // 3. Set application state from profile
         if (finalProfileData) {
+             const userRole = finalProfileData.role || 'user';
              const appUser: User = {
                 id: authUser.id,
                 email: authUser.email || '',
-                name: finalProfileData.name || (isUserAdmin ? 'المدير العام' : 'مشجع'),
+                name: finalProfileData.name || 'مشجع',
                 username: finalProfileData.username || 'user',
                 avatar: finalProfileData.avatar,
                 joinDate: authUser.created_at || new Date().toISOString(),
+                role: userRole,
                 password: '',
             };
             setCurrentUser(appUser);
-            setIsAdmin(isUserAdmin);
+            // CHECK ADMIN STATUS FROM DB ROLE
+            setIsAdmin(userRole === 'admin');
             setFollowedTeams(finalProfileData.followed_teams || []);
             setDreamSquad(finalProfileData.dream_squad || {});
         }
@@ -162,23 +167,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = async (email: string, pass: string) => {
     const supabase = getSupabase();
-    const isAdminAttempt = email === ADMIN_EMAIL;
-
+    
     if (supabase) {
         const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
         if (error) {
             return { success: false, error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة.' };
         }
-        // onAuthStateChange will handle setting the user state
-        return { success: true, isAdmin: isAdminAttempt };
+        // onAuthStateChange will handle setting the user state and checking admin role
+        return { success: true };
     }
     
-    if (isAdminAttempt && pass === 'admin123') {
+    // Fallback for local testing without Supabase
+    if (email === FALLBACK_DEV_ADMIN && pass === 'admin123') {
         const adminProfile: User = {
             id: 'local-admin',
-            email: ADMIN_EMAIL, name: 'المدير (إعداد)', username: 'admin_setup',
+            email: FALLBACK_DEV_ADMIN, name: 'المدير (إعداد)', username: 'admin_setup',
             avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=admin`,
             joinDate: new Date().toISOString(), password: '',
+            role: 'admin'
         };
         setCurrentUser(adminProfile);
         setIsAdmin(true);

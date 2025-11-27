@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
@@ -12,7 +13,6 @@ import { Category } from '../types';
 import { 
   TrendingUp, 
   ChevronLeft,
-  Loader2,
   PlayCircle
 } from 'lucide-react';
 
@@ -29,7 +29,7 @@ const SectionHeader: React.FC<{ title: string; link?: string }> = ({ title, link
 
 const HomePage: React.FC = () => {
   const { articles, matches, standings, isLoadingInitial } = useData();
-  const { isAIGenerating, setSelectedMatch } = useUI();
+  const { setSelectedMatch } = useUI();
   const { featureFlags } = useSettings();
   const { currentUser, followedTeams } = useAuth();
   
@@ -58,15 +58,6 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="pb-12">
-      {isAIGenerating && featureFlags.autopilot && (
-        <div className="bg-emerald-900/20 border-b border-emerald-900/50 py-2 transition-all duration-500">
-           <div className="container mx-auto px-4 flex items-center justify-center text-xs text-emerald-400 font-bold animate-pulse">
-              <Loader2 size={12} className="mr-2 animate-spin" />
-              غرفة الأخبار الذكية تعمل الآن: جاري البحث عن أخبار حصرية، صور عالية الجودة، وتوليد المقالات...
-           </div>
-        </div>
-      )}
-
       <div className="container mx-auto px-4 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
            <div className="lg:col-span-2">
@@ -143,7 +134,7 @@ const HomePage: React.FC = () => {
                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                  {videoArticles.map(article => (
                    <Link to={`/article/${article.id}`} key={article.id} className="group cursor-pointer">
-                     <div className="relative aspect-video rounded-lg overflow-hidden mb-2 bg-slate-950">
+                     <div className="relative aspect-video rounded-lg overflow-hidden mb-2 bg-slate-900">
                        <img src={article.imageUrl} alt={article.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
                        <div className="absolute inset-0 flex items-center justify-center">
                          <div className="w-12 h-12 rounded-full bg-red-600/90 flex items-center justify-center group-hover:scale-110 transition-transform">

@@ -1,6 +1,8 @@
 
 
 
+
+
 export enum Category {
   SAUDI = 'السعودية',
   UAE = 'الإمارات',
@@ -41,7 +43,16 @@ export interface User {
   password: string;
   avatar?: string;
   joinDate: string;
+  role?: 'admin' | 'user'; // Added role for DB permissions
   dreamSquad?: Record<number, any>;
+}
+
+export interface Sponsor {
+  id: string;
+  name: string;
+  logo: string; // URL
+  url: string; // Website URL
+  active: boolean;
 }
 
 export interface Article {
