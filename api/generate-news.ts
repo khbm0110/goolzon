@@ -6,11 +6,14 @@ import { getSmartImageUrl } from '../services/imageService';
 import { Category } from '../types';
 
 export default async function handler(request: any, response: any) {
-  // 1. Verify Vercel Cron Secret for security
-  if (request.headers['x-vercel-cron-secret'] !== process.env.CRON_SECRET) {
-      // Allow manual trigger for testing if needed, or fail
-      // return response.status(401).json({ error: 'Unauthorized' });
-      console.log("Manual trigger or unauthorized access attempt.");
+  // --- Security Check ---
+  // We expect an Authorization header: "Bearer <CRON_SECRET>"
+  const authHeader = request.headers['authorization'];
+  const expectedSecret = `Bearer ${process.env.CRON_SECRET}`;
+
+  if (authHeader !== expectedSecret) {
+      console.log("Generate News: Unauthorized access attempt.");
+      return response.status(401).json({ error: 'Unauthorized' });
   }
 
   const supabase = getSupabase();

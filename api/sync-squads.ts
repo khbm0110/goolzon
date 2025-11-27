@@ -1,28 +1,28 @@
+
 import { getSupabase } from '../services/supabaseClient';
 import { fetchTeamSquad, fetchTeamCoach } from '../services/apiFootball';
 import { ClubProfile, Player } from '../types';
 
-// This is a Vercel Serverless Function, designed to be triggered by a cron job or manually.
-// It uses `export default` for Vercel's routing.
+// This is a Vercel Serverless Function, designed to be triggered by Supabase Cron via HTTP.
 
 export default async function handler(request: any, response: any) {
-  // --- Security Check: Ensure this is a trusted request ---
-  // In production, you'd check a secret from the cron job or ensure the user is an admin for manual triggers.
-  // For now, we'll proceed.
+  // --- Security Check ---
+  // We expect an Authorization header: "Bearer <CRON_SECRET>"
+  const authHeader = request.headers['authorization'];
+  const expectedSecret = `Bearer ${process.env.CRON_SECRET}`;
 
-  // --- Economic Check: Only run during transfer windows for AUTOMATED runs ---
-  const isCronJob = request.headers['x-vercel-cron-secret'] === process.env.CRON_SECRET;
-
-  if (isCronJob) {
-      if (!isWithinTransferWindow()) {
-          console.log("Sync Engine: Skipped cron job, outside of transfer window.");
-          return response.status(200).json({ message: "Sync skipped: Not a transfer window." });
-      }
-      console.log("Sync Engine: Cron job running within transfer window.");
-  } else {
-      console.log("Sync Engine: Manual sync triggered.");
+  if (authHeader !== expectedSecret) {
+      console.log("Sync Engine: Unauthorized access attempt.");
+      return response.status(401).json({ error: 'Unauthorized' });
   }
 
+  // --- Economic Check: Only run during transfer windows for AUTOMATED runs ---
+  if (!isWithinTransferWindow()) {
+      console.log("Sync Engine: Skipped job, outside of transfer window.");
+      return response.status(200).json({ message: "Sync skipped: Not a transfer window." });
+  }
+
+  console.log("Sync Engine: Job running within transfer window.");
 
   const supabase = getSupabase();
   const apiKey = process.env.VITE_APIFOOTBALL_KEY;

@@ -1,9 +1,19 @@
+
 import { getSupabase } from '../services/supabaseClient';
 import { fetchFinishedFixturesByDate, fetchPlayerStatsForFixture } from '../services/apiFootball';
 import { getPerformanceDataApiKey } from '../services/keyManager';
-import { useSettings } from '../contexts/SettingsContext';
 
 export default async function handler(request: any, response: any) {
+    // --- Security Check ---
+    // We expect an Authorization header: "Bearer <CRON_SECRET>"
+    const authHeader = request.headers['authorization'];
+    const expectedSecret = `Bearer ${process.env.CRON_SECRET}`;
+
+    if (authHeader !== expectedSecret) {
+        console.log("Performance Sync: Unauthorized access attempt.");
+        return response.status(401).json({ error: 'Unauthorized' });
+    }
+
     const supabase = getSupabase();
     const apiKey = getPerformanceDataApiKey();
 

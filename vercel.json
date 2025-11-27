@@ -1,19 +1,5 @@
 
 {
-  "crons": [
-    {
-      "path": "/api/sync-squads",
-      "schedule": "0 */12 * * *"
-    },
-    {
-      "path": "/api/sync-performance",
-      "schedule": "0 2 * * *"
-    },
-    {
-      "path": "/api/generate-news",
-      "schedule": "*/15 * * * *"
-    }
-  ],
   "rewrites": [
     {
       "source": "/(.*)",
