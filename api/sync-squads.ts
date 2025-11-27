@@ -51,7 +51,7 @@ export default async function handler(request: any, response: any) {
 
       if (apiSquad.length > 0) {
         // Simple replacement strategy: replace the whole squad list.
-        // A more advanced strategy could diff the arrays to preserve custom data.
+        // The fetchTeamSquad function now correctly includes `apiFootballId` for each player.
         const { error: updateError } = await supabase
           .from('clubs')
           .update({ squad: apiSquad })
@@ -88,9 +88,7 @@ function isWithinTransferWindow(): boolean {
   const winterEnd = process.env.TRANSFER_WINDOW_WINTER_END || '02-01';     // Feb 1st
 
   const today = new Date();
-  const currentMonth = today.getMonth() + 1;
-  const currentDay = today.getDate();
-  const currentDateStr = `${String(currentMonth).padStart(2, '0')}-${String(currentDay).padStart(2, '0')}`;
+  const currentDateStr = `${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
   const isSummer = currentDateStr >= summerStart && currentDateStr <= summerEnd;
   const isWinter = currentDateStr >= winterStart && currentDateStr <= winterEnd;

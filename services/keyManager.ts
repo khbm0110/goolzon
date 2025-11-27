@@ -47,3 +47,11 @@ export const getGeminiApiKeyForTopic = (topic: string): string | null => {
 export const getGeminiApiKeyForHeadlines = (): string | null => {
     return process.env[KEY_NAMES.ARABIC] || process.env[KEY_NAMES.DEFAULT] || process.env[KEY_NAMES.LEGACY] || null;
 };
+
+/**
+ * Gets the dedicated API key for performance data sync, falling back to the main key.
+ * @returns The performance data API key or a fallback.
+ */
+export const getPerformanceDataApiKey = (): string | null => {
+    return process.env.APIFOOTBALL_KEY_PERFORMANCE_DATA || process.env.VITE_APIFOOTBALL_KEY || null;
+};

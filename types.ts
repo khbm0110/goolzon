@@ -128,8 +128,16 @@ export interface PlayerStats {
   phy: number;
 }
 
+export interface PlayerSeasonStats {
+    matches: number;
+    goals: number;
+    assists: number;
+    rating: number; // Average rating
+}
+
 export interface Player {
   id: string;
+  apiFootballId?: number; // Crucial for linking performance stats
   name: string;
   number: number;
   position: 'GK' | 'DEF' | 'MID' | 'FWD' | 'ST' | 'CB' | 'CM' | 'CDM' | 'CAM' | 'RW' | 'LW' | 'LB' | 'RB' | 'RM' | 'LM';
@@ -138,6 +146,19 @@ export interface Player {
   image?: string;
   nationality?: string;
   marketValue?: number;
+  seasonStats?: PlayerSeasonStats;
+}
+
+export interface PlayerPerformance {
+    match_api_id: number;
+    player_api_id: number;
+    team_api_id: number;
+    minutes?: number;
+    rating?: number;
+    goals?: number;
+    assists?: number;
+    yellow?: number;
+    red?: number;
 }
 
 export interface ClubProfile {

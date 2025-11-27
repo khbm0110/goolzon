@@ -1,6 +1,7 @@
 
 
-import { Match, Category, MatchDetails, Standing, MatchEvent, Player } from '../types';
+
+import { Match, Category, MatchDetails, Standing, MatchEvent, Player, PlayerPerformance } from '../types';
 
 const BASE_URL = 'https://v3.football.api-sports.io';
 
@@ -249,17 +250,76 @@ export const fetchTeamSquad = async (apiKey: string, teamId: number): Promise<Pl
 
         return data.response[0].players.map((p: any) => ({
             id: `apif-${p.id}`,
+            apiFootballId: p.id, // Storing the numeric API ID is crucial
             name: p.name,
             number: p.number || 0,
             position: posMap[p.position] || 'MID',
             rating: 75, // Default rating, can be customized later
             image: p.photo,
-            // Nationality might not be available in squad endpoint, depends on API
             nationality: p.nationality || '', 
             stats: { pac: 70, sho: 70, pas: 70, dri: 70, def: 50, phy: 60 } // Default stats
         }));
     } catch (e) {
         console.error(`Failed to fetch squad for team ${teamId}:`, e);
+        return [];
+    }
+};
+
+export const fetchFinishedFixturesByDate = async (apiKey: string, date: string, leagueIds: string): Promise<{id: number, homeTeamId: number, awayTeamId: number}[]> => {
+    if (!apiKey) return [];
+    const headers = getHeaders(apiKey);
+    const targetIds = (leagueIds || '').split(',').map(id => parseInt(id.trim())).filter(n => !isNaN(n));
+    if (targetIds.length === 0) return [];
+    
+    try {
+        const response = await fetch(`${BASE_URL}/fixtures?date=${date}&status=FT`, { headers });
+        if (!response.ok) return [];
+        const data = await response.json();
+        if (!data.response) return [];
+        
+        return data.response
+            .filter((f: any) => targetIds.includes(f.league.id))
+            .map((f: any) => ({
+                id: f.fixture.id,
+                homeTeamId: f.teams.home.id,
+                awayTeamId: f.teams.away.id
+            }));
+    } catch (e) {
+        console.error('Failed to fetch finished fixtures:', e);
+        return [];
+    }
+};
+
+export const fetchPlayerStatsForFixture = async (apiKey: string, fixtureId: number): Promise<PlayerPerformance[]> => {
+    if (!apiKey) return [];
+    const headers = getHeaders(apiKey);
+
+    try {
+        const response = await fetch(`${BASE_URL}/fixtures/players?fixture=${fixtureId}`, { headers });
+        if (!response.ok) return [];
+        const data = await response.json();
+        if (!data.response) return [];
+
+        const performances: PlayerPerformance[] = [];
+        for (const team of data.response) {
+            for (const player of team.players) {
+                const stats = player.statistics[0];
+                performances.push({
+                    match_api_id: fixtureId,
+                    player_api_id: player.player.id,
+                    team_api_id: team.team.id,
+                    minutes: stats.games.minutes,
+                    rating: parseFloat(stats.games.rating) || 0,
+                    goals: stats.goals.total,
+                    assists: stats.goals.assists,
+                    yellow: stats.cards.yellow,
+                    red: stats.cards.red,
+                });
+            }
+        }
+        return performances;
+    } catch (e) {
+        console.error(`Failed to fetch player stats for fixture ${fixtureId}:`, e);
         return [];
     }
 };

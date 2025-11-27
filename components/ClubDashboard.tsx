@@ -1,4 +1,6 @@
 
+
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
@@ -12,14 +14,16 @@ import {
   Twitter,
   Calendar,
   Info,
-  Shield
+  Shield,
+  Loader2,
+  BarChart2
 } from 'lucide-react';
-import { CLUB_DATABASE } from '../constants';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import TeamLogo from './TeamLogo';
 import NewsCard from './NewsCard';
-import { Match, Player } from '../types';
+import { Match, Player, PlayerPerformance, PlayerSeasonStats } from '../types';
+import { getSupabase } from '../services/supabaseClient';
 
 const ClubDashboard: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -27,9 +31,11 @@ const ClubDashboard: React.FC = () => {
   const { toggleFollow, followedTeams } = useAuth();
   const [activeTab, setActiveTab] = useState<'HOME' | 'SQUAD' | 'TROPHIES'>('HOME');
   const [simulatedFanCount, setSimulatedFanCount] = useState(0);
+  const [squadWithStats, setSquadWithStats] = useState<Player[]>([]);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
 
   const clubId = id?.toLowerCase();
-  const club = clubs.find(c => c.id === clubId) || CLUB_DATABASE['generic'];
+  const club = clubs.find(c => c.id === clubId);
 
   useEffect(() => {
     if (club) {
@@ -43,7 +49,61 @@ const ClubDashboard: React.FC = () => {
     }
   }, [club]);
 
-  if (!club || club.id === 'generic') {
+  useEffect(() => {
+    const fetchAndAggregateStats = async () => {
+        if (!club || !club.apiFootballId) {
+            setSquadWithStats(club?.squad || []);
+            setIsLoadingStats(false);
+            return;
+        }
+
+        setIsLoadingStats(true);
+        const supabase = getSupabase();
+        if (!supabase) {
+             setSquadWithStats(club.squad);
+             setIsLoadingStats(false);
+             return;
+        }
+
+        const { data: performances, error } = await supabase
+            .from('player_performances')
+            .select('*')
+            .eq('team_api_id', club.apiFootballId);
+
+        if (error) {
+            console.error("Error fetching player performances:", error);
+            setSquadWithStats(club.squad);
+            setIsLoadingStats(false);
+            return;
+        }
+        
+        const squadWithAggregatedStats = club.squad.map(player => {
+            const playerPerformances = performances.filter(p => p.player_api_id === player.apiFootballId);
+            
+            const seasonStats: PlayerSeasonStats = playerPerformances.reduce((acc, perf) => {
+                return {
+                    matches: acc.matches + 1,
+                    goals: acc.goals + (perf.goals || 0),
+                    assists: acc.assists + (perf.assists || 0),
+                    rating: acc.rating + (perf.rating || 0),
+                };
+            }, { matches: 0, goals: 0, assists: 0, rating: 0 });
+
+            if (seasonStats.matches > 0) {
+                 seasonStats.rating = parseFloat((seasonStats.rating / seasonStats.matches).toFixed(1));
+            }
+
+            return { ...player, seasonStats };
+        });
+
+        setSquadWithStats(squadWithAggregatedStats);
+        setIsLoadingStats(false);
+    };
+
+    fetchAndAggregateStats();
+  }, [club]);
+
+  if (!club) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">
         <div className="text-center p-8 bg-slate-900 rounded-xl border border-slate-800">
@@ -231,13 +291,19 @@ const ClubDashboard: React.FC = () => {
                     )}
 
                     {activeTab === 'SQUAD' && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in">
-                           {club.squad && club.squad.length > 0 ? club.squad.map((player, idx) => (
-                               <PlayerCard key={idx} player={player} primaryColor={primaryColor} clubLogo={club.logo} />
-                           )) : (
-                               <div className="col-span-full text-center py-10 text-slate-500">قائمة اللاعبين غير متوفرة حالياً</div>
-                           )}
-                        </div>
+                        isLoadingStats ? (
+                            <div className="flex justify-center items-center h-64">
+                               <Loader2 size={32} className="animate-spin text-primary" />
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in">
+                               {squadWithStats.length > 0 ? squadWithStats.map((player, idx) => (
+                                   <PlayerCard key={idx} player={player} primaryColor={primaryColor} clubLogo={club.logo} />
+                               )) : (
+                                   <div className="col-span-full text-center py-10 text-slate-500">قائمة اللاعبين غير متوفرة حالياً</div>
+                               )}
+                            </div>
+                        )
                     )}
 
                     {activeTab === 'TROPHIES' && (
@@ -281,6 +347,7 @@ const PlayerCard: React.FC<{ player: Player; primaryColor: string; clubLogo: str
 
     return (
         <div className={`relative w-full aspect-[2/3] rounded-t-3xl rounded-b-2xl overflow-hidden border ${borderColor} ${cardBg} shadow-2xl hover:-translate-y-2 transition-transform duration-300 group`}>
+            {/* Player Image & Core Info */}
             <div className="absolute top-0 left-0 w-full h-2/3 z-10">
                 <div className="absolute top-6 left-5 flex flex-col items-center gap-1 z-30 w-12">
                      <span className={`text-3xl font-black leading-none ${textColor}`}>{player.rating}</span>
@@ -305,11 +372,30 @@ const PlayerCard: React.FC<{ player: Player; primaryColor: string; clubLogo: str
                     )}
                 </div>
             </div>
-            <div className="absolute bottom-0 left-0 w-full h-1/3 z-20 flex flex-col justify-end pb-3 px-3">
+            {/* Player Name & Stats */}
+            <div className="absolute bottom-0 left-0 w-full h-1/2 z-20 flex flex-col justify-end pb-3 px-3">
                  <div className={`absolute bottom-0 left-0 w-full h-full bg-gradient-to-t ${overlayGradient} z-0`}></div>
                  <div className="relative z-10 text-center">
                      <h3 className={`font-black text-lg uppercase tracking-wide truncate px-2 mb-2 ${textColor}`}>{player.name}</h3>
+                     {/* Season Stats */}
+                     {player.seasonStats && player.seasonStats.matches > 0 && (
+                        <div className="flex justify-center gap-4 mb-2">
+                           <div className="flex flex-col items-center">
+                                <span className="text-xs font-bold text-slate-400">أهداف</span>
+                                <span className="text-lg font-black text-white">{player.seasonStats.goals}</span>
+                           </div>
+                           <div className="flex flex-col items-center">
+                                <span className="text-xs font-bold text-slate-400">صناعة</span>
+                                <span className="text-lg font-black text-white">{player.seasonStats.assists}</span>
+                           </div>
+                           <div className="flex flex-col items-center">
+                                <span className="text-xs font-bold text-slate-400">تقييم</span>
+                                <span className="text-lg font-black text-white">{player.seasonStats.rating}</span>
+                           </div>
+                        </div>
+                     )}
                      <div className="w-full h-[1px] bg-white/20 mb-2 mx-auto w-4/5"></div>
+                     {/* Card Stats */}
                      <div className="grid grid-cols-6 gap-x-1 gap-y-1 text-center px-1">
                         <StatItem label="PAC" value={player.stats?.pac} color={accentColor} />
                         <StatItem label="SHO" value={player.stats?.sho} color={accentColor} />

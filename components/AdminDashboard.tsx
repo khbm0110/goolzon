@@ -35,7 +35,8 @@ import {
   Link as LinkIcon,
   Activity,
   Info,
-  RefreshCw
+  RefreshCw,
+  BarChart2
 } from 'lucide-react';
 import { Article, Category, ClubProfile, Player, PlayerStats, FeatureFlags, ApiConfig } from '../types';
 import { useData } from '../contexts/DataContext';
@@ -454,22 +455,6 @@ const AdminDashboard: React.FC = () => {
   );
 };
 
-// Helper function to check if current date is within a transfer window
-const isWithinTransferWindow = () => {
-    // These would be read from env vars in a real scenario
-    const today = new Date();
-    const currentMonth = today.getMonth() + 1; // getMonth() is 0-indexed
-    const currentDay = today.getDate();
-
-    // Summer window: July 1st to September 1st (approx)
-    const isSummer = (currentMonth === 7) || (currentMonth === 8) || (currentMonth === 9 && currentDay === 1);
-    // Winter window: January 1st to January 31st
-    const isWinter = currentMonth === 1;
-
-    return isSummer || isWinter;
-};
-
-
 const SettingsView: React.FC<{
     featureFlags: FeatureFlags;
     setFeatureFlag: (key: keyof FeatureFlags, value: boolean) => void;
@@ -479,9 +464,15 @@ const SettingsView: React.FC<{
     
     const [localApiConfig, setLocalApiConfig] = useState(apiConfig);
     const [isSaving, setIsSaving] = useState(false);
-    const [isSyncing, setIsSyncing] = useState(false);
-    const [syncMessage, setSyncMessage] = useState('');
+    
+    // Squad Sync State
+    const [isSyncingSquads, setIsSyncingSquads] = useState(false);
+    const [squadsSyncMessage, setSquadsSyncMessage] = useState('');
 
+    // Performance Sync State
+    const [isSyncingPerformance, setIsSyncingPerformance] = useState(false);
+    const [performanceSyncMessage, setPerformanceSyncMessage] = useState('');
+    
     const inWindow = isWithinTransferWindow();
 
     useEffect(() => {
@@ -497,22 +488,26 @@ const SettingsView: React.FC<{
         }, 500);
     };
 
-    const handleManualSync = async () => {
-        setIsSyncing(true);
-        setSyncMessage('');
+    const handleManualSync = async (type: 'squads' | 'performance') => {
+        const setSyncing = type === 'squads' ? setIsSyncingSquads : setIsSyncingPerformance;
+        const setMessage = type === 'squads' ? setSquadsSyncMessage : setPerformanceSyncMessage;
+        const endpoint = type === 'squads' ? '/api/sync-squads' : '/api/sync-performance';
+
+        setSyncing(true);
+        setMessage('');
         try {
-            const response = await fetch('/api/sync-squads');
+            const response = await fetch(endpoint);
             const data = await response.json();
             if (response.ok) {
-                setSyncMessage(data.message || 'تمت المزامنة بنجاح!');
+                setMessage(data.message || 'تمت المزامنة بنجاح!');
             } else {
                 throw new Error(data.error || 'فشل في المزامنة');
             }
         } catch (error: any) {
-            setSyncMessage(`خطأ: ${error.message}`);
+            setMessage(`خطأ: ${error.message}`);
         } finally {
-            setIsSyncing(false);
-            setTimeout(() => setSyncMessage(''), 5000); // Clear message after 5 seconds
+            setSyncing(false);
+            setTimeout(() => setMessage(''), 5000);
         }
     };
     
@@ -527,8 +522,9 @@ const SettingsView: React.FC<{
 
     return (
         <div className="space-y-6">
+            {/* Feature Flags */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
-                <div className="p-6 border-b border-slate-800 bg-slate-950">
+                 <div className="p-6 border-b border-slate-800 bg-slate-950">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
                         <Settings className="text-primary" /> إعدادات النظام والميزات
                     </h2>
@@ -536,22 +532,13 @@ const SettingsView: React.FC<{
                         تحكم في الميزات النشطة في الموقع. يمكنك تعطيل الميزات المعقدة (مثل المباريات والأندية) والتركيز على نشر الأخبار فقط.
                     </p>
                 </div>
-                
                 <div className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {featuresList.map((feature) => (
-                            <div 
-                                key={feature.key} 
-                                className={`p-4 rounded-xl border transition-all ${featureFlags[feature.key] ? 'bg-slate-800 border-primary/50' : 'bg-slate-950 border-slate-800 opacity-60'}`}
-                            >
+                            <div key={feature.key} className={`p-4 rounded-xl border transition-all ${featureFlags[feature.key] ? 'bg-slate-800 border-primary/50' : 'bg-slate-950 border-slate-800 opacity-60'}`}>
                                 <div className="flex justify-between items-start mb-3">
-                                    <div className={`p-2 rounded-lg ${featureFlags[feature.key] ? 'bg-primary/20 text-primary' : 'bg-slate-800 text-slate-500'}`}>
-                                        <feature.icon size={20} />
-                                    </div>
-                                    <button 
-                                        onClick={() => setFeatureFlag(feature.key, !featureFlags[feature.key])}
-                                        className={`transition-colors ${featureFlags[feature.key] ? 'text-primary hover:text-white' : 'text-slate-500 hover:text-white'}`}
-                                    >
+                                    <div className={`p-2 rounded-lg ${featureFlags[feature.key] ? 'bg-primary/20 text-primary' : 'bg-slate-800 text-slate-500'}`}><feature.icon size={20} /></div>
+                                    <button onClick={() => setFeatureFlag(feature.key, !featureFlags[feature.key])} className={`transition-colors ${featureFlags[feature.key] ? 'text-primary hover:text-white' : 'text-slate-500 hover:text-white'}`}>
                                         {featureFlags[feature.key] ? <ToggleRight size={32} /> : <ToggleLeft size={32} />}
                                     </button>
                                 </div>
@@ -559,9 +546,7 @@ const SettingsView: React.FC<{
                                 <p className="text-xs text-slate-400 leading-relaxed min-h-[40px]">{feature.desc}</p>
                                 <div className="mt-3 pt-3 border-t border-slate-700/50 flex items-center gap-2">
                                     <span className={`w-2 h-2 rounded-full ${featureFlags[feature.key] ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></span>
-                                    <span className="text-[10px] font-bold text-slate-300 uppercase">
-                                        {featureFlags[feature.key] ? 'نشط' : 'معطل'}
-                                    </span>
+                                    <span className="text-[10px] font-bold text-slate-300 uppercase">{featureFlags[feature.key] ? 'نشط' : 'معطل'}</span>
                                 </div>
                             </div>
                         ))}
@@ -569,161 +554,104 @@ const SettingsView: React.FC<{
                 </div>
             </div>
 
+            {/* API Keys */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
                 <div className="p-6 border-b border-slate-800 bg-slate-950">
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                        <Key className="text-yellow-500" /> مفاتيح API للمصادر الخارجية
-                    </h2>
-                    <p className="text-slate-400 text-sm mt-2">
-                        لأمان أعلى، تدار مفاتيح API عبر متغيرات البيئة في منصة النشر (مثل Vercel).
-                    </p>
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2"><Key className="text-yellow-500" /> مفاتيح API للمصادر الخارجية</h2>
+                    <p className="text-slate-400 text-sm mt-2">لأمان أعلى، تدار مفاتيح API عبر متغيرات البيئة في منصة النشر (مثل Vercel).</p>
                 </div>
                 <div className="p-6 space-y-4">
-                    <div className="bg-slate-950 p-4 rounded-xl border border-amber-500/30 flex items-start gap-3">
-                         <Info size={24} className="text-amber-500 mt-1"/>
-                         <div>
-                             <h3 className="text-amber-400 font-bold">نظام المفاتيح المتعددة لـ Gemini</h3>
-                             <p className="text-slate-300 text-sm mt-1">
-                                تم تحديث النظام لدعم مفاتيح API متعددة من Gemini، مما يسمح بتخصيص مفتاح لكل فئة من الأخبار. يمكنك تعيين كل المتغيرات أو بعضها.
-                             </p>
-                         </div>
-                    </div>
-                    
-                    <div className="bg-slate-950 p-6 rounded-lg border border-slate-800">
-                        <h4 className="font-bold text-white mb-4">متغيرات Gemini AI (اختياري)</h4>
-                        <ul className="list-disc list-inside space-y-3 text-slate-400 font-mono text-sm">
-                            <li><code className="text-amber-400">GEMINI_API_KEY_ARABIC_LEAGUES</code> <span className="font-sans text-slate-500">- لأخبار الدوريات العربية</span></li>
-                            <li><code className="text-amber-400">GEMINI_API_KEY_ENGLISH_LEAGUES</code> <span className="font-sans text-slate-500">- لأخبار الدوريات الإنجليزية والأوروبية</span></li>
-                            <li><code className="text-amber-400">GEMINI_API_KEY_SPANISH_LEAGUES</code> <span className="font-sans text-slate-500">- لأخبار الدوري الإسباني</span></li>
-                            <li><code className="text-amber-400">GEMINI_API_KEY_DEFAULT</code> <span className="font-sans text-slate-500">- مفتاح افتراضي سيتم استخدامه إذا لم يتوفر مفتاح متخصص</span></li>
-                        </ul>
-                    </div>
-                    
-                    <div className="bg-slate-950 p-6 rounded-lg border border-slate-800">
-                        <h4 className="font-bold text-white mb-4">المتغيرات الأساسية (مطلوب)</h4>
-                        <ul className="list-disc list-inside space-y-3 text-slate-400 font-mono text-sm">
-                            <li><code className="text-amber-400">API_KEY</code> <span className="font-sans text-slate-500">- مفتاح Gemini العام (سيُستخدم كخيار احتياطي نهائي)</span></li>
-                            <li><code className="text-amber-400">VITE_SUPABASE_URL</code> <span className="font-sans text-slate-500">- رابط Supabase</span></li>
-                            <li><code className="text-amber-400">VITE_SUPABASE_ANON_KEY</code> <span className="font-sans text-slate-500">- مفتاح Supabase العام</span></li>
-                            <li><code className="text-amber-400">VITE_APIFOOTBALL_KEY</code> <span className="font-sans text-slate-500">- مفتاح API-Football للمباريات</span></li>
-                        </ul>
-                    </div>
+                    <div className="bg-slate-950 p-4 rounded-xl border border-amber-500/30"><h3 className="text-amber-400 font-bold">متغيرات Gemini AI (لإنشاء المحتوى)</h3></div>
+                    <ul className="text-slate-400 font-mono text-sm space-y-2 pl-4">
+                        <li><code className="text-amber-400">GEMINI_API_KEY_ARABIC_LEAGUES</code> <span className="font-sans text-slate-500">- للدوريات العربية</span></li>
+                        <li><code className="text-amber-400">GEMINI_API_KEY_ENGLISH_LEAGUES</code> <span className="font-sans text-slate-500">- للدوريات الإنجليزية</span></li>
+                        <li><code className="text-amber-400">GEMINI_API_KEY_DEFAULT</code> <span className="font-sans text-slate-500">- مفتاح افتراضي/احتياطي</span></li>
+                    </ul>
 
-                     <p className="text-xs text-slate-500 mt-2">
-                        بعد إضافة المتغيرات في Vercel، قم بإعادة نشر (Redeploy) المشروع لتفعيل التغييرات.
-                    </p>
+                    <div className="bg-slate-950 p-4 rounded-xl border border-cyan-500/30 mt-6"><h3 className="text-cyan-400 font-bold">متغيرات API-Football (لبيانات المباريات)</h3></div>
+                    <ul className="text-slate-400 font-mono text-sm space-y-2 pl-4">
+                        <li><code className="text-cyan-400">VITE_APIFOOTBALL_KEY</code> <span className="font-sans text-slate-500">- المفتاح الأساسي للمباريات والترتيب.</span></li>
+                        <li><code className="text-cyan-400">APIFOOTBALL_KEY_PERFORMANCE_DATA</code> <span className="font-sans text-slate-500">- (اختياري) مفتاح مخصص لمزامنة أداء اللاعبين المكثفة.</span></li>
+                    </ul>
+
+                     <div className="bg-slate-950 p-4 rounded-xl border border-slate-500/30 mt-6"><h3 className="text-slate-300 font-bold">متغيرات Supabase (مطلوب للتشغيل)</h3></div>
+                    <ul className="text-slate-400 font-mono text-sm space-y-2 pl-4">
+                        <li><code className="text-slate-400">VITE_SUPABASE_URL</code></li>
+                        <li><code className="text-slate-400">VITE_SUPABASE_ANON_KEY</code></li>
+                    </ul>
                 </div>
             </div>
 
-             <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
+            {/* Sync Engines */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
                 <div className="p-6 border-b border-slate-800 bg-slate-950">
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                        <Cpu className="text-cyan-400" /> محرك المزامنة التلقائي (Sync Engine)
-                    </h2>
-                    <p className="text-slate-400 text-sm mt-2">
-                        يعمل هذا النظام في الخلفية لمزامنة بيانات الفرق واللاعبين تلقائياً مع المصادر العالمية.
-                    </p>
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2"><Cpu className="text-cyan-400" /> محركات المزامنة التلقائية</h2>
                 </div>
                 <div className="p-6 space-y-6">
-                    <div className={`p-4 rounded-xl border flex items-center justify-between ${inWindow ? 'bg-emerald-950/50 border-emerald-500/30' : 'bg-slate-950 border-slate-800'}`}>
-                        <div>
-                            <h4 className={`font-bold ${inWindow ? 'text-emerald-400' : 'text-slate-300'}`}>حالة المزامنة التلقائية</h4>
-                            <p className="text-xs text-slate-400">يعمل النظام تلقائياً كل 12 ساعة فقط أثناء فترات الانتقالات الرسمية.</p>
-                        </div>
-                        <div className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2 ${inWindow ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-400'}`}>
-                            <span className={`w-2 h-2 rounded-full ${inWindow ? 'bg-emerald-500 animate-pulse' : 'bg-slate-500'}`}></span>
-                            {inWindow ? 'نشط' : 'متوقف'}
-                        </div>
-                    </div>
+                     {/* Squad Sync */}
                     <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
-                        <h4 className="font-bold text-white mb-2">متغيرات فترات الانتقالات (اختياري)</h4>
-                         <p className="text-xs text-slate-400 mb-3">أضف هذه المتغيرات في Vercel لتحديد أوقات عمل المزامنة التلقائية. استخدم صيغة <code className="text-amber-400 font-mono">MM-DD</code>.</p>
-                        <ul className="list-disc list-inside space-y-2 text-slate-400 font-mono text-sm">
-                            <li><code className="text-amber-400">TRANSFER_WINDOW_SUMMER_START</code> (مثال: 07-01)</li>
-                            <li><code className="text-amber-400">TRANSFER_WINDOW_SUMMER_END</code> (مثال: 09-01)</li>
-                            <li><code className="text-amber-400">TRANSFER_WINDOW_WINTER_START</code> (مثال: 01-01)</li>
-                            <li><code className="text-amber-400">TRANSFER_WINDOW_WINTER_END</code> (مثال: 02-01)</li>
-                        </ul>
-                    </div>
-                     <div className="border-t border-slate-800 pt-6 flex justify-between items-center">
-                        <div className="flex-1">
-                            <h4 className="font-bold text-white">المزامنة اليدوية</h4>
-                            <p className="text-xs text-slate-500">
-                                {syncMessage || 'يمكنك تشغيل المزامنة يدوياً في أي وقت لتحديث البيانات فوراً.'}
-                            </p>
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <h4 className="font-bold text-white flex items-center gap-2"><Users size={16}/> مزامنة قوائم الفرق (الانتقالات)</h4>
+                                <p className="text-xs text-slate-400 mt-1">يعمل تلقائياً كل 12 ساعة فقط أثناء فترات الانتقالات المحددة أدناه.</p>
+                            </div>
+                            <div className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2 ${inWindow ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-400'}`}>
+                                <span className={`w-2 h-2 rounded-full ${inWindow ? 'bg-emerald-500 animate-pulse' : 'bg-slate-500'}`}></span>
+                                {inWindow ? 'نشط' : 'متوقف'}
+                            </div>
                         </div>
-                        <button 
-                            onClick={handleManualSync}
-                            disabled={isSyncing}
-                            className="bg-cyan-600 hover:bg-cyan-500 text-white px-6 py-3 rounded-xl font-bold transition-colors flex items-center gap-2 shadow-lg shadow-cyan-900/20 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
-                        >
-                            {isSyncing ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
-                            {isSyncing ? 'جاري المزامنة...' : 'مزامنة الآن'}
-                        </button>
+                        <div className="border-t border-slate-800 mt-4 pt-4 flex justify-between items-center">
+                            <p className="text-xs text-slate-500 flex-1">{squadsSyncMessage || 'شغل المزامنة يدوياً لتحديث قوائم الفرق فوراً.'}</p>
+                            <button onClick={() => handleManualSync('squads')} disabled={isSyncingSquads} className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 disabled:bg-slate-700">
+                                {isSyncingSquads ? <Loader2 size={16} className="animate-spin"/> : <RefreshCw size={16}/>}
+                                {isSyncingSquads ? 'جاري...' : 'مزامنة الآن'}
+                            </button>
+                        </div>
+                        <details className="mt-3">
+                            <summary className="text-xs text-slate-500 cursor-pointer hover:text-white">إعدادات فترات الانتقالات</summary>
+                             <ul className="list-disc list-inside space-y-2 text-slate-400 font-mono text-sm mt-2 bg-slate-900 p-3 rounded">
+                                <li><code className="text-amber-400">TRANSFER_WINDOW_SUMMER_START</code> (مثال: 07-01)</li>
+                                <li><code className="text-amber-400">TRANSFER_WINDOW_SUMMER_END</code> (مثال: 09-01)</li>
+                                <li><code className="text-amber-400">TRANSFER_WINDOW_WINTER_START</code> (مثال: 01-01)</li>
+                                <li><code className="text-amber-400">TRANSFER_WINDOW_WINTER_END</code> (مثال: 02-01)</li>
+                            </ul>
+                        </details>
+                    </div>
+                     {/* Performance Sync */}
+                    <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
+                         <h4 className="font-bold text-white flex items-center gap-2"><BarChart2 size={16}/> مزامنة أداء اللاعبين (يومي)</h4>
+                         <p className="text-xs text-slate-400 mt-1">يعمل تلقائياً كل يوم لجلب إحصائيات اللاعبين من المباريات المنتهية.</p>
+                         <div className="border-t border-slate-800 mt-4 pt-4 flex justify-between items-center">
+                            <p className="text-xs text-slate-500 flex-1">{performanceSyncMessage || 'شغل المزامنة يدوياً لجلب بيانات أداء الأمس.'}</p>
+                            <button onClick={() => handleManualSync('performance')} disabled={isSyncingPerformance} className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 disabled:bg-slate-700">
+                                {isSyncingPerformance ? <Loader2 size={16} className="animate-spin"/> : <RefreshCw size={16}/>}
+                                {isSyncingPerformance ? 'جاري...' : 'مزامنة الآن'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
-
-            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden animate-in fade-in duration-300">
-                <div className="p-6 border-b border-slate-800 bg-slate-950 flex justify-between items-center">
-                    <div>
-                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                            <Database className="text-blue-500" /> إعدادات مزود البيانات
-                        </h2>
-                        <p className="text-slate-400 text-sm mt-2">
-                             إدارة المصادر التي يتم جلب بيانات المباريات والدوريات منها.
-                        </p>
-                    </div>
-                </div>
-
-                <div className="p-6 space-y-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-950 p-4 rounded-xl border border-slate-800">
-                         <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-300">مزود البيانات الرياضية</label>
-                            <select 
-                                value={localApiConfig.provider}
-                                onChange={e => setLocalApiConfig({...localApiConfig, provider: e.target.value as any})}
-                                className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
-                            >
-                                <option value="api-football">API-Football (Direct Dashboard)</option>
-                                <option value="sportmonks">SportMonks</option>
-                                <option value="other">أخرى (Custom)</option>
-                            </select>
-                        </div>
-                         <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-300">أرقام الدوريات (League IDs)</label>
-                            <input 
-                                type="text"
-                                value={localApiConfig.leagueIds}
-                                onChange={e => setLocalApiConfig({...localApiConfig, leagueIds: e.target.value})}
-                                placeholder="مثال: 307, 308, 140"
-                                className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none font-mono"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="pt-4 border-t border-slate-800 flex justify-end gap-4 items-center">
-                        <div className="flex items-center gap-3">
-                             <div className={`w-10 h-6 rounded-full p-1 cursor-pointer transition-colors ${localApiConfig.autoSync ? 'bg-blue-600' : 'bg-slate-700'}`} onClick={() => setLocalApiConfig({...localApiConfig, autoSync: !localApiConfig.autoSync})}>
-                                 <div className={`w-4 h-4 bg-white rounded-full transition-transform ${localApiConfig.autoSync ? 'translate-x-4' : 'translate-x-0'}`}></div>
-                             </div>
-                             <span className="text-xs font-bold text-slate-400">تفعيل المزامنة التلقائية</span>
-                        </div>
-                        <button 
-                            onClick={handleSaveApi}
-                            disabled={isSaving}
-                            className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-xl font-bold transition-colors flex items-center gap-2 shadow-lg shadow-blue-900/20 disabled:bg-slate-700 disabled:text-slate-500"
-                        >
-                            {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                            {isSaving ? 'جاري الحفظ...' : 'حفظ إعدادات المزود'}
-                        </button>
-                    </div>
-                </div>
-            </div>
-
         </div>
     );
 };
+
+// Helper function to check if current date is within a transfer window
+const isWithinTransferWindow = () => {
+  const summerStart = process.env.TRANSFER_WINDOW_SUMMER_START || '07-01';
+  const summerEnd = process.env.TRANSFER_WINDOW_SUMMER_END || '09-01';
+  const winterStart = process.env.TRANSFER_WINDOW_WINTER_START || '01-01';
+  const winterEnd = process.env.TRANSFER_WINDOW_WINTER_END || '02-01';
+
+  const today = new Date();
+  // Format date as MM-DD
+  const currentDateStr = `${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  
+  const isSummer = currentDateStr >= summerStart && currentDateStr <= summerEnd;
+  const isWinter = currentDateStr >= winterStart && currentDateStr <= winterEnd;
+
+  return isSummer || isWinter;
+};
+
 
 const MercatoView: React.FC<{
     clubs: ClubProfile[];
