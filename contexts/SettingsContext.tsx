@@ -4,10 +4,10 @@ import { FeatureFlags, ApiConfig } from '../types';
 const INITIAL_FLAGS: FeatureFlags = {
     matches: true,
     clubs: true,
-    mercato: true,
     videos: true,
     analysis: true,
-    autopilot: false
+    autopilot: false,
+    userSystem: false
 };
 
 const INITIAL_API_CONFIG: ApiConfig = {

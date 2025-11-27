@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import Header from './Header';
 import MatchTicker from './MatchTicker';
 import SearchModal from './SearchModal';
@@ -7,14 +7,22 @@ import MatchCenterModal from './MatchCenterModal';
 import { useData } from '../contexts/DataContext';
 import { useUI } from '../contexts/UIContext';
 import { useSettings } from '../contexts/SettingsContext';
-import { Trophy } from 'lucide-react';
+import { Trophy, Home, Calendar, Users, PlayCircle } from 'lucide-react';
 
 const Layout: React.FC<{children: React.ReactNode}> = ({ children }) => {
   const { articles, matches } = useData();
   const { selectedMatch, setSelectedMatch, isAutopilot, toggleAutopilot } = useUI();
   const { featureFlags } = useSettings();
+  const location = useLocation();
   
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  const bottomNavItems = [
+    { label: 'الرئيسية', path: '/', icon: Home },
+    { label: 'المباريات', path: '/matches', icon: Calendar, hidden: !featureFlags.matches },
+    { label: 'تشكيلتي', path: '/profile', icon: Users },
+    { label: 'فيديو', path: '/videos', icon: PlayCircle, hidden: !featureFlags.videos },
+  ].filter(item => !item.hidden);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-primary selection:text-slate-900">
@@ -32,11 +40,12 @@ const Layout: React.FC<{children: React.ReactNode}> = ({ children }) => {
       
       {featureFlags.matches && <MatchTicker matches={matches} onMatchClick={setSelectedMatch} />}
       
-      <main>
+      {/* Added pb-20 to ensure content isn't hidden behind the bottom nav on mobile */}
+      <main className="pb-20 md:pb-0">
         {children}
       </main>
 
-      <footer className="bg-slate-900 border-t border-slate-800 py-12 mt-12">
+      <footer className="bg-slate-900 border-t border-slate-800 py-12 mt-12 mb-16 md:mb-0">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="col-span-1 md:col-span-2">
@@ -78,6 +87,27 @@ const Layout: React.FC<{children: React.ReactNode}> = ({ children }) => {
           </div>
         </div>
       </footer>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 z-50 md:hidden pb-safe">
+         <div className="flex justify-around items-center h-16">
+            {bottomNavItems.map((item) => {
+               const isActive = location.pathname === item.path;
+               return (
+                  <Link 
+                    key={item.path} 
+                    to={item.path}
+                    className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-all ${isActive ? 'text-primary' : 'text-slate-400 hover:text-slate-200'}`}
+                  >
+                     <div className={`p-1.5 rounded-xl transition-all ${isActive ? 'bg-primary/10' : ''}`}>
+                        <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                     </div>
+                     <span className={`text-[10px] font-bold ${isActive ? 'text-primary' : 'text-slate-500'}`}>{item.label}</span>
+                  </Link>
+               );
+            })}
+         </div>
+      </div>
     </div>
   );
 };

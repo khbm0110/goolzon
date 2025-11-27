@@ -1,5 +1,5 @@
 import { getSupabase } from '../services/supabaseClient';
-import { fetchTeamSquad } from '../services/apiFootball';
+import { fetchTeamSquad, fetchTeamCoach } from '../services/apiFootball';
 import { ClubProfile, Player } from '../types';
 
 // This is a Vercel Serverless Function, designed to be triggered by a cron job or manually.
@@ -39,33 +39,49 @@ export default async function handler(request: any, response: any) {
     let updatedClubs = 0;
     let totalPlayersSynced = 0;
 
-    // 2. Loop through each club and sync its squad
+    // 2. Loop through each club and sync its squad AND coach
     for (const club of (clubs as ClubProfile[])) {
       if (!club.apiFootballId || club.apiFootballId === 0) {
         console.log(`Skipping sync for ${club.name} (no API ID).`);
         continue;
       }
       
-      console.log(`Syncing squad for ${club.name}...`);
-      const apiSquad = await fetchTeamSquad(apiKey, club.apiFootballId);
+      console.log(`Syncing data for ${club.name}...`);
+      
+      // Fetch both squad and coach in parallel
+      const [apiSquad, apiCoach] = await Promise.all([
+          fetchTeamSquad(apiKey, club.apiFootballId),
+          fetchTeamCoach(apiKey, club.apiFootballId)
+      ]);
+
+      const updates: any = {};
+      let hasUpdates = false;
 
       if (apiSquad.length > 0) {
-        // Simple replacement strategy: replace the whole squad list.
-        // The fetchTeamSquad function now correctly includes `apiFootballId` for each player.
+        updates.squad = apiSquad;
+        hasUpdates = true;
+      }
+
+      if (apiCoach && apiCoach !== club.coach) {
+        updates.coach = apiCoach;
+        hasUpdates = true;
+      }
+
+      if (hasUpdates) {
         const { error: updateError } = await supabase
           .from('clubs')
-          .update({ squad: apiSquad })
+          .update(updates)
           .eq('id', club.id);
 
         if (updateError) {
-          console.error(`Failed to update squad for ${club.name}:`, updateError.message);
+          console.error(`Failed to update data for ${club.name}:`, updateError.message);
         } else {
           updatedClubs++;
           totalPlayersSynced += apiSquad.length;
-          console.log(`Successfully synced ${apiSquad.length} players for ${club.name}.`);
+          console.log(`Successfully synced ${club.name} (Players: ${apiSquad.length}, Coach: ${apiCoach || 'No change'}).`);
         }
       } else {
-         console.warn(`No squad data returned from API for ${club.name}.`);
+         console.warn(`No new data returned from API for ${club.name}.`);
       }
     }
 

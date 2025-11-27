@@ -16,7 +16,6 @@ import {
   Wand2,
   ChevronDown,
   ChevronUp,
-  ArrowRightLeft,
   Search,
   CheckCircle2,
   Clipboard,
@@ -309,10 +308,10 @@ const ContentListView: React.FC<{
 };
 
 const AdminDashboard: React.FC = () => {
-  const [activeView, setActiveView] = useState<'DASHBOARD' | 'EDITOR' | 'LIST' | 'SEO' | 'ADS' | 'CLUBS' | 'MERCATO' | 'SETTINGS'>('DASHBOARD');
+  const [activeView, setActiveView] = useState<'DASHBOARD' | 'EDITOR' | 'LIST' | 'SEO' | 'ADS' | 'CLUBS' | 'SETTINGS'>('DASHBOARD');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { 
-    clubs, addClub, updateClub, deleteClub, transferPlayer, articles, addArticle, updateArticle, deleteArticle, matches
+    clubs, addClub, updateClub, deleteClub, articles, addArticle, updateArticle, deleteArticle, matches
   } = useData();
   const { 
     featureFlags, setFeatureFlag, apiConfig, setApiConfig
@@ -367,7 +366,6 @@ const AdminDashboard: React.FC = () => {
     { id: 'EDITOR', label: 'إضافة مقال', icon: FilePlus },
     { id: 'LIST', label: 'إدارة المحتوى', icon: List },
     { id: 'CLUBS', label: 'إدارة الأندية', icon: Shield, hidden: !featureFlags.clubs },
-    { id: 'MERCATO', label: 'سوق الانتقالات', icon: ArrowRightLeft, hidden: !featureFlags.mercato },
     { id: 'SEO', label: 'إعدادات SEO', icon: Globe },
     { id: 'ADS', label: 'إدارة الإعلانات', icon: DollarSign },
     { id: 'SETTINGS', label: 'الإعدادات والميزات', icon: Settings },
@@ -434,13 +432,6 @@ const AdminDashboard: React.FC = () => {
               onUpdate={updateClub}
               onDelete={deleteClub}
            />
-        )}
-
-        {activeView === 'MERCATO' && featureFlags.mercato && (
-            <MercatoView 
-                clubs={clubs}
-                onTransfer={transferPlayer}
-            />
         )}
 
         {activeView === 'SETTINGS' && (
@@ -515,10 +506,10 @@ const SettingsView: React.FC<{
     const featuresList: { key: keyof FeatureFlags; label: string; desc: string; icon: any }[] = [
         { key: 'clubs', label: 'أندية الخليج', desc: 'تفعيل لوحة معلومات الأندية، إدارة اللاعبين، وعرض صفحات الفرق.', icon: Shield },
         { key: 'matches', label: 'مركز المباريات', desc: 'عرض شريط المباريات المباشرة، النتائج، وجداول الترتيب.', icon: CheckCircle2 },
-        { key: 'mercato', label: 'سوق الانتقالات', desc: 'نظام محاكاة شراء وبيع اللاعبين وتوليد أخبار الانتقالات.', icon: ArrowRightLeft },
         { key: 'videos', label: 'مكتبة الفيديو', desc: 'قسم خاص لعرض ملخصات المباريات والمحتوى المرئي.', icon: FilePlus },
         { key: 'analysis', label: 'التحليلات والمقالات', desc: 'قسم المقالات التحليلية الطويلة (بخلاف الأخبار العاجلة).', icon: Search },
         { key: 'autopilot', label: 'AI Auto-Pilot 🤖', desc: 'توليد أخبار تلقائي كل 5 دقائق. (يتطلب مفتاح Gemini API صالحاً).', icon: Wand2 },
+        { key: 'userSystem', label: 'نظام المستخدمين', desc: 'تفعيل أو تعطيل تسجيل الدخول، الحسابات، وتشكيلة الأحلام.', icon: Users },
     ];
 
     return (
@@ -653,162 +644,6 @@ const isWithinTransferWindow = () => {
   return isSummer || isWinter;
 };
 
-
-const MercatoView: React.FC<{
-    clubs: ClubProfile[];
-    onTransfer: (pid: string, sid: string, tid: string, price: number) => void;
-}> = ({ clubs, onTransfer }) => {
-    const [selectedClubId, setSelectedClubId] = useState<string>(clubs[0]?.id || '');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [transferModal, setTransferModal] = useState<{player: Player, sourceClub: ClubProfile} | null>(null);
-    const [transferPrice, setTransferPrice] = useState(10);
-
-    const activeClub = clubs.find(c => c.id === selectedClubId);
-    
-    const otherPlayers = clubs
-        .filter(c => c.id !== selectedClubId)
-        .flatMap(c => c.squad.map(p => ({ ...p, clubId: c.id, clubName: c.name, clubLogo: c.logo })));
-    
-    const filteredPlayers = otherPlayers.filter(p => p.name.includes(searchQuery));
-
-    const handleBuy = () => {
-        if (!transferModal || !selectedClubId) return;
-        onTransfer(transferModal.player.id, transferModal.sourceClub.id, selectedClubId, transferPrice);
-        setTransferModal(null);
-    };
-
-    return (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden min-h-[600px] flex flex-col">
-            <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950">
-                <div className="flex items-center gap-3">
-                    <ArrowRightLeft className="text-primary" />
-                    <h2 className="font-bold text-white text-lg">سوق الانتقالات العالمي</h2>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                    <span className="text-slate-400 text-xs font-bold">إدارة فريق:</span>
-                    <select 
-                        value={selectedClubId}
-                        onChange={e => setSelectedClubId(e.target.value)}
-                        className="bg-slate-800 border border-slate-700 text-white rounded p-2 text-sm outline-none focus:border-primary"
-                    >
-                        {clubs.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                </div>
-            </div>
-
-            <div className="p-6 flex-1 flex flex-col">
-                <div className="relative mb-6">
-                    <Search className="absolute right-3 top-3 text-slate-500" size={20} />
-                    <input 
-                        type="text"
-                        placeholder="ابحث عن لاعب لضمه للفريق..."
-                        value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-primary outline-none"
-                    />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto max-h-[600px] pr-2">
-                    {filteredPlayers.map(player => (
-                        <div key={player.id} className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex items-center gap-4 hover:border-slate-600 transition-colors group relative">
-                            <div className="w-16 h-16 rounded-full bg-slate-900 border border-slate-800 overflow-hidden shrink-0">
-                                {player.image ? <img src={player.image} className="w-full h-full object-cover" /> : <User className="w-full h-full p-3 text-slate-600"/>}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <h3 className="font-bold text-white truncate">{player.name}</h3>
-                                <div className="flex items-center gap-2 text-xs text-slate-400 mt-1">
-                                    <img src={player.clubLogo} className="w-4 h-4 object-contain" />
-                                    <span>{player.clubName}</span>
-                                </div>
-                                <div className="flex gap-2 mt-2">
-                                    <span className="text-[10px] bg-slate-900 border border-slate-700 px-1 rounded text-primary font-mono">{player.position}</span>
-                                    <span className="text-[10px] bg-slate-900 border border-slate-700 px-1 rounded text-yellow-500 font-mono">Rating: {player.rating}</span>
-                                </div>
-                            </div>
-                            <button 
-                                onClick={() => setTransferModal({ 
-                                    player: player, 
-                                    sourceClub: clubs.find(c => c.id === player.clubId)! 
-                                })}
-                                className="absolute right-4 top-4 opacity-0 group-hover:opacity-100 bg-primary text-slate-900 px-3 py-1 rounded text-xs font-bold transition-all shadow-lg hover:scale-105"
-                            >
-                                شراء
-                            </button>
-                        </div>
-                    ))}
-                    {filteredPlayers.length === 0 && (
-                        <div className="col-span-full text-center py-10 text-slate-500">لا توجد نتائج بحث</div>
-                    )}
-                </div>
-            </div>
-
-            {transferModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-sm p-4">
-                    <div className="bg-slate-900 w-full max-w-md rounded-2xl border border-slate-700 shadow-2xl overflow-hidden animate-in zoom-in-95">
-                        <div className="p-6 text-center border-b border-slate-800 bg-gradient-to-b from-slate-800 to-slate-900">
-                             <h3 className="text-xl font-black text-white mb-1">عقد انتقال</h3>
-                             <p className="text-sm text-slate-400">إتمام الصفقة رسمياً</p>
-                        </div>
-                        
-                        <div className="p-6 space-y-6">
-                            <div className="flex items-center justify-between px-4">
-                                <div className="flex flex-col items-center gap-2">
-                                    <div className="w-16 h-16 rounded-full bg-slate-950 border-2 border-slate-700 overflow-hidden p-2">
-                                         <img src={transferModal.sourceClub.logo} className="w-full h-full object-contain opacity-50 grayscale" />
-                                    </div>
-                                    <span className="text-xs font-bold text-slate-500 line-through">{transferModal.sourceClub.name}</span>
-                                </div>
-                                <ArrowRightLeft className="text-primary animate-pulse" size={24} />
-                                <div className="flex flex-col items-center gap-2">
-                                    <div className="w-16 h-16 rounded-full bg-slate-950 border-2 border-primary overflow-hidden p-2 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-                                         <img src={activeClub?.logo} className="w-full h-full object-contain" />
-                                    </div>
-                                    <span className="text-xs font-bold text-white">{activeClub?.name}</span>
-                                </div>
-                            </div>
-
-                            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-900">
-                                    <img src={transferModal.player.image || ''} className="w-full h-full object-cover" />
-                                </div>
-                                <div>
-                                    <h4 className="font-bold text-white">{transferModal.player.name}</h4>
-                                    <span className="text-xs text-slate-500">{transferModal.player.position} • {transferModal.player.rating} OVR</span>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-400">قيمة الصفقة (مليون يورو)</label>
-                                <input 
-                                    type="number" 
-                                    value={transferPrice}
-                                    onChange={e => setTransferPrice(Number(e.target.value))}
-                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-white font-mono text-lg focus:border-primary outline-none"
-                                />
-                            </div>
-
-                            <div className="flex gap-3 pt-2">
-                                <button 
-                                    onClick={() => setTransferModal(null)}
-                                    className="flex-1 py-3 rounded-xl bg-slate-800 text-slate-400 font-bold hover:bg-slate-700 transition-colors"
-                                >
-                                    إلغاء
-                                </button>
-                                <button 
-                                    onClick={handleBuy}
-                                    className="flex-1 py-3 rounded-xl bg-primary text-slate-900 font-black hover:bg-emerald-400 transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <CheckCircle2 size={18} /> توقيع العقد
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-};
 
 const ClubsManagerView: React.FC<{
   clubs: ClubProfile[];

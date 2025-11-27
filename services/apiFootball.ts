@@ -1,6 +1,3 @@
-
-
-
 import { Match, Category, MatchDetails, Standing, MatchEvent, Player, PlayerPerformance } from '../types';
 
 const BASE_URL = 'https://v3.football.api-sports.io';
@@ -262,6 +259,23 @@ export const fetchTeamSquad = async (apiKey: string, teamId: number): Promise<Pl
     } catch (e) {
         console.error(`Failed to fetch squad for team ${teamId}:`, e);
         return [];
+    }
+};
+
+export const fetchTeamCoach = async (apiKey: string, teamId: number): Promise<string | null> => {
+    if (!apiKey || !teamId) return null;
+    const headers = getHeaders(apiKey);
+    
+    try {
+        const response = await fetch(`${BASE_URL}/coachs?team=${teamId}`, { headers });
+        if (!response.ok) return null;
+        
+        const data = await response.json();
+        // Return the name of the first coach found (usually the current head coach)
+        return data.response?.[0]?.name || null;
+    } catch (e) {
+        console.error(`Failed to fetch coach for team ${teamId}:`, e);
+        return null;
     }
 };
 

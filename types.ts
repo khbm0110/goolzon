@@ -21,10 +21,10 @@ export enum Category {
 export interface FeatureFlags {
   matches: boolean;
   clubs: boolean;
-  mercato: boolean;
   videos: boolean;
   analysis: boolean;
   autopilot: boolean;
+  userSystem: boolean;
 }
 
 export interface ApiConfig {

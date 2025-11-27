@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Search, Trophy, Activity, Youtube, Calendar, Zap, Bell, User as UserIcon, LogIn } from 'lucide-react';
+import { Menu, X, Search, Trophy, Activity, Youtube, Calendar, Zap, Bell, User as UserIcon, LogIn, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 import { useUI } from '../contexts/UIContext';
@@ -19,6 +20,7 @@ const Header: React.FC<HeaderProps> = ({ onSearchClick, isAutopilotEnabled, onTo
 
   const navItems = [
     { label: 'الرئيسية', path: '/' },
+    { label: 'الأندية', path: '/clubs', hidden: !featureFlags.clubs },
     { label: 'دوري الأبطال', path: '/country/champions-league' },
     { label: 'الدوري الإنجليزي', path: '/country/england' },
     { label: 'الدوري الإسباني', path: '/country/spain' },
@@ -120,22 +122,24 @@ const Header: React.FC<HeaderProps> = ({ onSearchClick, isAutopilotEnabled, onTo
               <Search size={20} />
             </button>
             
-            {currentUser ? (
-              <Link 
-                to="/profile" 
-                className="hidden md:flex items-center justify-center w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors border border-slate-700 overflow-hidden"
-                title="الملف الشخصي"
-              >
-                {currentUser.avatar ? <img src={currentUser.avatar} alt={currentUser.username} className="w-full h-full object-cover"/> : <UserIcon size={16} />}
-              </Link>
-            ) : (
-              <Link
-                to="/login"
-                className="hidden md:flex items-center px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-full text-xs font-bold transition-colors border border-primary/30"
-              >
-                <LogIn size={14} className="ml-1" />
-                دخول
-              </Link>
+            {featureFlags.userSystem && (
+              currentUser ? (
+                <Link 
+                  to="/profile" 
+                  className="hidden md:flex items-center justify-center w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors border border-slate-700 overflow-hidden"
+                  title="الملف الشخصي"
+                >
+                  {currentUser.avatar ? <img src={currentUser.avatar} alt={currentUser.username} className="w-full h-full object-cover"/> : <UserIcon size={16} />}
+                </Link>
+              ) : (
+                <Link
+                  to="/login"
+                  className="hidden md:flex items-center px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-full text-xs font-bold transition-colors border border-primary/30"
+                >
+                  <LogIn size={14} className="ml-1" />
+                  دخول
+                </Link>
+              )
             )}
 
             <Link 
@@ -179,17 +183,20 @@ const Header: React.FC<HeaderProps> = ({ onSearchClick, isAutopilotEnabled, onTo
                        AI Autopilot: {isAutopilotEnabled ? 'ON' : 'OFF'}
                     </button>
                 )}
-                {currentUser ? (
-                  <Link to="/profile" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-slate-300 hover:text-white font-bold text-primary">
-                    مرحباً، {currentUser.name}
-                  </Link>
-                ) : (
-                  <Link to="/login" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-slate-300 hover:text-white">
-                    تسجيل الدخول
-                  </Link>
+                {featureFlags.userSystem && (
+                  currentUser ? (
+                    <Link to="/profile" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-slate-300 hover:text-white font-bold text-primary">
+                      مرحباً، {currentUser.name}
+                    </Link>
+                  ) : (
+                    <Link to="/login" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-slate-300 hover:text-white">
+                      تسجيل الدخول
+                    </Link>
+                  )
                 )}
                 {featureFlags.matches && <Link to="/matches" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-slate-300 hover:text-white">مباريات اليوم</Link>}
                 {featureFlags.videos && <Link to="/videos" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-slate-300 hover:text-white">فيديو</Link>}
+                {featureFlags.clubs && <Link to="/clubs" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-slate-300 hover:text-white">الأندية</Link>}
                 <Link to="/admin" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-accent">لوحة التحكم</Link>
             </div>
           </div>

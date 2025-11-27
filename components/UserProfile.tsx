@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Shield, LayoutTemplate, Settings, Trophy, Users, Plus, X, Search, LogOut, Loader2 } from 'lucide-react';
+import { User, Shield, LayoutTemplate, Settings, Trophy, Users, Plus, X, Search, LogOut, Loader2, Share2, Download } from 'lucide-react';
 import { Player, ClubProfile } from '../types';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useSettings } from '../contexts/SettingsContext';
+import { toPng } from 'html-to-image';
 
 const FORMATION_433 = [
     { id: 0, role: 'GK', top: '85%', left: '50%' },
@@ -27,6 +28,10 @@ const UserProfile: React.FC = () => {
     const [showTactics, setShowTactics] = useState(true);
     const [activeSlot, setActiveSlot] = useState<number | null>(null);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
+    
+    // Ref for the element we want to convert to image
+    const exportRef = useRef<HTMLDivElement>(null);
     
     // Local state for squad to provide immediate UI feedback
     const [localDreamSquad, setLocalDreamSquad] = useState(dreamSquad);
@@ -60,10 +65,41 @@ const UserProfile: React.FC = () => {
         updateDreamSquad(newSquad); // Sync with Supabase
     };
 
-
     const handleLogout = () => {
         logout();
         navigate('/');
+    };
+
+    const handleExportImage = async () => {
+        if (!exportRef.current || isExporting) return;
+        
+        setIsExporting(true);
+        // Ensure tactics view is visible before capture
+        setShowTactics(true);
+        
+        try {
+            // Wait a moment for any state updates or images to settle
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            const dataUrl = await toPng(exportRef.current, {
+                cacheBust: true,
+                quality: 0.95,
+                backgroundColor: '#020617', // Match slate-950
+                style: {
+                    transform: 'none', // Reset any potential transforms during capture
+                }
+            });
+
+            const link = document.createElement('a');
+            link.download = `goolzon-squad-${currentUser?.username || 'user'}.png`;
+            link.href = dataUrl;
+            link.click();
+        } catch (err) {
+            console.error('Failed to export image:', err);
+            alert('حدث خطأ أثناء تصدير الصورة. يرجى المحاولة مرة أخرى.');
+        } finally {
+            setIsExporting(false);
+        }
     };
 
     const squadPlayers = Object.values(localDreamSquad) as (Player & { clubLogo?: string })[];
@@ -74,16 +110,35 @@ const UserProfile: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-slate-950 pb-20">
-            <div className="relative h-[550px] md:h-[600px] bg-slate-900 group border-b border-slate-800">
-                <div className="absolute top-24 right-4 z-50 flex gap-2">
+            {/* 
+               This container is what gets exported. 
+               We use 'group' to handle some conditional styling during export if needed.
+               Ref is attached here.
+            */}
+            <div ref={exportRef} className="relative h-[550px] md:h-[600px] bg-slate-900 group border-b border-slate-800 overflow-hidden">
+                {/* Controls Area - Hidden during export by overlay logic or manual exclusion if refined, 
+                    but simpler to just keep them floating or position them so they look okay. 
+                    Actually, we'll keep the top buttons but maybe hide them via a class toggle if we strictly wanted a clean image.
+                    For now, capturing the whole card usually looks cool with the "UI" feel.
+                */}
+                <div className="absolute top-24 right-4 z-50 flex flex-col gap-2" data-html2canvas-ignore>
                     <button 
                         onClick={() => setShowTactics(!showTactics)}
                         className="bg-slate-900/80 backdrop-blur border border-slate-700 text-white p-3 rounded-xl flex items-center gap-2 text-sm font-bold hover:bg-emerald-500 hover:text-slate-900 transition-all shadow-xl hover:scale-105"
                     >
                         {showTactics ? <><Shield size={18} /> عرض الغلاف</> : <><LayoutTemplate size={18} /> تشكيلة الأحلام</>}
                     </button>
+                    <button 
+                        onClick={handleExportImage}
+                        disabled={isExporting}
+                        className="bg-primary/90 backdrop-blur border border-primary text-slate-900 p-3 rounded-xl flex items-center gap-2 text-sm font-bold hover:bg-white transition-all shadow-xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isExporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+                        حفظ الصورة
+                    </button>
                 </div>
 
+                {/* Main Content Area */}
                 <div className="absolute inset-0">
                     {!showTactics ? (
                         <>
@@ -93,19 +148,6 @@ const UserProfile: React.FC = () => {
                                 className="w-full h-full object-cover opacity-60" 
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent"></div>
-                            
-                            <div className="absolute bottom-0 left-0 w-full p-8 flex flex-col md:flex-row items-center md:items-end gap-6">
-                                <div className="w-32 h-32 rounded-full border-4 border-emerald-500 bg-slate-800 overflow-hidden shadow-2xl relative">
-                                    <img src={currentUser.avatar} className="w-full h-full object-cover" alt={currentUser.username} />
-                                </div>
-                                <div className="text-center md:text-right pb-2">
-                                    <h1 className="text-4xl font-black text-white mb-2">{currentUser.name}</h1>
-                                    <p className="text-slate-400 font-bold flex items-center justify-center md:justify-start gap-2">
-                                        <Trophy size={16} className="text-yellow-500" />
-                                        @{currentUser.username} • عضو منذ {new Date(currentUser.joinDate).getFullYear()}
-                                    </p>
-                                </div>
-                            </div>
                         </>
                     ) : (
                         <InteractivePitch 
@@ -115,6 +157,33 @@ const UserProfile: React.FC = () => {
                             isLoading={profileLoading}
                         />
                     )}
+
+                    {/* Branding Overlay - Always visible on top of pitch/cover */}
+                    <div className="absolute bottom-0 left-0 w-full p-6 md:p-8 flex flex-col md:flex-row items-center md:items-end gap-6 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent pt-20">
+                        <div className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-emerald-500 bg-slate-800 overflow-hidden shadow-2xl relative shrink-0">
+                            <img src={currentUser.avatar} className="w-full h-full object-cover" alt={currentUser.username} />
+                        </div>
+                        <div className="text-center md:text-right pb-2 flex-1">
+                            <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
+                                <h1 className="text-3xl md:text-4xl font-black text-white">{currentUser.name}</h1>
+                                {showTactics && (
+                                    <div className="bg-yellow-500 text-slate-900 text-xs font-black px-2 py-0.5 rounded shadow-lg transform rotate-3">
+                                        OVR {averageRating}
+                                    </div>
+                                )}
+                            </div>
+                            <p className="text-slate-400 font-bold flex items-center justify-center md:justify-start gap-2 text-sm md:text-base">
+                                <Trophy size={16} className="text-yellow-500" />
+                                @{currentUser.username} • عضو منذ {new Date(currentUser.joinDate).getFullYear()}
+                            </p>
+                        </div>
+                        {/* Site Logo for Export Branding */}
+                        <div className="hidden md:block opacity-50 grayscale hover:grayscale-0 transition-all">
+                             <div className="flex items-center gap-1">
+                                <span className="text-2xl font-black text-white tracking-tighter">gool<span className="text-primary">zon</span></span>
+                             </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -183,6 +252,7 @@ const InteractivePitch: React.FC<{
 
     return (
         <div className="w-full h-full bg-emerald-800 relative overflow-hidden flex justify-center items-center shadow-inner animate-in fade-in zoom-in-95 duration-500 selection-none">
+            {/* Pitch Markings */}
             <div className="absolute inset-4 border-2 border-white/20 rounded-lg pointer-events-none"></div>
             <div className="absolute top-1/2 left-0 w-full h-[1px] bg-white/20 pointer-events-none"></div>
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 md:w-32 md:h-32 border-2 border-white/20 rounded-full pointer-events-none"></div>
@@ -191,7 +261,10 @@ const InteractivePitch: React.FC<{
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-16 md:h-24 border-2 border-white/20 rounded-b-xl border-t-0 pointer-events-none"></div>
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/3 h-16 md:h-24 border-2 border-white/20 rounded-t-xl border-b-0 pointer-events-none"></div>
 
-            <div className="w-full h-full max-w-lg mx-auto relative">
+            {/* Grass Texture Effect */}
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:50px_50px] pointer-events-none"></div>
+
+            <div className="w-full h-full max-w-lg mx-auto relative z-10">
                 {FORMATION_433.map(slot => {
                     const player = squad[slot.id];
                     return (
@@ -212,6 +285,7 @@ const InteractivePitch: React.FC<{
                                     <button
                                         onClick={(e) => onRemovePlayer(e, slot.id)}
                                         className="absolute -top-2 -right-2 w-6 h-6 bg-red-600 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110"
+                                        data-html2canvas-ignore // Don't show delete button in screenshot
                                     >
                                         <X size={14} />
                                     </button>

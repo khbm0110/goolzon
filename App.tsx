@@ -13,6 +13,7 @@ import MatchesPage from './pages/MatchesPage';
 import VideosPage from './pages/VideosPage';
 import ArticleDetailPage from './pages/ArticleDetailPage';
 import ClubDashboard from './components/ClubDashboard';
+import ClubsPage from './pages/ClubsPage';
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
 import UserProfile from './components/UserProfile';
@@ -33,6 +34,7 @@ const AppRoutes: React.FC = () => (
       <Route path="/analysis" element={<CountryPage />} />
       <Route path="/country/:id" element={<CountryPage />} />
       <Route path="/article/:id" element={<ArticleDetailPage />} />
+      <Route path="/clubs" element={<ClubsPage />} />
       <Route path="/club/:id" element={<ClubDashboard />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />

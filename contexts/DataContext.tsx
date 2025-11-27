@@ -16,7 +16,6 @@ interface DataContextType {
   addClub: (club: ClubProfile) => Promise<boolean>;
   updateClub: (club: ClubProfile) => Promise<boolean>;
   deleteClub: (id: string) => Promise<boolean>;
-  transferPlayer: (playerId: string, sourceClubId: string, targetClubId: string, price: number) => Promise<void>;
   isLoadingInitial: boolean;
 }
 
@@ -176,44 +175,11 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return true;
   };
 
-  const transferPlayer = async (playerId: string, sourceClubId: string, targetClubId: string, price: number) => {
-      const sourceClub = clubs.find(c => c.id === sourceClubId);
-      const targetClub = clubs.find(c => c.id === targetClubId);
-      if (!sourceClub || !targetClub) return;
-
-      const playerIndex = sourceClub.squad.findIndex(p => p.id === playerId);
-      if (playerIndex === -1) return;
-
-      const [player] = sourceClub.squad.splice(playerIndex, 1);
-      targetClub.squad.push(player);
-
-      // Persist changes to Supabase
-      await Promise.all([
-          updateClub(sourceClub),
-          updateClub(targetClub)
-      ]);
-      
-      const transferArticle: Article = {
-          id: `transfer-${Date.now()}`,
-          title: `رسمياً: ${player.name} ينتقل من ${sourceClub.name} إلى ${targetClub.name} مقابل ${price} مليون`,
-          summary: `أعلن نادي ${targetClub.name} اليوم عن تعاقده مع اللاعب ${player.name} قادماً من ${sourceClub.name}.`,
-          content: `في خطوة لتعزيز صفوفه، أتم نادي ${targetClub.name} إجراءات ضم النجم ${player.name}.`,
-          imageUrl: player.image || targetClub.coverImage,
-          category: targetClub.country,
-          date: new Date().toISOString(),
-          author: 'Bot الانتقالات',
-          views: Math.floor(Math.random() * 5000) + 1000,
-          isBreaking: true,
-      };
-
-      await addArticle(transferArticle);
-  };
-
   const value = {
     articles, addArticle, updateArticle, deleteArticle,
     matches,
     standings,
-    clubs, addClub, updateClub, deleteClub, transferPlayer,
+    clubs, addClub, updateClub, deleteClub,
     isLoadingInitial
   };
 
