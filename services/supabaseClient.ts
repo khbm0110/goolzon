@@ -1,3 +1,4 @@
+
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 let supabase: SupabaseClient | null = null;
@@ -10,24 +11,35 @@ export const getSupabase = (): SupabaseClient | null => {
     return supabase;
   }
 
-  // Environment variables are read inside the function for runtime reliability.
-  const SUPABASE_URL = process.env.VITE_SUPABASE_URL as string;
-  const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY as string;
+  // Helper to get environment variables robustly in different environments (Vite/Jest/Node)
+  const getEnv = (key: string) => {
+    // @ts-ignore
+    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
+        // @ts-ignore
+        return import.meta.env[key];
+    }
+    if (typeof process !== 'undefined' && process.env && process.env[key]) {
+        return process.env[key];
+    }
+    return '';
+  };
+
+  const SUPABASE_URL = getEnv('VITE_SUPABASE_URL');
+  const SUPABASE_ANON_KEY = getEnv('VITE_SUPABASE_ANON_KEY');
 
   // If environment variables are available, create the client.
   if (SUPABASE_URL && SUPABASE_ANON_KEY) {
     try {
-      console.log("Initializing Supabase client from environment variables...");
+      console.log("Initializing Supabase client...");
       supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       return supabase;
     } catch (error) {
-      console.error("Error creating Supabase client from env vars:", error);
+      console.error("Error creating Supabase client:", error);
       return null;
     }
   }
 
   // If env vars are not set, return null.
-  // The app's logic will handle this case (e.g., show a message).
-  console.warn("Supabase environment variables (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY) are not set.");
+  console.warn("Supabase credentials missing. Check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
   return null;
 };

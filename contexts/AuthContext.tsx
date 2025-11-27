@@ -169,12 +169,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const supabase = getSupabase();
     
     if (supabase) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
         if (error) {
             return { success: false, error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة.' };
         }
-        // onAuthStateChange will handle setting the user state and checking admin role
-        return { success: true };
+        
+        // Immediately check for admin role to facilitate correct redirection in the UI
+        let isAdminUser = false;
+        if (data.user) {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', data.user.id)
+                .single();
+            isAdminUser = profile?.role === 'admin';
+        }
+
+        // The onAuthStateChange listener will eventually update the global state,
+        // but returning isAdmin here allows immediate redirection logic.
+        return { success: true, isAdmin: isAdminUser };
     }
     
     // Fallback for local testing without Supabase
