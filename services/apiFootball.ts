@@ -1,4 +1,3 @@
-
 import { Match, Category, MatchDetails, Standing, MatchEvent } from '../types';
 
 const BASE_URL = 'https://v3.football.api-sports.io';
@@ -55,23 +54,18 @@ export const fetchLiveMatches = async (apiKey: string, leagueIds: string): Promi
 
   const headers = getHeaders(apiKey);
   const today = new Date().toISOString().split('T')[0];
-  // Safe parsing of league IDs
   const targetIds = (leagueIds || '').split(',').map(id => parseInt(id.trim())).filter(n => !isNaN(n));
   
   try {
     const response = await fetch(`${BASE_URL}/fixtures?date=${today}&timezone=Asia/Riyadh`, { headers });
     
-    if (!response.ok) {
-        console.warn(`API Error ${response.status}: ${await response.text()}`);
-        return [];
-    }
+    if (!response.ok) return [];
 
     const data = await response.json();
     if (!data.response || !Array.isArray(data.response)) return [];
 
     return data.response
       .filter((item: any) => {
-         // Filter by configured leagues if provided, else filter by known Gulf leagues
          if (targetIds.length > 0) return targetIds.includes(item.league.id);
          return LEAGUE_MAPPING[item.league.id] !== undefined;
       })
@@ -112,14 +106,12 @@ export const fetchFixtureDetails = async (apiKey: string, fixtureId: string): Pr
 
         if (!fixture) return null;
 
-        // Map Stats
         const statsRaw = fixture.statistics || [];
         const homeStats = statsRaw[0]?.statistics || [];
         const awayStats = statsRaw[1]?.statistics || [];
 
         const getStat = (arr: any[], type: string) => {
             const item = arr.find((s: any) => s.type === type);
-            // Handle various return types (null, string, number)
             const val = item?.value;
             if (val === null || val === undefined) return 0;
             if (typeof val === 'string') return parseInt(val.replace('%', ''));
@@ -136,13 +128,11 @@ export const fetchFixtureDetails = async (apiKey: string, fixtureId: string): Pr
             cornersAway: getStat(awayStats, "Corner Kicks"),
         };
 
-        // Map Lineups
         const lineups = {
             home: fixture.lineups?.[0]?.startXI?.map((p: any) => p.player.name) || [],
             away: fixture.lineups?.[1]?.startXI?.map((p: any) => p.player.name) || [],
         };
 
-        // Map Events
         const events: MatchEvent[] = (fixture.events || []).map((e: any) => ({
             time: `${e.time.elapsed}'`,
             team: e.team.id === fixture.teams.home.id ? 'HOME' : 'AWAY',
@@ -166,20 +156,18 @@ export const fetchFixtureDetails = async (apiKey: string, fixtureId: string): Pr
 export const fetchStandings = async (apiKey: string, leagueIds: string): Promise<Standing[]> => {
     if (!apiKey) return [];
     
-    // Safe parsing of league IDs
     const targetIds = (leagueIds || '').split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
     if (targetIds.length === 0) return [];
 
     const headers = getHeaders(apiKey);
     const currentYear = new Date().getFullYear();
 
-    // Helper: Try to fetch a specific league season
     const fetchLeagueSeason = async (leagueId: number, season: number) => {
          try {
             const res = await fetch(`${BASE_URL}/standings?league=${leagueId}&season=${season}`, { headers });
             if (!res.ok) return null;
             const json = await res.json();
-            return json.response?.[0]?.league?.standings?.[0]; // API-Football returns nested arrays for standings
+            return json.response?.[0]?.league?.standings?.[0]; 
          } catch { return null; }
     };
 
@@ -187,10 +175,8 @@ export const fetchStandings = async (apiKey: string, leagueIds: string): Promise
         let allStandings: Standing[] = [];
 
         for (const id of targetIds) {
-            // Priority 1: Try current year (e.g., 2025)
             let rawData = await fetchLeagueSeason(id, currentYear);
             
-            // Priority 2: Try previous year (e.g., 2024 - commonly the active season for 24/25)
             if (!rawData || rawData.length === 0) {
                 rawData = await fetchLeagueSeason(id, currentYear - 1);
             }
@@ -199,7 +185,6 @@ export const fetchStandings = async (apiKey: string, leagueIds: string): Promise
             if (rawData && category) {
                 const leagueKey = categoryToKey(category);
 
-                // Map the data
                 const mapped = rawData.map((item: any) => ({
                     rank: item.rank,
                     team: item.team.name,
@@ -222,119 +207,6 @@ export const fetchStandings = async (apiKey: string, leagueIds: string): Promise
 
     } catch (e) {
         console.error("Failed to fetch standings:", e);
-        return [];
-    }
-};
-
-export const fetchTeamSquad = async (apiKey: string, teamId: number): Promise<any[]> => {
-    if (!apiKey || !teamId) return [];
-    const headers = getHeaders(apiKey);
-    
-    try {
-        const response = await fetch(`${BASE_URL}/players/squads?team=${teamId}`, { headers });
-        if (!response.ok) {
-            console.error(`API-Football error for team ${teamId}: ${response.status}`);
-            return [];
-        }
-        const data = await response.json();
-        if (!data.response?.[0]?.players) return [];
-
-        const posMap: Record<string, any> = {
-            'Goalkeeper': 'GK',
-            'Defender': 'DEF',
-            'Midfielder': 'MID',
-            'Attacker': 'FWD'
-        };
-
-        return data.response[0].players.map((p: any) => ({
-            id: `apif-${p.id}`,
-            apiFootballId: p.id, // Storing the numeric API ID is crucial
-            name: p.name,
-            number: p.number || 0,
-            position: posMap[p.position] || 'MID',
-            rating: 75, // Default rating, can be customized later
-            image: p.photo,
-            nationality: p.nationality || '', 
-            stats: { pac: 70, sho: 70, pas: 70, dri: 70, def: 50, phy: 60 } // Default stats
-        }));
-    } catch (e) {
-        console.error(`Failed to fetch squad for team ${teamId}:`, e);
-        return [];
-    }
-};
-
-export const fetchTeamCoach = async (apiKey: string, teamId: number): Promise<string | null> => {
-    if (!apiKey || !teamId) return null;
-    const headers = getHeaders(apiKey);
-    
-    try {
-        const response = await fetch(`${BASE_URL}/coachs?team=${teamId}`, { headers });
-        if (!response.ok) return null;
-        
-        const data = await response.json();
-        // Return the name of the first coach found (usually the current head coach)
-        return data.response?.[0]?.name || null;
-    } catch (e) {
-        console.error(`Failed to fetch coach for team ${teamId}:`, e);
-        return null;
-    }
-};
-
-export const fetchFinishedFixturesByDate = async (apiKey: string, date: string, leagueIds: string): Promise<{id: number, homeTeamId: number, awayTeamId: number}[]> => {
-    if (!apiKey) return [];
-    const headers = getHeaders(apiKey);
-    const targetIds = (leagueIds || '').split(',').map(id => parseInt(id.trim())).filter(n => !isNaN(n));
-    if (targetIds.length === 0) return [];
-    
-    try {
-        const response = await fetch(`${BASE_URL}/fixtures?date=${date}&status=FT`, { headers });
-        if (!response.ok) return [];
-        const data = await response.json();
-        if (!data.response) return [];
-        
-        return data.response
-            .filter((f: any) => targetIds.includes(f.league.id))
-            .map((f: any) => ({
-                id: f.fixture.id,
-                homeTeamId: f.teams.home.id,
-                awayTeamId: f.teams.away.id
-            }));
-    } catch (e) {
-        console.error('Failed to fetch finished fixtures:', e);
-        return [];
-    }
-};
-
-export const fetchPlayerStatsForFixture = async (apiKey: string, fixtureId: number): Promise<any[]> => {
-    if (!apiKey) return [];
-    const headers = getHeaders(apiKey);
-
-    try {
-        const response = await fetch(`${BASE_URL}/fixtures/players?fixture=${fixtureId}`, { headers });
-        if (!response.ok) return [];
-        const data = await response.json();
-        if (!data.response) return [];
-
-        const performances: any[] = [];
-        for (const team of data.response) {
-            for (const player of team.players) {
-                const stats = player.statistics[0];
-                performances.push({
-                    match_api_id: fixtureId,
-                    player_api_id: player.player.id,
-                    team_api_id: team.team.id,
-                    minutes: stats.games.minutes,
-                    rating: parseFloat(stats.games.rating) || 0,
-                    goals: stats.goals.total,
-                    assists: stats.goals.assists,
-                    yellow: stats.cards.yellow,
-                    red: stats.cards.red,
-                });
-            }
-        }
-        return performances;
-    } catch (e) {
-        console.error(`Failed to fetch player stats for fixture ${fixtureId}:`, e);
         return [];
     }
 };

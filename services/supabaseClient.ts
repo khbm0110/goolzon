@@ -1,19 +1,21 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-
-// 🔹 قيم Supabase مباشرة لتجنب مشاكل AI Studio مع .env
-const SUPABASE_URL = "https://prbfqykvhdwycaqachnf.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByYmZxeWt2aGR3eWNhcWFjaG5mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwNzgxNjAsImV4cCI6MjA3OTY1NDE2MH0.mgtOwoYLJAGItpu6N-ScjXCEi_L8-RPZjRVwVXq2cq0";
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../config/supabaseConfig';
 
 let supabaseClient: SupabaseClient | null = null;
 
-export const getSupabase = (): SupabaseClient => {
+export const getSupabase = (): SupabaseClient | null => {
   if (supabaseClient) return supabaseClient;
 
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    throw new Error("❌ Supabase credentials missing!");
+    console.error("❌ Supabase credentials are missing!");
+    return null;
   }
 
-  supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  console.log("🔥 Supabase initialized!");
-  return supabaseClient;
+  try {
+    supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    return supabaseClient;
+  } catch (error) {
+    console.error("Error initializing Supabase:", error);
+    return null;
+  }
 };

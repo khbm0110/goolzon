@@ -1,28 +1,13 @@
-
-
-
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
-  Users, 
-  MapPin, 
-  Trophy, 
-  User, 
-  Activity, 
-  Check, 
-  Instagram, 
-  Twitter,
-  Calendar,
-  Info,
-  Shield,
-  Loader2
+  Users, MapPin, Trophy, User, Activity, Check, Instagram, Twitter, Calendar, Info, Loader2
 } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import TeamLogo from './TeamLogo';
 import NewsCard from './NewsCard';
-import { Match, Player, PlayerPerformance, PlayerSeasonStats } from '../types';
+import { Match, Player, PlayerSeasonStats } from '../types';
 import { getSupabase } from '../services/supabaseClient';
 
 const ClubDashboard: React.FC = () => {
@@ -51,7 +36,7 @@ const ClubDashboard: React.FC = () => {
 
   useEffect(() => {
     const fetchAndAggregateStats = async () => {
-        if (!club || !club.apiFootballId) {
+        if (!club || !club.apiFootballId || !club.squad) {
             setSquadWithStats(club?.squad || []);
             setIsLoadingStats(false);
             return;
@@ -78,7 +63,7 @@ const ClubDashboard: React.FC = () => {
         }
         
         const squadWithAggregatedStats = club.squad.map(player => {
-            const playerPerformances = performances.filter(p => p.player_api_id === player.apiFootballId);
+            const playerPerformances = performances ? performances.filter(p => p.player_api_id === player.apiFootballId) : [];
             
             const seasonStats: PlayerSeasonStats = playerPerformances.reduce((acc, perf) => {
                 return {
@@ -199,14 +184,6 @@ const ClubDashboard: React.FC = () => {
                  >
                     {isFollowing ? <><Check size={20} /> مُتابَع</> : <><Activity size={20} /> تابِع الفريق</>}
                  </button>
-                 <div className="flex gap-2 justify-center">
-                    {club.social?.twitter && (
-                        <a href={`https://twitter.com/${club.social.twitter.replace('@', '')}`} target="_blank" rel="noreferrer" className="flex-1 bg-slate-800/80 hover:bg-[#1DA1F2] hover:text-white text-slate-300 py-2 rounded-lg flex justify-center transition-colors backdrop-blur-sm"><Twitter size={18} /></a>
-                    )}
-                    {club.social?.instagram && (
-                        <a href={`https://instagram.com/${club.social.instagram.replace('@', '')}`} target="_blank" rel="noreferrer" className="flex-1 bg-slate-800/80 hover:bg-[#E1306C] hover:text-white text-slate-300 py-2 rounded-lg flex justify-center transition-colors backdrop-blur-sm"><Instagram size={18} /></a>
-                    )}
-                 </div>
               </div>
            </div>
         </div>
@@ -240,27 +217,6 @@ const ClubDashboard: React.FC = () => {
                        </div>
                     </div>
                  )}
-                 
-                 <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-                     <h3 className="font-bold text-white mb-4 text-lg border-b border-slate-800 pb-2 flex items-center gap-2">
-                        <Calendar size={18} style={{color: primaryColor}} /> المباريات القادمة
-                    </h3>
-                    <div className="space-y-3">
-                        {displayMatches.map((match, idx) => (
-                            <div key={idx} className="bg-slate-950 p-3 rounded-lg border border-slate-800 flex flex-col gap-2">
-                                <div className="flex justify-between text-[10px] text-slate-500">
-                                    <span>{match.league}</span>
-                                    <span>{match.time}</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                     <span className="text-xs font-bold text-slate-300">{match.homeTeam}</span>
-                                     <span className="text-xs font-bold text-slate-600">VS</span>
-                                     <span className="text-xs font-bold text-slate-300">{match.awayTeam}</span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                 </div>
              </div>
 
              <div className="lg:col-span-9">
@@ -347,7 +303,6 @@ const PlayerCard: React.FC<{ player: Player; primaryColor: string; clubLogo: str
 
     return (
         <div className={`relative w-full aspect-[2/3] rounded-t-3xl rounded-b-2xl overflow-hidden border ${borderColor} ${cardBg} shadow-2xl hover:-translate-y-2 transition-transform duration-300 group`}>
-            {/* Player Image & Core Info */}
             <div className="absolute top-0 left-0 w-full h-2/3 z-10">
                 <div className="absolute top-6 left-5 flex flex-col items-center gap-1 z-30 w-12">
                      <span className={`text-3xl font-black leading-none ${textColor}`}>{player.rating}</span>
@@ -372,12 +327,10 @@ const PlayerCard: React.FC<{ player: Player; primaryColor: string; clubLogo: str
                     )}
                 </div>
             </div>
-            {/* Player Name & Stats */}
             <div className="absolute bottom-0 left-0 w-full h-1/2 z-20 flex flex-col justify-end pb-3 px-3">
                  <div className={`absolute bottom-0 left-0 w-full h-full bg-gradient-to-t ${overlayGradient} z-0`}></div>
                  <div className="relative z-10 text-center">
                      <h3 className={`font-black text-lg uppercase tracking-wide truncate px-2 mb-2 ${textColor}`}>{player.name}</h3>
-                     {/* Season Stats */}
                      {player.seasonStats && player.seasonStats.matches > 0 && (
                         <div className="flex justify-center gap-4 mb-2">
                            <div className="flex flex-col items-center">
@@ -395,7 +348,6 @@ const PlayerCard: React.FC<{ player: Player; primaryColor: string; clubLogo: str
                         </div>
                      )}
                      <div className="w-full h-[1px] bg-white/20 mb-2 mx-auto w-4/5"></div>
-                     {/* Card Stats */}
                      <div className="grid grid-cols-6 gap-x-1 gap-y-1 text-center px-1">
                         <StatItem label="PAC" value={player.stats?.pac} color={accentColor} />
                         <StatItem label="SHO" value={player.stats?.sho} color={accentColor} />
