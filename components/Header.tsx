@@ -7,8 +7,6 @@ import { useSettings } from '../contexts/SettingsContext';
 
 interface HeaderProps {
   onSearchClick?: () => void;
-  isAutopilotEnabled?: boolean;
-  onToggleAutopilot?: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ onSearchClick }) => {

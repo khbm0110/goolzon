@@ -1,5 +1,7 @@
+// FIX: Removed reference to "vite/client" which was causing a resolution error.
+
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
-import { Article, Match, Standing, ClubProfile, Category, Player, Sponsor } from '../types';
+import { Article, Match, Standing, ClubProfile, Sponsor } from '../types';
 import { INITIAL_ARTICLES, CLUB_DATABASE } from '../constants';
 import { fetchLiveMatches, fetchStandings } from '../services/apiFootball';
 import { useSettings } from './SettingsContext';
@@ -83,8 +85,9 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
 
         // --- Sports API Data ---
-        // Environment variables are read at runtime for broader compatibility.
-        const API_FOOTBALL_KEY = process.env.VITE_APIFOOTBALL_KEY as string;
+        // In a Vite project, environment variables are accessed via import.meta.env.
+        // FIX: Using type assertion as a workaround for misconfigured Vite/TS environment.
+        const API_FOOTBALL_KEY = (import.meta as any).env.VITE_APIFOOTBALL_KEY as string;
         if (API_FOOTBALL_KEY) {
             const [liveMatches, leagueStandings] = await Promise.all([
                 fetchLiveMatches(API_FOOTBALL_KEY, apiConfig.leagueIds),

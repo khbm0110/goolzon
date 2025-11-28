@@ -1,11 +1,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { User, Shield, LayoutTemplate, Settings, Trophy, Users, Plus, X, Search, LogOut, Loader2, Share2, Download } from 'lucide-react';
-import { Player, ClubProfile } from '../types';
+import { Player } from '../types';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { useSettings } from '../contexts/SettingsContext';
 import { toPng } from 'html-to-image';
 
 const FORMATION_433 = [
@@ -111,12 +110,17 @@ const UserProfile: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-slate-950 pb-20">
+            <div className="container mx-auto px-4 pt-8 text-center">
+                <h2 className="text-4xl font-black text-white mb-2">My Dream Team</h2>
+                <p className="text-slate-400">كوّن وشارك تشكيلة أحلامك النهائية.</p>
+            </div>
+            
             {/* 
                This container is what gets exported. 
                We use 'group' to handle some conditional styling during export if needed.
                Ref is attached here.
             */}
-            <div ref={exportRef} className="relative h-[550px] md:h-[600px] bg-slate-900 group border-b border-slate-800 overflow-hidden">
+            <div ref={exportRef} className="relative h-[550px] md:h-[600px] bg-slate-900 group border-y mt-6 border-slate-800 overflow-hidden">
                 {/* Controls Area */}
                 <div className="absolute top-24 right-4 z-50 flex flex-col gap-2" data-html2canvas-ignore>
                     <button 

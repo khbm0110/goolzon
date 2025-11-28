@@ -1,71 +1,81 @@
 
-import { getSupabase } from '../services/supabaseClient';
-import { fetchFinishedFixturesByDate, fetchPlayerStatsForFixture } from '../services/apiFootball';
-import { getPerformanceDataApiKey } from '../services/keyManager';
+import { createClient } from '@supabase/supabase-js';
+
+const getSupabase = () => {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.VITE_SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key);
+};
+
+const BASE_URL = 'https://v3.football.api-sports.io';
+
+const fetchFinishedFixtures = async (apiKey: string, date: string, leagueIds: string) => {
+    try {
+        const response = await fetch(`${BASE_URL}/fixtures?date=${date}&status=FT`, { headers: { 'x-apisports-key': apiKey } });
+        const data = await response.json();
+        const targetIds = leagueIds.split(',').map(id => parseInt(id.trim()));
+        return (data.response || [])
+            .filter((f: any) => targetIds.includes(f.league.id))
+            .map((f: any) => ({ id: f.fixture.id }));
+    } catch { return []; }
+};
+
+const fetchPlayerStats = async (apiKey: string, fixtureId: number) => {
+    try {
+        const response = await fetch(`${BASE_URL}/fixtures/players?fixture=${fixtureId}`, { headers: { 'x-apisports-key': apiKey } });
+        const data = await response.json();
+        const perfs: any[] = [];
+        (data.response || []).forEach((team: any) => {
+            team.players.forEach((player: any) => {
+                const stats = player.statistics[0];
+                perfs.push({
+                    match_api_id: fixtureId,
+                    player_api_id: player.player.id,
+                    team_api_id: team.team.id,
+                    minutes: stats.games.minutes,
+                    rating: parseFloat(stats.games.rating) || 0,
+                    goals: stats.goals.total || 0,
+                    assists: stats.goals.assists || 0,
+                });
+            });
+        });
+        return perfs;
+    } catch { return []; }
+};
 
 export default async function handler(request: any, response: any) {
-    // --- Security Check ---
-    // We expect an Authorization header: "Bearer <CRON_SECRET>"
     const authHeader = request.headers['authorization'];
     const expectedSecret = `Bearer ${process.env.CRON_SECRET}`;
 
     if (authHeader !== expectedSecret) {
-        console.log("Performance Sync: Unauthorized access attempt.");
         return response.status(401).json({ error: 'Unauthorized' });
     }
 
     const supabase = getSupabase();
-    const apiKey = getPerformanceDataApiKey();
+    const apiKey = process.env.APIFOOTBALL_KEY_PERFORMANCE_DATA || process.env.VITE_APIFOOTBALL_KEY;
+    const LEAGUE_IDS = '307,39,140,2,135,78,301';
 
-    // Use a fixed list of league IDs for performance sync to avoid dependency on client-side settings
-    const LEAGUE_IDS_FOR_SYNC = '307,39,140,2,135,78,301';
-
-    if (!supabase || !apiKey) {
-        return response.status(500).json({ error: "Server configuration error: Supabase or API key is missing." });
-    }
+    if (!supabase || !apiKey) return response.status(500).json({ error: "Configuration Error" });
 
     try {
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         const dateString = yesterday.toISOString().split('T')[0];
 
-        console.log(`Performance Sync: Fetching finished fixtures for ${dateString}`);
-        
-        const finishedFixtures = await fetchFinishedFixturesByDate(apiKey, dateString, LEAGUE_IDS_FOR_SYNC);
+        const fixtures = await fetchFinishedFixtures(apiKey, dateString, LEAGUE_IDS);
+        let count = 0;
 
-        if (finishedFixtures.length === 0) {
-            const message = "Performance Sync: No finished matches found for the target leagues yesterday.";
-            console.log(message);
-            return response.status(200).json({ message });
-        }
-        
-        console.log(`Performance Sync: Found ${finishedFixtures.length} finished matches. Fetching player stats...`);
-
-        let allPerformances = [];
-        for (const fixture of finishedFixtures) {
-            const playerStats = await fetchPlayerStatsForFixture(apiKey, fixture.id);
-            if (playerStats.length > 0) {
-                allPerformances.push(...playerStats);
+        for (const fixture of fixtures) {
+            const stats = await fetchPlayerStats(apiKey, fixture.id);
+            if (stats.length > 0) {
+                await supabase.from('player_performances').upsert(stats);
+                count += stats.length;
             }
         }
 
-        if (allPerformances.length > 0) {
-            console.log(`Performance Sync: Upserting ${allPerformances.length} player performance records into Supabase.`);
-            const { error } = await supabase.from('player_performances').upsert(allPerformances);
-
-            if (error) {
-                throw new Error(`Supabase upsert error: ${error.message}`);
-            }
-        } else {
-             console.log(`Performance Sync: No player stats were found for the finished matches.`);
-        }
-
-        const message = `Performance Sync complete. Processed ${finishedFixtures.length} matches and synced ${allPerformances.length} player performance records.`;
-        console.log(message);
-        return response.status(200).json({ message });
-
+        return response.status(200).json({ message: `Synced ${count} performance records.` });
     } catch (error: any) {
-        console.error("Performance Sync Engine Failure:", error);
-        return response.status(500).json({ error: error.message || "An unknown error occurred during performance sync." });
+        return response.status(500).json({ error: error.message });
     }
 }

@@ -1,13 +1,14 @@
-import { Category } from '../types';
+// FIX: Removed reference to "vite/client" which was causing a resolution error.
 
 // These are the environment variable names to be configured in Vercel.
+// Client-side variables MUST be prefixed with VITE_.
 const KEY_NAMES = {
-    ARABIC: 'GEMINI_API_KEY_ARABIC_LEAGUES',
-    SPANISH: 'GEMINI_API_KEY_SPANISH_LEAGUES',
-    ENGLISH: 'GEMINI_API_KEY_ENGLISH_LEAGUES',
-    DEFAULT: 'GEMINI_API_KEY_DEFAULT',
+    ARABIC: 'VITE_GEMINI_API_KEY_ARABIC_LEAGUES',
+    SPANISH: 'VITE_GEMINI_API_KEY_SPANISH_LEAGUES',
+    ENGLISH: 'VITE_GEMINI_API_KEY_ENGLISH_LEAGUES',
+    DEFAULT: 'VITE_GEMINI_API_KEY_DEFAULT',
     // Legacy fallback for single-key setup
-    LEGACY: 'API_KEY', 
+    LEGACY: 'VITE_GEMINI_API_KEY', // Renamed from API_KEY to be client-accessible
 };
 
 // Keywords to determine which key to use based on a topic string.
@@ -26,18 +27,22 @@ const KEYWORD_TRIGGERS = {
 export const getGeminiApiKeyForTopic = (topic: string): string | null => {
     const topicLower = topic.toLowerCase();
 
+    // In a Vite project, client-side env vars are exposed on import.meta.env.
+    // FIX: Using type assertion as a workaround for misconfigured Vite/TS environment.
+    const env = (import.meta as any).env;
+
     if (KEYWORD_TRIGGERS.ARABIC.some(kw => topicLower.includes(kw))) {
-        return process.env[KEY_NAMES.ARABIC] || process.env[KEY_NAMES.DEFAULT] || process.env[KEY_NAMES.LEGACY] || null;
+        return env[KEY_NAMES.ARABIC] || env[KEY_NAMES.DEFAULT] || env[KEY_NAMES.LEGACY] || null;
     }
     if (KEYWORD_TRIGGERS.SPANISH.some(kw => topicLower.includes(kw))) {
-        return process.env[KEY_NAMES.SPANISH] || process.env[KEY_NAMES.DEFAULT] || process.env[KEY_NAMES.LEGACY] || null;
+        return env[KEY_NAMES.SPANISH] || env[KEY_NAMES.DEFAULT] || env[KEY_NAMES.LEGACY] || null;
     }
     if (KEYWORD_TRIGGERS.ENGLISH.some(kw => topicLower.includes(kw))) {
-        return process.env[KEY_NAMES.ENGLISH] || process.env[KEY_NAMES.DEFAULT] || process.env[KEY_NAMES.LEGACY] || null;
+        return env[KEY_NAMES.ENGLISH] || env[KEY_NAMES.DEFAULT] || env[KEY_NAMES.LEGACY] || null;
     }
 
     // Default fallback order: specific default, then legacy key.
-    return process.env[KEY_NAMES.DEFAULT] || process.env[KEY_NAMES.LEGACY] || null;
+    return env[KEY_NAMES.DEFAULT] || env[KEY_NAMES.LEGACY] || null;
 };
 
 /**
@@ -45,11 +50,15 @@ export const getGeminiApiKeyForTopic = (topic: string): string | null => {
  * @returns The Arabic-specific API key or a fallback, or null.
  */
 export const getGeminiApiKeyForHeadlines = (): string | null => {
-    return process.env[KEY_NAMES.ARABIC] || process.env[KEY_NAMES.DEFAULT] || process.env[KEY_NAMES.LEGACY] || null;
+    // In a Vite project, client-side env vars are exposed on import.meta.env.
+    // FIX: Using type assertion as a workaround for misconfigured Vite/TS environment.
+    const env = (import.meta as any).env;
+    return env[KEY_NAMES.ARABIC] || env[KEY_NAMES.DEFAULT] || env[KEY_NAMES.LEGACY] || null;
 };
 
 /**
- * Gets the dedicated API key for performance data sync, falling back to the main key.
+ * Gets the dedicated API key for performance data sync.
+ * This function remains using process.env as it's intended for server-side functions.
  * @returns The performance data API key or a fallback.
  */
 export const getPerformanceDataApiKey = (): string | null => {

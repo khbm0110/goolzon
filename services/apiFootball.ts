@@ -1,4 +1,5 @@
-import { Match, Category, MatchDetails, Standing, MatchEvent, Player, PlayerPerformance } from '../types';
+
+import { Match, Category, MatchDetails, Standing, MatchEvent } from '../types';
 
 const BASE_URL = 'https://v3.football.api-sports.io';
 
@@ -225,7 +226,7 @@ export const fetchStandings = async (apiKey: string, leagueIds: string): Promise
     }
 };
 
-export const fetchTeamSquad = async (apiKey: string, teamId: number): Promise<Player[]> => {
+export const fetchTeamSquad = async (apiKey: string, teamId: number): Promise<any[]> => {
     if (!apiKey || !teamId) return [];
     const headers = getHeaders(apiKey);
     
@@ -238,7 +239,7 @@ export const fetchTeamSquad = async (apiKey: string, teamId: number): Promise<Pl
         const data = await response.json();
         if (!data.response?.[0]?.players) return [];
 
-        const posMap: Record<string, Player['position']> = {
+        const posMap: Record<string, any> = {
             'Goalkeeper': 'GK',
             'Defender': 'DEF',
             'Midfielder': 'MID',
@@ -304,7 +305,7 @@ export const fetchFinishedFixturesByDate = async (apiKey: string, date: string, 
     }
 };
 
-export const fetchPlayerStatsForFixture = async (apiKey: string, fixtureId: number): Promise<PlayerPerformance[]> => {
+export const fetchPlayerStatsForFixture = async (apiKey: string, fixtureId: number): Promise<any[]> => {
     if (!apiKey) return [];
     const headers = getHeaders(apiKey);
 
@@ -314,7 +315,7 @@ export const fetchPlayerStatsForFixture = async (apiKey: string, fixtureId: numb
         const data = await response.json();
         if (!data.response) return [];
 
-        const performances: PlayerPerformance[] = [];
+        const performances: any[] = [];
         for (const team of data.response) {
             for (const player of team.players) {
                 const stats = player.statistics[0];

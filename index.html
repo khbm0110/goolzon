@@ -10,13 +10,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@200;300;400;600;700;800;900&display=swap" rel="stylesheet">
 
     <script>
-      // Polyfill for process.env in browser environments
+      // Vite handles environment variables through import.meta.env, so we only need a basic polyfill
+      // for any library that might still expect process.env to exist. This prevents errors.
       window.process = window.process || {
         env: {
-          NODE_ENV: 'development',
-          VITE_SUPABASE_URL: '',
-          VITE_SUPABASE_ANON_KEY: '',
-          VITE_APIFOOTBALL_KEY: ''
+          NODE_ENV: 'development'
         }
       };
 

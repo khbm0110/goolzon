@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
@@ -9,7 +10,6 @@ import {
   ThumbsDown,
   Flame,
   MessageCircle,
-  PlayCircle,
   Twitter,
   Facebook,
   Copy,

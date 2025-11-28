@@ -1,3 +1,5 @@
+// FIX: Removed reference to "vite/client" which was causing a resolution error.
+
 import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
@@ -9,36 +11,27 @@ import {
   FilePlus,
   Edit,
   Trash2,
-  Plus,
   X,
   User,
   Save,
   Wand2,
-  ChevronDown,
-  ChevronUp,
   Search,
   CheckCircle2,
-  Clipboard,
   Settings,
   ToggleLeft,
   ToggleRight,
-  Database,
   Key,
   Cpu,
-  Trophy,
   Users,
   Loader2,
-  UploadCloud,
-  AlertTriangle,
   Eye,
   Link as LinkIcon,
   Activity,
-  Info,
   RefreshCw,
   BarChart2,
   Handshake
 } from 'lucide-react';
-import { Article, Category, ClubProfile, Player, PlayerStats, FeatureFlags, ApiConfig, Sponsor } from '../types';
+import { Article, Category, ClubProfile, Player, FeatureFlags, ApiConfig, Sponsor } from '../types';
 import { useData } from '../contexts/DataContext';
 import { useSettings } from '../contexts/SettingsContext';
 import TeamLogo from './TeamLogo';
@@ -388,7 +381,7 @@ const AdminDashboard: React.FC = () => {
     clubs, addClub, updateClub, deleteClub, articles, addArticle, updateArticle, deleteArticle, matches
   } = useData();
   const { 
-    featureFlags, setFeatureFlag, apiConfig, setApiConfig
+    featureFlags, setFeatureFlag
   } = useSettings();
   
   const [editorData, setEditorData] = useState<Partial<Article>>({});
@@ -514,8 +507,6 @@ const AdminDashboard: React.FC = () => {
             <SettingsView 
                 featureFlags={featureFlags}
                 setFeatureFlag={setFeatureFlag}
-                apiConfig={apiConfig}
-                setApiConfig={setApiConfig}
             />
         )}
       </main>
@@ -526,12 +517,7 @@ const AdminDashboard: React.FC = () => {
 const SettingsView: React.FC<{
     featureFlags: FeatureFlags;
     setFeatureFlag: (key: keyof FeatureFlags, value: boolean) => void;
-    apiConfig: ApiConfig;
-    setApiConfig: (config: ApiConfig) => void;
-}> = ({ featureFlags, setFeatureFlag, apiConfig, setApiConfig }) => {
-    
-    const [localApiConfig, setLocalApiConfig] = useState(apiConfig);
-    const [isSaving, setIsSaving] = useState(false);
+}> = ({ featureFlags, setFeatureFlag }) => {
     
     // Squad Sync State
     const [isSyncingSquads, setIsSyncingSquads] = useState(false);
@@ -542,19 +528,6 @@ const SettingsView: React.FC<{
     const [performanceSyncMessage, setPerformanceSyncMessage] = useState('');
     
     const inWindow = isWithinTransferWindow();
-
-    useEffect(() => {
-        setLocalApiConfig(apiConfig);
-    }, [apiConfig]);
-
-    const handleSaveApi = async () => {
-        setIsSaving(true);
-        setApiConfig(localApiConfig);
-        setTimeout(() => {
-            setIsSaving(false);
-            alert('تم حفظ الإعدادات بنجاح!');
-        }, 500);
-    };
 
     const handleManualSync = async (type: 'squads' | 'performance') => {
         const setSyncing = type === 'squads' ? setIsSyncingSquads : setIsSyncingPerformance;
@@ -631,15 +604,15 @@ const SettingsView: React.FC<{
                 <div className="p-6 space-y-4">
                     <div className="bg-slate-950 p-4 rounded-xl border border-amber-500/30"><h3 className="text-amber-400 font-bold">متغيرات Gemini AI (لإنشاء المحتوى)</h3></div>
                     <ul className="text-slate-400 font-mono text-sm space-y-2 pl-4">
-                        <li><code className="text-amber-400">GEMINI_API_KEY_ARABIC_LEAGUES</code> <span className="font-sans text-slate-500">- للدوريات العربية</span></li>
-                        <li><code className="text-amber-400">GEMINI_API_KEY_ENGLISH_LEAGUES</code> <span className="font-sans text-slate-500">- للدوريات الإنجليزية</span></li>
-                        <li><code className="text-amber-400">GEMINI_API_KEY_DEFAULT</code> <span className="font-sans text-slate-500">- مفتاح افتراضي/احتياطي</span></li>
+                        <li><code className="text-amber-400">VITE_GEMINI_API_KEY_ARABIC_LEAGUES</code> <span className="font-sans text-slate-500">- للدوريات العربية</span></li>
+                        <li><code className="text-amber-400">VITE_GEMINI_API_KEY_ENGLISH_LEAGUES</code> <span className="font-sans text-slate-500">- للدوريات الإنجليزية</span></li>
+                        <li><code className="text-amber-400">VITE_GEMINI_API_KEY_DEFAULT</code> <span className="font-sans text-slate-500">- مفتاح افتراضي/احتياطي</span></li>
                     </ul>
 
                     <div className="bg-slate-950 p-4 rounded-xl border border-cyan-500/30 mt-6"><h3 className="text-cyan-400 font-bold">متغيرات API-Football (لبيانات المباريات)</h3></div>
                     <ul className="text-slate-400 font-mono text-sm space-y-2 pl-4">
                         <li><code className="text-cyan-400">VITE_APIFOOTBALL_KEY</code> <span className="font-sans text-slate-500">- المفتاح الأساسي للمباريات والترتيب.</span></li>
-                        <li><code className="text-cyan-400">APIFOOTBALL_KEY_PERFORMANCE_DATA</code> <span className="font-sans text-slate-500">- (اختياري) مفتاح مخصص لمزامنة أداء اللاعبين المكثفة.</span></li>
+                        <li><code className="text-cyan-400">APIFOOTBALL_KEY_PERFORMANCE_DATA</code> <span className="font-sans text-slate-500">- (اختياري/سيرفر) مفتاح لمزامنة أداء اللاعبين.</span></li>
                     </ul>
 
                      <div className="bg-slate-950 p-4 rounded-xl border border-slate-500/30 mt-6"><h3 className="text-slate-300 font-bold">متغيرات Supabase (مطلوب للتشغيل)</h3></div>
@@ -678,10 +651,10 @@ const SettingsView: React.FC<{
                         <details className="mt-3">
                             <summary className="text-xs text-slate-500 cursor-pointer hover:text-white">إعدادات فترات الانتقالات</summary>
                              <ul className="list-disc list-inside space-y-2 text-slate-400 font-mono text-sm mt-2 bg-slate-900 p-3 rounded">
-                                <li><code className="text-amber-400">TRANSFER_WINDOW_SUMMER_START</code> (مثال: 07-01)</li>
-                                <li><code className="text-amber-400">TRANSFER_WINDOW_SUMMER_END</code> (مثال: 09-01)</li>
-                                <li><code className="text-amber-400">TRANSFER_WINDOW_WINTER_START</code> (مثال: 01-01)</li>
-                                <li><code className="text-amber-400">TRANSFER_WINDOW_WINTER_END</code> (مثال: 02-01)</li>
+                                <li><code className="text-amber-400">VITE_TRANSFER_WINDOW_SUMMER_START</code> (مثال: 07-01)</li>
+                                <li><code className="text-amber-400">VITE_TRANSFER_WINDOW_SUMMER_END</code> (مثال: 09-01)</li>
+                                <li><code className="text-amber-400">VITE_TRANSFER_WINDOW_WINTER_START</code> (مثال: 01-01)</li>
+                                <li><code className="text-amber-400">VITE_TRANSFER_WINDOW_WINTER_END</code> (مثال: 02-01)</li>
                             </ul>
                         </details>
                     </div>
@@ -705,10 +678,13 @@ const SettingsView: React.FC<{
 
 // Helper function to check if current date is within a transfer window
 const isWithinTransferWindow = () => {
-  const summerStart = process.env.TRANSFER_WINDOW_SUMMER_START || '07-01';
-  const summerEnd = process.env.TRANSFER_WINDOW_SUMMER_END || '09-01';
-  const winterStart = process.env.TRANSFER_WINDOW_WINTER_START || '01-01';
-  const winterEnd = process.env.TRANSFER_WINDOW_WINTER_END || '02-01';
+  // In a Vite project, client-side env vars are exposed on import.meta.env.
+  // FIX: Using type assertion as a workaround for misconfigured Vite/TS environment.
+  const env = (import.meta as any).env;
+  const summerStart = env.VITE_TRANSFER_WINDOW_SUMMER_START || '07-01';
+  const summerEnd = env.VITE_TRANSFER_WINDOW_SUMMER_END || '09-01';
+  const winterStart = env.VITE_TRANSFER_WINDOW_WINTER_START || '01-01';
+  const winterEnd = env.VITE_TRANSFER_WINDOW_WINTER_END || '02-01';
 
   const today = new Date();
   // Format date as MM-DD

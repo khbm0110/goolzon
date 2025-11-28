@@ -1,14 +1,55 @@
 
-import { getSupabase } from '../services/supabaseClient';
-import { fetchTeamSquad, fetchTeamCoach } from '../services/apiFootball';
-import { ClubProfile, Player } from '../types';
+import { createClient } from '@supabase/supabase-js';
 
-// This is a Vercel Serverless Function, designed to be triggered by Supabase Cron via HTTP.
+// تعريف الدوال المساعدة محلياً لأن ملفات الـ API في Vercel تعمل كـ Serverless Functions معزولة
+// ولا يمكنها استيراد ملفات من مجلد src بسهولة في بعض الهيكليات.
+const getSupabase = () => {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.VITE_SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key);
+};
+
+const BASE_URL = 'https://v3.football.api-sports.io';
+
+const fetchTeamSquad = async (apiKey: string, teamId: number) => {
+    try {
+        const response = await fetch(`${BASE_URL}/players/squads?team=${teamId}`, { headers: { 'x-apisports-key': apiKey } });
+        const data = await response.json();
+        if (!data.response?.[0]?.players) return [];
+
+        const posMap: Record<string, string> = {
+            'Goalkeeper': 'GK', 'Defender': 'DEF', 'Midfielder': 'MID', 'Attacker': 'FWD'
+        };
+
+        return data.response[0].players.map((p: any) => ({
+            id: `apif-${p.id}`,
+            apiFootballId: p.id,
+            name: p.name,
+            number: p.number || 0,
+            position: posMap[p.position] || 'MID',
+            rating: 75, 
+            image: p.photo,
+            nationality: p.nationality || '', 
+            stats: { pac: 70, sho: 70, pas: 70, dri: 70, def: 50, phy: 60 }
+        }));
+    } catch (e) {
+        console.error(`Failed to fetch squad for team ${teamId}:`, e);
+        return [];
+    }
+};
+
+const fetchTeamCoach = async (apiKey: string, teamId: number) => {
+    try {
+        const response = await fetch(`${BASE_URL}/coachs?team=${teamId}`, { headers: { 'x-apisports-key': apiKey } });
+        const data = await response.json();
+        return data.response?.[0]?.name || null;
+    } catch (e) { return null; }
+};
 
 export default async function handler(request: any, response: any) {
   // --- Security Check ---
-  // We expect an Authorization header: "Bearer <CRON_SECRET>"
-  // This allows calls from Supabase pg_net or manual authenticated calls
+  // Allow authorization header or query parameter (for easy testing if needed, though header is preferred)
   const authHeader = request.headers['authorization'];
   const expectedSecret = `Bearer ${process.env.CRON_SECRET}`;
 
@@ -16,17 +57,6 @@ export default async function handler(request: any, response: any) {
       console.log("Sync Engine: Unauthorized access attempt.");
       return response.status(401).json({ error: 'Unauthorized' });
   }
-
-  // --- Economic Check: Only run during transfer windows for AUTOMATED runs ---
-  // If "force" query param is present, skip window check
-  const forceRun = request.query && request.query.force === 'true';
-
-  if (!forceRun && !isWithinTransferWindow()) {
-      console.log("Sync Engine: Skipped job, outside of transfer window.");
-      return response.status(200).json({ message: "Sync skipped: Not a transfer window." });
-  }
-
-  console.log("Sync Engine: Job running...");
 
   const supabase = getSupabase();
   const apiKey = process.env.VITE_APIFOOTBALL_KEY;
@@ -36,82 +66,31 @@ export default async function handler(request: any, response: any) {
   }
 
   try {
-    // 1. Fetch all clubs from our database
-    const { data: clubs, error: clubsError } = await supabase.from('clubs').select('*');
-    if (clubsError) throw clubsError;
+    const { data: clubs } = await supabase.from('clubs').select('*');
+    if (!clubs) throw new Error("No clubs found");
 
     let updatedClubs = 0;
-    let totalPlayersSynced = 0;
 
-    // 2. Loop through each club and sync its squad AND coach
-    for (const club of (clubs as ClubProfile[])) {
-      if (!club.apiFootballId || club.apiFootballId === 0) {
-        console.log(`Skipping sync for ${club.name} (no API ID).`);
-        continue;
-      }
+    for (const club of clubs) {
+      if (!club.apiFootballId) continue;
       
-      console.log(`Syncing data for ${club.name}...`);
-      
-      // Fetch both squad and coach in parallel
       const [apiSquad, apiCoach] = await Promise.all([
           fetchTeamSquad(apiKey, club.apiFootballId),
           fetchTeamCoach(apiKey, club.apiFootballId)
       ]);
 
       const updates: any = {};
-      let hasUpdates = false;
+      if (apiSquad.length > 0) updates.squad = apiSquad;
+      if (apiCoach && apiCoach !== club.coach) updates.coach = apiCoach;
 
-      if (apiSquad.length > 0) {
-        updates.squad = apiSquad;
-        hasUpdates = true;
-      }
-
-      if (apiCoach && apiCoach !== club.coach) {
-        updates.coach = apiCoach;
-        hasUpdates = true;
-      }
-
-      if (hasUpdates) {
-        const { error: updateError } = await supabase
-          .from('clubs')
-          .update(updates)
-          .eq('id', club.id);
-
-        if (updateError) {
-          console.error(`Failed to update data for ${club.name}:`, updateError.message);
-        } else {
-          updatedClubs++;
-          totalPlayersSynced += apiSquad.length;
-          console.log(`Successfully synced ${club.name} (Players: ${apiSquad.length}, Coach: ${apiCoach || 'No change'}).`);
-        }
-      } else {
-         console.warn(`No new data returned from API for ${club.name}.`);
+      if (Object.keys(updates).length > 0) {
+        await supabase.from('clubs').update(updates).eq('id', club.id);
+        updatedClubs++;
       }
     }
 
-    const message = `Sync complete. Updated ${updatedClubs} clubs with a total of ${totalPlayersSynced} players.`;
-    console.log(message);
-    return response.status(200).json({ message });
-
+    return response.status(200).json({ message: `Sync complete. Updated ${updatedClubs} clubs.` });
   } catch (error: any) {
-    console.error("Sync Engine Failure:", error);
-    return response.status(500).json({ error: error.message || "An unknown error occurred during sync." });
+    return response.status(500).json({ error: error.message });
   }
-}
-
-// --- Helper Function to Check Transfer Window ---
-function isWithinTransferWindow(): boolean {
-  // Read dates from environment variables with fallbacks
-  const summerStart = process.env.TRANSFER_WINDOW_SUMMER_START || '07-01'; // July 1st
-  const summerEnd = process.env.TRANSFER_WINDOW_SUMMER_END || '09-01';     // Sep 1st
-  const winterStart = process.env.TRANSFER_WINDOW_WINTER_START || '01-01'; // Jan 1st
-  const winterEnd = process.env.TRANSFER_WINDOW_WINTER_END || '02-01';     // Feb 1st
-
-  const today = new Date();
-  const currentDateStr = `${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-
-  const isSummer = currentDateStr >= summerStart && currentDateStr <= summerEnd;
-  const isWinter = currentDateStr >= winterStart && currentDateStr <= winterEnd;
-
-  return isSummer || isWinter;
 }

@@ -1,5 +1,7 @@
 
-import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
+
+
+import { GoogleGenAI } from "@google/genai";
 import { getSmartImageUrl } from "./imageService";
 import { Match, ExtractedMatchFacts } from "../types";
 import { getGeminiApiKeyForTopic, getGeminiApiKeyForHeadlines } from './keyManager';
@@ -49,7 +51,8 @@ const extractFactsFromArticleContent = async (apiKey: string, content: string): 
             model: 'gemini-2.5-flash',
             contents: prompt,
         });
-        const text = response.text?.trim();
+        // FIX: Add null check for response.text before calling trim()
+        const text = response.text;
         if (!text) return null;
 
         let jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -166,10 +169,6 @@ export const generateArticleContent = async (topic: string, allMatches: Match[],
         contents: prompt,
         config: {
           tools: [{ googleSearch: {} }],
-          safetySettings: [
-            { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-            { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
-          ]
         }
       });
 

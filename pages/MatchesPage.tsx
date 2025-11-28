@@ -3,7 +3,6 @@
 import React from 'react';
 import { useData } from '../contexts/DataContext';
 import { useUI } from '../contexts/UIContext';
-import { useSettings } from '../contexts/SettingsContext';
 import { Match } from '../types';
 import TeamLogo from '../components/TeamLogo';
 import { Calendar } from 'lucide-react';

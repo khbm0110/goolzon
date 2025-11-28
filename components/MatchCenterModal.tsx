@@ -1,4 +1,4 @@
-
+// FIX: Removed reference to "vite/client" which was causing a resolution error.
 
 import React, { useState, useEffect } from 'react';
 import { X, Clock, MapPin, Share2, BarChart2, Users, AlertCircle, Loader2 } from 'lucide-react';
@@ -22,8 +22,9 @@ const MatchCenterModal: React.FC<MatchCenterModalProps> = ({ match, onClose }) =
       setDetails(null); // Reset details when a new match is opened
       
       const loadDetails = async () => {
-          // Environment variables are read at runtime for broader compatibility.
-          const API_FOOTBALL_KEY = process.env.VITE_APIFOOTBALL_KEY;
+          // In a Vite project, environment variables are accessed via import.meta.env.
+          // FIX: Using type assertion as a workaround for misconfigured Vite/TS environment.
+          const API_FOOTBALL_KEY = (import.meta as any).env.VITE_APIFOOTBALL_KEY;
           let data: MatchDetails | null = null;
           
           if (API_FOOTBALL_KEY) {

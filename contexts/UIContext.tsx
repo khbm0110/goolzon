@@ -7,8 +7,6 @@ interface UIContextType {
   setSelectedMatch: (match: Match | null) => void;
   isAutopilot: boolean;
   toggleAutopilot: () => void;
-  isAIGenerating: boolean;
-  lastAIUpdate: Date | null;
 }
 
 const UIContext = createContext<UIContextType | undefined>(undefined);
@@ -22,8 +20,6 @@ export const useUI = () => {
 export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [isAutopilot, setIsAutopilot] = useState(true);
-  const [isAIGenerating] = useState(false); // Kept for interface compatibility but unused
-  const [lastAIUpdate] = useState<Date | null>(null);
 
   const toggleAutopilot = () => {
     setIsAutopilot(prev => !prev);
@@ -32,7 +28,6 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const value = {
       selectedMatch, setSelectedMatch,
       isAutopilot, toggleAutopilot,
-      isAIGenerating, lastAIUpdate
   };
 
   return <UIContext.Provider value={value}>{children}</UIContext.Provider>;

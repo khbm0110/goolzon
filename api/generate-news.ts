@@ -1,109 +1,70 @@
 
-import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
-import { getSupabase } from '../services/supabaseClient';
-import { getGeminiApiKeyForTopic } from '../services/keyManager';
-import { getSmartImageUrl } from '../services/imageService';
-import { Category } from '../types';
+import { GoogleGenAI } from "@google/genai";
+import { createClient } from '@supabase/supabase-js';
+
+const getSupabase = () => {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.VITE_SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key);
+};
+
+// Simplified image mapping for serverless
+const getSmartImageUrl = (keyword: string) => {
+    // Default fallback, ideally this logic matches the frontend service but simplified
+    return 'https://images.unsplash.com/photo-1522778119026-d647f0565c6a?auto=format&fit=crop&q=80&w=1200';
+};
 
 export default async function handler(request: any, response: any) {
-  // --- Security Check ---
-  // We expect an Authorization header: "Bearer <CRON_SECRET>"
   const authHeader = request.headers['authorization'];
   const expectedSecret = `Bearer ${process.env.CRON_SECRET}`;
 
   if (authHeader !== expectedSecret) {
-      console.log("Generate News: Unauthorized access attempt.");
       return response.status(401).json({ error: 'Unauthorized' });
   }
 
   const supabase = getSupabase();
-  if (!supabase) {
-    return response.status(500).json({ error: "Supabase not configured." });
+  const apiKey = process.env.GEMINI_API_KEY_DEFAULT || process.env.GEMINI_API_KEY_ARABIC_LEAGUES;
+
+  if (!supabase || !apiKey) {
+    return response.status(500).json({ error: "Supabase or Gemini Key missing." });
   }
 
-  // 2. Select a Topic
-  const trendingTopics = [
-     'الدوري السعودي', 'الهلال', 'النصر', 'كريستيانو رونالدو', 
-     'الدوري الإماراتي', 'العين', 'السد القطري', 'المنتخب السعودي',
-     'دوري أبطال آسيا', 'انتقالات اللاعبين الخليج', 'الاتحاد السعودي'
-  ];
-  const topic = trendingTopics[Math.floor(Math.random() * trendingTopics.length)];
-  const apiKey = getGeminiApiKeyForTopic(topic);
-  
-  if (!apiKey) {
-      return response.status(500).json({ error: "Gemini API Key missing." });
-  }
-
-  // 3. Generate Content (Using same logic as geminiService but adapted for serverless)
   const ai = new GoogleGenAI({ apiKey });
-  const today = new Date().toLocaleDateString('ar-SA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const topic = 'أخبار الدوري السعودي اليوم'; // Simplified topic selection
   
   const prompt = `
-    أنت رئيس تحرير موقع "goolzon" الرياضي.
-    التاريخ اليوم: ${today}.
-    المهمة: ابحث واكتب مقالاً رياضياً حصرياً حول: "${topic}".
-    الشروط:
-    1. ابحث عن أخبار آخر 24 ساعة فقط.
-    2. استخدم Google Search للتأكد من المعلومات.
-    3. الأسلوب صحفي احترافي.
-    4. أعد النتيجة كـ JSON يحتوي على: title, summary, content (HTML), category, imageKeyword.
+    أنت محرر رياضي. اكتب خبراً عاجلاً عن: "${topic}".
+    التاريخ: ${new Date().toLocaleDateString('ar-SA')}.
+    أعد النتيجة كـ JSON: { "title": "...", "summary": "...", "content": "...", "category": "السعودية", "hasNews": true }
   `;
 
   try {
       const aiResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt,
-        config: {
-          tools: [{ googleSearch: {} }],
-          responseMimeType: "application/json", // Use JSON mode for cleaner output
-        }
+        config: { responseMimeType: "application/json" }
       });
 
-      const text = aiResponse.text;
-      if (!text) throw new Error("Empty AI Response");
+      const articleData = JSON.parse(aiResponse.text || '{}');
       
-      const articleData = JSON.parse(text);
-
-      // 4. Validate (Basic duplicate check via Title)
-      const { data: existing } = await supabase
-        .from('articles')
-        .select('title')
-        .ilike('title', `%${articleData.title.substring(0, 20)}%`)
-        .limit(1);
-
-      if (existing && existing.length > 0) {
-          return response.status(200).json({ message: "Duplicate content detected, skipped." });
-      }
-
-      // 5. Save to Database
-      const categoryValues = Object.values(Category) as string[];
-      const safeCategory = categoryValues.includes(articleData.category)
-        ? articleData.category
-        : Category.SAUDI;
-      
-      const imageUrl = getSmartImageUrl(articleData.imageKeyword || topic); 
-
       const newArticle = {
         id: `ai-cron-${Date.now()}`,
         title: articleData.title,
         summary: articleData.summary,
         content: articleData.content,
-        imageUrl: imageUrl,
-        category: safeCategory,
+        imageUrl: getSmartImageUrl(topic),
+        category: articleData.category,
         date: new Date().toISOString(),
-        author: 'هيئة التحرير', // Editorial Board
+        author: 'AI Editor',
         views: 0,
-        isBreaking: articleData.hasNews || false,
+        isBreaking: true,
       };
 
-      const { error } = await supabase.from('articles').insert([newArticle]);
-      
-      if (error) throw error;
-
-      return response.status(200).json({ message: "Article generated and published.", article: newArticle.title });
+      await supabase.from('articles').insert([newArticle]);
+      return response.status(200).json({ message: "Article generated." });
 
   } catch (error: any) {
-      console.error(error);
       return response.status(500).json({ error: error.message });
   }
 }

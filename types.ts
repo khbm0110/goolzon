@@ -1,8 +1,4 @@
 
-
-
-
-
 export enum Category {
   SAUDI = 'السعودية',
   UAE = 'الإمارات',
@@ -122,12 +118,6 @@ export interface Standing {
   gd: number;
   points: number;
   league: string;
-}
-
-export interface NavItem {
-  label: string;
-  path: string;
-  category?: Category;
 }
 
 export interface PlayerStats {

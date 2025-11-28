@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import Header from './Header';
@@ -12,7 +13,7 @@ import { Trophy, Home, Calendar, Users, PlayCircle } from 'lucide-react';
 
 const Layout: React.FC<{children: React.ReactNode}> = ({ children }) => {
   const { articles, matches } = useData();
-  const { selectedMatch, setSelectedMatch, isAutopilot, toggleAutopilot } = useUI();
+  const { selectedMatch, setSelectedMatch } = useUI();
   const { featureFlags } = useSettings();
   const location = useLocation();
   
@@ -29,8 +30,6 @@ const Layout: React.FC<{children: React.ReactNode}> = ({ children }) => {
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-primary selection:text-slate-900">
       <Header 
         onSearchClick={() => setIsSearchOpen(true)} 
-        isAutopilotEnabled={isAutopilot}
-        onToggleAutopilot={toggleAutopilot}
       />
       <SearchModal 
         isOpen={isSearchOpen} 

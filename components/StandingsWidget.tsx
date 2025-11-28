@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Standing, Category } from '../types';
+import { Standing } from '../types';
 import TeamLogo from './TeamLogo';
 
 interface StandingsWidgetProps {
