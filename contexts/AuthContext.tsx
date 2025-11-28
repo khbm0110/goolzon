@@ -153,6 +153,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const supabase = getSupabase();
     if (!supabase) return { success: false, error: "System error" };
 
+    // 1. محاولة التحقق من توفر اسم المستخدم مسبقاً (لتجنب أخطاء قاعدة البيانات)
+    try {
+        const { data: existingUser } = await supabase
+            .from('profiles')
+            .select('username')
+            .eq('username', userData.username)
+            .maybeSingle();
+
+        if (existingUser) {
+             return { success: false, error: "اسم المستخدم هذا محجوز بالفعل، يرجى اختيار اسم آخر." };
+        }
+    } catch (err) {
+        // نتجاهل الخطأ هنا في حال كانت سياسات الأمان تمنع القراءة، ونترك التسجيل يأخذ مجراه
+        console.warn("Username check skipped due to permission or network.");
+    }
+
+    // 2. إنشاء المستخدم
     const { data, error } = await supabase.auth.signUp({
       email: userData.email,
       password: userData.password,
@@ -164,20 +181,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     });
 
-    if (error) return { success: false, error: error.message };
+    if (error) {
+        console.error("SignUp Error:", error);
+        // ترجمة رسالة الخطأ الشائعة "Database error saving new user"
+        if (error.message.includes('Database error')) {
+            return { success: false, error: "حدث خطأ أثناء حفظ البيانات. قد يكون اسم المستخدم مستخدماً من قبل." };
+        }
+        if (error.message.includes('already registered')) {
+            return { success: false, error: "البريد الإلكتروني مسجل بالفعل." };
+        }
+        return { success: false, error: error.message };
+    }
     
-    // نحاول إنشاء بروفايل، لكن لا نوقف العملية إذا فشل (بسبب عدم وجود الجدول مثلاً)
+    // 3. إنشاء البروفايل يدوياً (في حال فشل التريجر التلقائي أو عدم وجوده)
     if (data.user) {
         try {
-            await supabase.from('profiles').insert([{
+            const { error: profileError } = await supabase.from('profiles').insert([{
                 id: data.user.id,
                 name: userData.name,
                 username: userData.username,
-                role: 'user', // الجميع مستخدمون، المدير يحدد بالإيميل فقط
+                role: 'user', 
                 email: userData.email
             }]);
+            
+            if (profileError) {
+                console.error("Manual profile creation failed:", profileError);
+                // لا نرجع خطأ هنا لأن المستخدم تم إنشاؤه في Auth،
+                // وسيتم التعامل مع غياب البروفايل في onAuthStateChange
+            }
         } catch (e) {
-            console.warn("Profile creation skipped/failed, likely no table. Login will still work.");
+            console.warn("Profile creation exception:", e);
         }
     }
 
