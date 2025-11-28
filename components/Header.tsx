@@ -12,7 +12,7 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ onSearchClick }) => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
-  const { currentUser, followedTeams } = useAuth();
+  const { currentUser, followedTeams, isAdmin } = useAuth();
   const { featureFlags } = useSettings();
 
   const navItems = [
@@ -123,13 +123,16 @@ const Header: React.FC<HeaderProps> = ({ onSearchClick }) => {
               )
             )}
 
-            <Link 
-              to="/admin" 
-              className="hidden md:flex items-center px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-full text-xs font-bold text-slate-200 transition-colors border border-slate-700"
-            >
-              <Activity size={14} className="ml-2" />
-              النشر
-            </Link>
+            {/* Admin Link - Only visible if isAdmin is explicitly true */}
+            {currentUser && isAdmin === true && (
+              <Link 
+                to="/admin" 
+                className="hidden md:flex items-center px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded-full text-xs font-bold text-white transition-colors border border-red-500 shadow-lg shadow-red-900/50"
+              >
+                <Activity size={14} className="ml-2" />
+                النشر
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -167,7 +170,14 @@ const Header: React.FC<HeaderProps> = ({ onSearchClick }) => {
                 {featureFlags.matches && <Link to="/matches" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-slate-300 hover:text-white">مباريات اليوم</Link>}
                 {featureFlags.videos && <Link to="/videos" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-slate-300 hover:text-white">فيديو</Link>}
                 {featureFlags.clubs && <Link to="/clubs" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-slate-300 hover:text-white">الأندية</Link>}
-                <Link to="/admin" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-accent">لوحة التحكم</Link>
+                
+                {/* Mobile Admin Link */}
+                {currentUser && isAdmin === true && (
+                  <Link to="/admin" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-red-500 font-bold bg-red-500/10 rounded mt-2">
+                     <Activity size={16} className="inline ml-2" />
+                     لوحة تحكم المدير
+                  </Link>
+                )}
             </div>
           </div>
         </div>

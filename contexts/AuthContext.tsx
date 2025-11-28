@@ -7,7 +7,7 @@ interface User {
   name: string;
   username: string;
   avatar?: string;
-  role: string;
+  role: string; // Keep for UI compatibility
   joinDate: string;
 }
 
@@ -55,36 +55,62 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return;
     }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_OUT") {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_OUT" || !session) {
         setCurrentUser(null);
         setIsAdmin(false);
-      } else if (session?.user) {
-        supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", session.user.id)
-          .single()
-          .then(({ data }) => {
-            if (data) {
-              setCurrentUser({
-                id: session.user.id,
-                email: session.user.email || "",
-                name: data.name || "مشجع",
-                username: data.username || "user",
-                avatar: data.avatar,
-                role: data.role || "user",
-                joinDate: data.created_at || new Date().toISOString()
-              });
-              setIsAdmin(data.role === "admin");
-              if (data.dream_squad) setDreamSquad(data.dream_squad);
-              if (data.followed_teams) setFollowedTeams(data.followed_teams);
-            }
-            setProfileLoading(false);
-          })
-          .catch(() => setProfileLoading(false));
-      } else {
         setProfileLoading(false);
+        return;
+      }
+
+      const user = session.user;
+      
+      try {
+          // 1. Check if user exists in 'admins' table
+          const { data: adminRecord } = await supabase
+            .from('admins')
+            .select('id')
+            .eq('id', user.id)
+            .single();
+
+          const isUserAdmin = !!adminRecord;
+          setIsAdmin(isUserAdmin);
+
+          // 2. Get User Profile Data
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", user.id)
+            .single();
+
+          if (profile) {
+             setCurrentUser({
+                id: user.id,
+                email: user.email || "",
+                name: profile.name || "مشجع",
+                username: profile.username || "user",
+                avatar: profile.avatar,
+                role: isUserAdmin ? 'admin' : 'user',
+                joinDate: profile.created_at || new Date().toISOString()
+             });
+             
+             if (profile.dream_squad) setDreamSquad(profile.dream_squad);
+             if (profile.followed_teams) setFollowedTeams(profile.followed_teams);
+          } else {
+             // Fallback if profile missing
+             setCurrentUser({
+                id: user.id,
+                email: user.email || "",
+                name: user.user_metadata?.name || "User",
+                username: user.user_metadata?.username || "user",
+                role: isUserAdmin ? 'admin' : 'user',
+                joinDate: new Date().toISOString()
+             });
+          }
+      } catch (err) {
+          console.error("Auth Error:", err);
+      } finally {
+          setProfileLoading(false);
       }
     });
 
@@ -95,43 +121,61 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const supabase = getSupabase();
     if (!supabase) return { success: false, error: "System error" };
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { success: false, error: error.message };
-    
-    // Check admin role locally for immediate feedback, though effect handles it
-    // We rely on the effect to set state
-    return { success: true, isAdmin: false }; 
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return { success: false, error: error.message };
+      
+      // Check admins table strictly
+      let isAdminUser = false;
+      if (data.user) {
+          const { data: adminData } = await supabase
+            .from('admins')
+            .select('id')
+            .eq('id', data.user.id)
+            .single();
+          
+          if (adminData) isAdminUser = true;
+      }
+      
+      return { success: true, isAdmin: isAdminUser }; 
+    } catch (e: any) {
+      return { success: false, error: e.message || "Login failed" };
+    }
   };
 
   const register = async (userData: any) => {
     const supabase = getSupabase();
     if (!supabase) return { success: false, error: "System error" };
 
-    const { data, error } = await supabase.auth.signUp({
-      email: userData.email,
-      password: userData.password,
-      options: {
-        data: {
-          name: userData.name,
-          username: userData.username,
-        }
-      }
-    });
-
-    if (error) return { success: false, error: error.message };
-    
-    // Create profile
-    if (data.user) {
-        await supabase.from('profiles').insert([{
-            id: data.user.id,
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password,
+        options: {
+          data: {
             name: userData.name,
             username: userData.username,
-            role: 'user',
-            email: userData.email
-        }]);
-    }
+          }
+        }
+      });
 
-    return { success: true };
+      if (error) return { success: false, error: error.message };
+      
+      // Only create a normal profile. Admin must be added manually to 'admins' table via SQL.
+      if (data.user) {
+          await supabase.from('profiles').insert([{
+              id: data.user.id,
+              name: userData.name,
+              username: userData.username,
+              role: 'user', // Always user initially
+              email: userData.email
+          }]);
+      }
+
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message || "Registration failed" };
+    }
   };
 
   const logout = async () => {

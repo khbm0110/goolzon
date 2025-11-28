@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { X, Clock, MapPin, Share2, BarChart2, Users, AlertCircle, Loader2 } from 'lucide-react';
 import { Match, MatchDetails, MatchEvent } from '../types';
 import TeamLogo from './TeamLogo';
 import { fetchFixtureDetails } from '../services/apiFootball';
+import { API_FOOTBALL_KEY } from '../config/apiFootballConfig';
 
 interface MatchCenterModalProps {
   match: Match | null;
@@ -20,8 +22,6 @@ const MatchCenterModal: React.FC<MatchCenterModalProps> = ({ match, onClose }) =
       setDetails(null);
       
       const loadDetails = async () => {
-          // Fix: Cast import.meta to any to avoid TS error about env property
-          const API_FOOTBALL_KEY = (import.meta as any).env.VITE_APIFOOTBALL_KEY;
           let data: MatchDetails | null = null;
           
           if (API_FOOTBALL_KEY) {

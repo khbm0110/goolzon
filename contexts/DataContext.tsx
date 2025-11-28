@@ -1,9 +1,11 @@
+
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { Article, Match, Standing, ClubProfile, Sponsor } from '../types';
 import { INITIAL_ARTICLES, CLUB_DATABASE } from '../constants';
 import { fetchLiveMatches, fetchStandings } from '../services/apiFootball';
 import { useSettings } from './SettingsContext';
 import { getSupabase } from '../services/supabaseClient';
+import { API_FOOTBALL_KEY } from '../config/apiFootballConfig';
 
 interface DataContextType {
   articles: Article[];
@@ -75,9 +77,6 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }
         }
 
-        // Use import.meta.env properly in Vite
-        // Fix: Cast import.meta to any
-        const API_FOOTBALL_KEY = (import.meta as any).env.VITE_APIFOOTBALL_KEY;
         if (API_FOOTBALL_KEY) {
             try {
                 const [liveMatches, leagueStandings] = await Promise.all([
