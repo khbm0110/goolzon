@@ -2,6 +2,10 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { getSupabase } from '../services/supabaseClient';
 
+// هذا هو البريد الإلكتروني الخاص بالمدير الرئيسي
+// قم بتسجيل حساب جديد بهذا البريد ليكون مديراً تلقائياً
+const MASTER_ADMIN_EMAIL = 'admin@goolzon.com';
+
 interface User {
   id: string;
   email: string;
@@ -66,9 +70,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       const user = session.user;
       const email = user.email;
+      const isMasterAdmin = email === MASTER_ADMIN_EMAIL;
 
-      // Reset admin state initially
-      setIsAdmin(false);
+      // === تجاوز قاعدة البيانات للمدير العام ===
+      // إذا كان البريد هو بريد المدير، نعطيه الصلاحيات فوراً دون النظر لقاعدة البيانات
+      if (isMasterAdmin) {
+          setIsAdmin(true);
+          setCurrentUser({
+                id: user.id,
+                email: email || "",
+                name: "المدير العام",
+                username: "admin",
+                avatar: "", // لا صورة افتراضية من القاعدة
+                role: "admin",
+                joinDate: new Date().toISOString()
+          });
+          setProfileLoading(false);
+          return; // نخرج هنا ولا نكمل البحث في قاعدة البيانات
+      }
+
+      // للمستخدمين العاديين، نبحث في قاعدة البيانات
+      setIsAdmin(false); // افتراضياً ليس مديراً
 
       try {
           const { data, error } = await supabase
@@ -78,26 +100,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             .single();
 
           if (data) {
-             const userRole = data.role || "user";
-             
              setCurrentUser({
                 id: user.id,
                 email: email || "",
                 name: data.name || "مشجع",
                 username: data.username || "user",
                 avatar: data.avatar,
-                role: userRole,
+                role: "user", // دائماً مستخدم عادي إذا لم يكن الإيميل الرئيسي
                 joinDate: data.created_at || new Date().toISOString()
              });
-             
-             // Check Role from Database
-             setIsAdmin(userRole === 'admin');
              
              if (data.dream_squad) setDreamSquad(data.dream_squad);
              if (data.followed_teams) setFollowedTeams(data.followed_teams);
 
           } else {
-             // Fallback if profile doesn't exist yet (latency)
+             // إذا لم يوجد بروفايل في القاعدة، ننشئ مستخدم محلي مؤقت
              setCurrentUser({
                 id: user.id,
                 email: email || "",
@@ -124,16 +141,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { success: false, error: error.message };
     
-    // Check role immediately after login for navigation purposes
-    let isAdminUser = false;
-    if (data.user) {
-        const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user.id).single();
-        if (profile && profile.role === 'admin') {
-            isAdminUser = true;
-        }
+    // التحقق الفوري من المدير
+    if (email === MASTER_ADMIN_EMAIL) {
+        return { success: true, isAdmin: true };
     }
     
-    return { success: true, isAdmin: isAdminUser }; 
+    return { success: true, isAdmin: false }; 
   };
 
   const register = async (userData: any) => {
@@ -153,20 +166,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     if (error) return { success: false, error: error.message };
     
+    // نحاول إنشاء بروفايل، لكن لا نوقف العملية إذا فشل (بسبب عدم وجود الجدول مثلاً)
     if (data.user) {
         try {
-            // Determine role: if email is admin@goolzon.com, create as admin immediately
-            const initialRole = userData.email === 'admin@goolzon.com' ? 'admin' : 'user';
-
             await supabase.from('profiles').insert([{
                 id: data.user.id,
                 name: userData.name,
                 username: userData.username,
-                role: initialRole,
+                role: 'user', // الجميع مستخدمون، المدير يحدد بالإيميل فقط
                 email: userData.email
             }]);
         } catch (e) {
-            console.warn("Profile creation skipped/failed. Check if 'profiles' table exists.", e);
+            console.warn("Profile creation skipped/failed, likely no table. Login will still work.");
         }
     }
 
@@ -189,7 +200,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.setItem('goolzon_followed_teams', JSON.stringify(newFollows));
 
     const supabase = getSupabase();
-    if (supabase && currentUser) {
+    if (supabase && currentUser && !isAdmin) { // لا نحاول التحديث للمدير إذا لم يكن له سجل
       supabase.from('profiles').update({ followed_teams: newFollows }).eq('id', currentUser.id).then();
     }
   };
@@ -199,7 +210,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.setItem('goolzon_dream_squad', JSON.stringify(squad));
 
     const supabase = getSupabase();
-    if (supabase && currentUser) {
+    if (supabase && currentUser && !isAdmin) {
       supabase.from('profiles').update({ dream_squad: squad }).eq('id', currentUser.id).then();
     }
   };
