@@ -24,7 +24,8 @@ export default async function handler(request: any, response: any) {
       return response.status(401).json({ error: 'Unauthorized' });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  // FIX: Use API_KEY environment variable as per guidelines.
+  const apiKey = process.env.API_KEY;
 
   if (!apiKey) {
     return response.status(500).json({ error: "Gemini Key missing." });
@@ -49,7 +50,7 @@ export default async function handler(request: any, response: any) {
           "summary": "string", 
           "content": "string (محتوى المقال بتنسيق HTML بسيط مثل <p> و <h3>)", 
           "category": "string (اختر القسم الأنسب من: السعودية, الإمارات, الدوري الإنجليزي, الدوري الإسباني, دوري أبطال أوروبا, تحليلات)",
-          "isBreaking": boolean (true إذا كان الخبر عاجلاً جداً)
+          "isBreaking": boolean (true إذا كان الخبر عاجلاً جداً ومنتشراً الآن)
         }
       `;
 
@@ -57,7 +58,7 @@ export default async function handler(request: any, response: any) {
         model: 'gemini-2.5-flash',
         contents: prompt,
         config: { 
-            responseMimeType: "application/json",
+            // FIX: Removed responseMimeType as it is not allowed with googleSearch tool.
             tools: [{ googleSearch: {} }]
         }
       });
@@ -67,7 +68,21 @@ export default async function handler(request: any, response: any) {
           return response.status(200).json({ message: "No article generated, AI returned no content." });
       }
 
-      const articleData = JSON.parse(aiResponse.text);
+      // FIX: Safely extract and parse JSON from the response text.
+      let jsonString = aiResponse.text.trim();
+      if (jsonString.startsWith('```json')) {
+        jsonString = jsonString.substring(7, jsonString.length - 3).trim();
+      } else if (jsonString.startsWith('```')) {
+          jsonString = jsonString.substring(3, jsonString.length - 3).trim();
+      }
+      const jsonStartIndex = jsonString.indexOf('{');
+      const jsonEndIndex = jsonString.lastIndexOf('}');
+      if (jsonStartIndex !== -1 && jsonEndIndex !== -1) {
+        jsonString = jsonString.substring(jsonStartIndex, jsonEndIndex + 1);
+      }
+      
+      const articleData = JSON.parse(jsonString);
+
 
       if (!articleData.title || !articleData.content) {
           console.log("AI returned incomplete JSON for topic:", topic, articleData);
