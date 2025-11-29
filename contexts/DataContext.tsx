@@ -123,6 +123,29 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     fetchAllData();
   }, [apiConfig.leagueIds]);
 
+  // Effect for Realtime subscription (runs once)
+  useEffect(() => {
+    const channel = supabase
+      .channel('articles-db-changes')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'articles' },
+        (payload) => {
+          console.log('New article received via realtime!', payload.new);
+          // Convert the new record from snake_case to camelCase
+          const newArticle = mapToCamelCase([payload.new])[0] as Article;
+          // Add the new article to the top of the list
+          setArticles(prevArticles => [newArticle, ...prevArticles]);
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription on component unmount
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []); // Empty dependency array, runs only once.
+
   // --- CRUD Handlers ---
   const addArticle = async (article: Partial<Article>) => { /* ... */ return true; };
   const updateArticle = async (article: Article) => { /* ... */ return true; };
