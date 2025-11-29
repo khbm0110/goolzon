@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, Search, Trophy, Activity, Youtube, Calendar, Bell, User as UserIcon, LogIn } from 'lucide-react';
@@ -106,7 +107,7 @@ const Header: React.FC<HeaderProps> = ({ onSearchClick }) => {
               currentUser ? (
                 <Link 
                   to="/profile" 
-                  className="hidden md:flex items-center justify-center w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors border border-slate-700 overflow-hidden"
+                  className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors border border-slate-700 overflow-hidden"
                   title="الملف الشخصي"
                 >
                   {currentUser.avatar ? <img src={currentUser.avatar} alt={currentUser.username} className="w-full h-full object-cover"/> : <UserIcon size={16} />}
@@ -114,7 +115,7 @@ const Header: React.FC<HeaderProps> = ({ onSearchClick }) => {
               ) : (
                 <Link
                   to="/login"
-                  className="hidden md:flex items-center px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-full text-xs font-bold transition-colors border border-primary/30"
+                  className="flex items-center px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-full text-xs font-bold transition-colors border border-primary/30"
                 >
                   <LogIn size={14} className="ml-1" />
                   دخول
@@ -161,7 +162,8 @@ const Header: React.FC<HeaderProps> = ({ onSearchClick }) => {
                       مرحباً، {currentUser.name}
                     </Link>
                   ) : (
-                    <Link to="/login" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-slate-300 hover:text-white">
+                    <Link to="/login" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-slate-300 hover:text-white font-bold flex items-center gap-2">
+                      <LogIn size={16} className="text-primary"/>
                       تسجيل الدخول
                     </Link>
                   )
