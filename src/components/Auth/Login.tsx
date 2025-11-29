@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, Lock, Loader2, AlertCircle, ArrowRight } from 'lucide-react';
+import { User, Lock, Loader2, AlertCircle, ArrowRight, Shield, Users } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 const Login: React.FC = () => {
@@ -17,6 +18,14 @@ const Login: React.FC = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setError('');
+  };
+
+  const handleQuickLogin = (type: 'ADMIN' | 'USER') => {
+      if (type === 'ADMIN') {
+          setFormData({ email: 'admin@goolzon.com', password: 'password123' });
+      } else {
+          setFormData({ email: 'demo@goolzon.com', password: 'password123' });
+      }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -61,6 +70,34 @@ const Login: React.FC = () => {
             {error}
           </div>
         )}
+
+        <div className="grid grid-cols-2 gap-3 mb-6">
+            <button 
+                type="button"
+                onClick={() => handleQuickLogin('ADMIN')}
+                className="flex flex-col items-center justify-center p-3 bg-red-500/10 border border-red-500/30 rounded-xl hover:bg-red-500/20 transition-colors group"
+            >
+                <Shield className="text-red-500 mb-1 group-hover:scale-110 transition-transform" size={20} />
+                <span className="text-xs font-bold text-red-400">حساب مدير</span>
+            </button>
+            <button 
+                type="button"
+                onClick={() => handleQuickLogin('USER')}
+                className="flex flex-col items-center justify-center p-3 bg-blue-500/10 border border-blue-500/30 rounded-xl hover:bg-blue-500/20 transition-colors group"
+            >
+                <Users className="text-blue-500 mb-1 group-hover:scale-110 transition-transform" size={20} />
+                <span className="text-xs font-bold text-blue-400">مستخدم تجريبي</span>
+            </button>
+        </div>
+
+        <div className="relative mb-6">
+            <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-800"></div>
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-slate-900 px-2 text-slate-500">أو استخدم البريد</span>
+            </div>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Email */}
