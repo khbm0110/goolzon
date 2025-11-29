@@ -1,15 +1,11 @@
-// Follow this tutorial to get started with Supabase Functions:
-// https://supabase.com/docs/guides/functions
+// supabase/functions/generate-news-article/index.ts
 
-// FIX: Add Deno type declaration for non-Deno environments that lack Deno globals.
 declare const Deno: any;
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-// FIX: Using latest version of @google/genai from esm.sh
 import { GoogleGenAI } from "https://esm.sh/@google/genai";
 
-// List of potential topics for the AI to explore
 const NEWS_TOPICS = [
   "تحليل مباراة الهلال والنصر الأخيرة",
   "آخر أخبار انتقالات اللاعبين في الدوري السعودي للمحترفين",
@@ -21,7 +17,6 @@ const NEWS_TOPICS = [
   "أخبار نادي الاتحاد واستعداداته للموسم الجديد"
 ];
 
-// Simplified image mapping for serverless
 const getSmartImageUrl = (keyword: string) => {
     const lowerKeyword = keyword.toLowerCase();
     if (lowerKeyword.includes('الهلال')) return 'https://images.unsplash.com/photo-1522778119026-d647f0565c6a?auto=format&fit=crop&q=80&w=1200';
@@ -31,9 +26,7 @@ const getSmartImageUrl = (keyword: string) => {
     return 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&q=80&w=1200';
 };
 
-
 serve(async (req) => {
-  // CORS headers
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -43,7 +36,6 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  // 1. --- Security Check ---
   const authHeader = req.headers.get('Authorization');
   const cronSecret = Deno.env.get('CRON_SECRET');
   if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
@@ -53,77 +45,64 @@ serve(async (req) => {
     });
   }
 
-  // 2. --- Initialize Clients ---
-  // FIX: Use API_KEY environment variable as per guidelines.
+  // ---  SENSITIVE KEYS INITIALIZATION ---
   const geminiApiKey = Deno.env.get('API_KEY');
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
-  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+  // 🔥 FIX: Use SERVICE_ROLE_KEY which is a valid secret name (no 'SUPABASE_' prefix)
+  const supabaseServiceRoleKey = Deno.env.get('SERVICE_ROLE_KEY');
 
-  if (!geminiApiKey || !supabaseUrl || !supabaseAnonKey) {
-    return new Response(JSON.stringify({ error: 'Missing environment variables' }), {
+  if (!geminiApiKey || !supabaseUrl || !supabaseServiceRoleKey) {
+    return new Response(JSON.stringify({ error: 'Missing critical environment variables (API_KEY, SUPABASE_URL, or SERVICE_ROLE_KEY)' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
   
   const ai = new GoogleGenAI({ apiKey: geminiApiKey });
-  const supabase = createClient(supabaseUrl, supabaseAnonKey);
+  // 🔥 FIX: Initialize Supabase client with the service role key to bypass RLS for inserts
+  const supabase = createClient(
+      supabaseUrl, 
+      supabaseServiceRoleKey,
+      { auth: { persistSession: false } } // Important for server-side clients
+  );
 
   try {
-    // 3. --- Generate Article Content ---
     const topic = NEWS_TOPICS[Math.floor(Math.random() * NEWS_TOPICS.length)];
     
     const prompt = `
       أنت محرر صحفي رياضي خبير في منصة "goolzon". مهمتك هي استخدام بحث جوجل للعثور على أحدث المعلومات حول الموضوع التالي: "${topic}".
-
-      بناءً على نتائج البحث التي تجدها **فقط وحصراً**، قم بما يلي:
-      1. اكتب مقالاً إخبارياً جديداً بالكامل باللغة العربية. يجب أن يكون المقال من 3-4 فقرات على الأقل.
+      بناءً على نتائج البحث، قم بما يلي:
+      1. اكتب مقالاً إخبارياً جديداً بالكامل باللغة العربية (3-4 فقرات).
       2. أعد صياغة الخبر بأسلوب goolzon الخاص (حماسي, موجه للشباب, ومباشر).
-      3. ابتكر عنواناً جديداً وجذاباً للخبر.
-      4. **الأهم: لا تذكر اسم المصدر الأصلي (مثل Goal.com أو غيره) في المقال النهائي.** يجب أن يبدو المقال وكأنه من كتابتنا الأصلية بالكامل.
+      3. ابتكر عنواناً جديداً وجذاباً.
+      4. لا تذكر اسم المصدر الأصلي أبداً.
       5. أعد النتيجة النهائية بصيغة JSON بالهيكلية التالية بالضبط: 
       { 
         "title": "string", 
         "summary": "string", 
-        "content": "string (محتوى المقال بتنسيق HTML بسيط باستخدام <p> و <h3>)", 
-        "category": "string (اختر القسم الأنسب من: السعودية, الإمارات, الدوري الإنجليزي, الدوري الإسباني, دوري أبطال أوروبا, تحليلات)",
-        "isBreaking": boolean (true إذا كان الخبر عاجلاً جداً ومنتشراً الآن)
+        "content": "string (محتوى المقال بتنسيق HTML)", 
+        "category": "string (اختر من: السعودية, الإمارات, الدوري الإنجليزي, الدوري الإسباني, دوري أبطال أوروبا, تحليلات)",
+        "isBreaking": boolean
       }
     `;
 
     const aiResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt,
-        config: { 
-            // FIX: Removed responseMimeType as it is not allowed with googleSearch tool.
-            tools: [{ googleSearch: {} }]
-        }
+        config: { tools: [{ googleSearch: {} }] }
     });
 
     if (!aiResponse.text) {
       throw new Error(`AI returned an empty response for topic: ${topic}`);
     }
 
-    // FIX: Safely extract and parse JSON from the response text.
-    let jsonString = aiResponse.text.trim();
-    if (jsonString.startsWith('```json')) {
-      jsonString = jsonString.substring(7, jsonString.length - 3).trim();
-    } else if (jsonString.startsWith('```')) {
-      jsonString = jsonString.substring(3, jsonString.length - 3).trim();
-    }
-    const jsonStartIndex = jsonString.indexOf('{');
-    const jsonEndIndex = jsonString.lastIndexOf('}');
-    if (jsonStartIndex !== -1 && jsonEndIndex !== -1) {
-      jsonString = jsonString.substring(jsonStartIndex, jsonEndIndex + 1);
-    }
-    
+    let jsonString = aiResponse.text.trim().match(/\{[\s\S]*\}/)?.[0] || '{}';
     const articleData = JSON.parse(jsonString);
 
     if (!articleData.title || !articleData.content || !articleData.summary) {
       throw new Error(`AI returned incomplete JSON for topic: ${topic}`);
     }
 
-    // 4. --- Prepare and Save to Supabase ---
     const newArticle = {
         title: articleData.title,
         summary: articleData.summary,
@@ -132,7 +111,7 @@ serve(async (req) => {
         image_url: getSmartImageUrl(topic),
         is_breaking: articleData.isBreaking || false,
         author: 'Autopilot',
-        views: Math.floor(Math.random() * 500) + 50, // Random initial views
+        views: Math.floor(Math.random() * 500) + 50,
         date: new Date().toISOString(),
     };
 
@@ -143,7 +122,6 @@ serve(async (req) => {
         throw new Error(`Failed to save article to database: ${insertError.message}`);
     }
 
-    // 5. --- Return Success Response ---
     return new Response(JSON.stringify({ message: `Article generated and saved successfully on topic: "${topic}"` }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
