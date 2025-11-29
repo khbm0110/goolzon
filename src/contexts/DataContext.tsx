@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { Article, Match, Standing, ClubProfile, Sponsor } from '../types';
 import { INITIAL_ARTICLES, CLUB_DATABASE } from '../constants';
