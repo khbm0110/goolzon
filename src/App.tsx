@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -14,7 +15,6 @@ import ArticleDetailPage from './pages/ArticleDetailPage';
 import ClubsPage from './pages/ClubsPage';
 import ClubDashboard from './components/ClubDashboard';
 import UserProfile from './components/UserProfile';
-import AdminDashboard from './components/AdminDashboard';
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
 
@@ -22,13 +22,6 @@ import Register from './components/Auth/Register';
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser } = useAuth();
   if (!currentUser) return <Navigate to="/login" replace />;
-  return <>{children}</>;
-};
-
-// 🔹 Admin Route
-const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { currentUser, isAdmin } = useAuth();
-  if (!currentUser || !isAdmin) return <Navigate to="/login" replace />;
   return <>{children}</>;
 };
 
@@ -52,7 +45,6 @@ const App: React.FC = () => {
                   <Route path="/login" element={<Login />} />
                   <Route path="/register" element={<Register />} />
                   <Route path="/profile" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
-                  <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
                 </Routes>
               </Layout>
             </UIProvider>

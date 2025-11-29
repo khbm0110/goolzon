@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Search, Trophy, Activity, Youtube, Calendar, Bell, User as UserIcon, LogIn } from 'lucide-react';
+import { Menu, X, Search, Trophy, Youtube, Calendar, Bell, User as UserIcon, LogIn } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 
@@ -12,7 +12,7 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ onSearchClick }) => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
-  const { currentUser, followedTeams, isAdmin } = useAuth();
+  const { currentUser, followedTeams } = useAuth();
   const { featureFlags } = useSettings();
 
   const navItems = [
@@ -115,23 +115,12 @@ const Header: React.FC<HeaderProps> = ({ onSearchClick }) => {
               ) : (
                 <Link
                   to="/login"
-                  className="flex items-center px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-full text-xs font-bold transition-colors border border-primary/30"
+                  className="hidden md:flex items-center px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-full text-xs font-bold transition-colors border border-primary/30"
                 >
                   <LogIn size={14} className="ml-1" />
                   دخول
                 </Link>
               )
-            )}
-
-            {/* Admin Link - Only visible if isAdmin is explicitly true */}
-            {currentUser && isAdmin === true && (
-              <Link 
-                to="/admin" 
-                className="hidden md:flex items-center px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded-full text-xs font-bold text-white transition-colors border border-red-500 shadow-lg shadow-red-900/50"
-              >
-                <Activity size={14} className="ml-2" />
-                النشر
-              </Link>
             )}
           </div>
         </div>
@@ -171,14 +160,6 @@ const Header: React.FC<HeaderProps> = ({ onSearchClick }) => {
                 {featureFlags.matches && <Link to="/matches" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-slate-300 hover:text-white">مباريات اليوم</Link>}
                 {featureFlags.videos && <Link to="/videos" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-slate-300 hover:text-white">فيديو</Link>}
                 {featureFlags.clubs && <Link to="/clubs" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-slate-300 hover:text-white">الأندية</Link>}
-                
-                {/* Mobile Admin Link */}
-                {currentUser && isAdmin === true && (
-                  <Link to="/admin" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-red-500 font-bold bg-red-500/10 rounded mt-2">
-                     <Activity size={16} className="inline ml-2" />
-                     لوحة تحكم المدير
-                  </Link>
-                )}
             </div>
           </div>
         </div>

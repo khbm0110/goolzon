@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, Lock, Loader2, AlertCircle, ArrowRight } from 'lucide-react';
+import { User, Lock, Loader2, AlertCircle, ArrowRight, Shield, Users } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 const Login: React.FC = () => {
@@ -20,6 +20,15 @@ const Login: React.FC = () => {
     setError('');
   };
 
+  // وظيفة الدخول السريع
+  const handleQuickLogin = (type: 'ADMIN' | 'USER') => {
+      if (type === 'ADMIN') {
+          setFormData({ email: 'admin@goolzon.com', password: 'password123' });
+      } else {
+          setFormData({ email: 'demo@goolzon.com', password: 'password123' });
+      }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -28,7 +37,7 @@ const Login: React.FC = () => {
     try {
         const result = await login(formData.email, formData.password);
         if (result.success) {
-            // Check if user is admin and redirect accordingly
+            // التحقق من الصلاحية والتوجيه
             if (result.isAdmin) {
                 navigate('/admin');
             } else {
@@ -46,7 +55,7 @@ const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-8 shadow-2xl">
+      <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-8 shadow-2xl animate-in fade-in zoom-in-95 duration-300">
         <Link to="/" className="inline-flex items-center text-slate-400 hover:text-white mb-6 text-sm transition-colors">
             <ArrowRight size={16} className="ml-1"/> العودة للرئيسية
         </Link>
@@ -63,8 +72,41 @@ const Login: React.FC = () => {
           </div>
         )}
 
+        {/* أزرار الدخول السريع */}
+        <div className="grid grid-cols-2 gap-4 mb-8">
+            <button 
+                type="button"
+                onClick={() => handleQuickLogin('ADMIN')}
+                className="flex flex-col items-center justify-center p-4 bg-slate-950 border border-red-900/30 hover:border-red-500 rounded-xl hover:bg-red-900/10 transition-all group active:scale-95"
+            >
+                <div className="p-2 bg-red-500/10 rounded-full mb-2 group-hover:bg-red-500/20 transition-colors">
+                    <Shield className="text-red-500 group-hover:scale-110 transition-transform" size={20} />
+                </div>
+                <span className="text-xs font-bold text-red-400 group-hover:text-red-300">مدير النظام</span>
+            </button>
+            <button 
+                type="button"
+                onClick={() => handleQuickLogin('USER')}
+                className="flex flex-col items-center justify-center p-4 bg-slate-950 border border-blue-900/30 hover:border-blue-500 rounded-xl hover:bg-blue-900/10 transition-all group active:scale-95"
+            >
+                <div className="p-2 bg-blue-500/10 rounded-full mb-2 group-hover:bg-blue-500/20 transition-colors">
+                    <Users className="text-blue-500 group-hover:scale-110 transition-transform" size={20} />
+                </div>
+                <span className="text-xs font-bold text-blue-400 group-hover:text-blue-300">مستخدم تجريبي</span>
+            </button>
+        </div>
+
+        <div className="relative mb-6">
+            <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-800"></div>
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-slate-900 px-2 text-slate-500 font-bold">أو أدخل بياناتك</span>
+            </div>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Email */}
+          {/* البريد الإلكتروني */}
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-400 mr-1">البريد الإلكتروني</label>
             <div className="relative">
@@ -76,13 +118,13 @@ const Login: React.FC = () => {
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="name@example.com"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-primary outline-none transition-colors"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-primary outline-none transition-colors placeholder:text-slate-600"
                 style={{ direction: 'ltr', textAlign: 'right' }}
               />
             </div>
           </div>
 
-          {/* Password */}
+          {/* كلمة المرور */}
           <div className="space-y-1">
             <div className="flex justify-between">
                 <label className="text-xs font-bold text-slate-400 mr-1">كلمة المرور</label>
@@ -97,7 +139,7 @@ const Login: React.FC = () => {
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="••••••••"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-primary outline-none transition-colors"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-white focus:border-primary outline-none transition-colors placeholder:text-slate-600"
               />
             </div>
           </div>
@@ -105,7 +147,7 @@ const Login: React.FC = () => {
           <button 
             type="submit" 
             disabled={isLoading}
-            className="w-full bg-primary hover:bg-emerald-400 text-slate-900 font-black py-4 rounded-xl transition-all hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] mt-6 flex items-center justify-center disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
+            className="w-full bg-primary hover:bg-emerald-400 text-slate-900 font-black py-4 rounded-xl transition-all hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] mt-6 flex items-center justify-center disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-95"
           >
             {isLoading ? <Loader2 className="animate-spin" /> : 'دخول'}
           </button>
