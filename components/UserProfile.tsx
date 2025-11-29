@@ -29,20 +29,18 @@ const UserProfile: React.FC = () => {
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     
-    // Ref for the element we want to convert to image
     const exportRef = useRef<HTMLDivElement>(null);
     
-    // Local state for squad to provide immediate UI feedback
-    const [localDreamSquad, setLocalDreamSquad] = useState(dreamSquad);
+    const [localDreamSquad, setLocalDreamSquad] = useState(dreamSquad || {});
 
     useEffect(() => {
-        if (isAdmin) {
+        if (!profileLoading && isAdmin) {
             navigate('/admin', { replace: true });
         }
-    }, [isAdmin, navigate]);
+    }, [isAdmin, navigate, profileLoading]);
 
     useEffect(() => {
-        setLocalDreamSquad(dreamSquad);
+        setLocalDreamSquad(dreamSquad || {});
     }, [dreamSquad]);
 
     const allPlayers = clubs.flatMap(c => c.squad.map(p => ({ ...p, clubLogo: c.logo, clubName: c.name })));
@@ -56,7 +54,7 @@ const UserProfile: React.FC = () => {
         if (activeSlot !== null) {
             const newSquad = { ...localDreamSquad, [activeSlot]: player };
             setLocalDreamSquad(newSquad);
-            updateDreamSquad(newSquad); // Sync with Supabase
+            updateDreamSquad(newSquad);
             setIsSelectorOpen(false);
             setActiveSlot(null);
         }
@@ -67,11 +65,11 @@ const UserProfile: React.FC = () => {
         const newSquad = { ...localDreamSquad };
         delete newSquad[slotId];
         setLocalDreamSquad(newSquad);
-        updateDreamSquad(newSquad); // Sync with Supabase
+        updateDreamSquad(newSquad);
     };
 
-    const handleLogout = () => {
-        logout();
+    const handleLogout = async () => {
+        await logout();
         navigate('/');
     };
 
@@ -79,20 +77,14 @@ const UserProfile: React.FC = () => {
         if (!exportRef.current || isExporting) return;
         
         setIsExporting(true);
-        // Ensure tactics view is visible before capture
         setShowTactics(true);
         
         try {
-            // Wait a moment for any state updates or images to settle
             await new Promise(resolve => setTimeout(resolve, 100));
             
             const dataUrl = await toPng(exportRef.current, {
-                cacheBust: true,
-                quality: 0.95,
-                backgroundColor: '#020617', // Match slate-950
-                style: {
-                    transform: 'none', // Reset any potential transforms during capture
-                }
+                cacheBust: true, quality: 0.95, backgroundColor: '#020617',
+                style: { transform: 'none' }
             });
 
             const link = document.createElement('a');
@@ -107,17 +99,19 @@ const UserProfile: React.FC = () => {
         }
     };
 
-    const squadPlayers = Object.values(localDreamSquad) as (Player & { clubLogo?: string })[];
+    const squadPlayers = Object.values(localDreamSquad).filter(p => p) as (Player & { clubLogo?: string })[];
     const totalRating = squadPlayers.reduce((acc: number, player) => acc + (player.rating || 0), 0);
-    const averageRating = squadPlayers.length > 0 ? Math.round(totalRating / 11) : 0;
+    const averageRating = squadPlayers.length > 0 ? Math.round(totalRating / Math.min(squadPlayers.length, 11)) : 0;
 
-    if (isAdmin || !currentUser) {
+    if (profileLoading || !currentUser) {
         return (
             <div className="min-h-screen bg-slate-950 flex items-center justify-center">
                 <Loader2 className="w-12 h-12 text-primary animate-spin" />
             </div>
         );
     }
+    
+    if (isAdmin) return null; // Redirect is happening in useEffect
 
     return (
         <div className="min-h-screen bg-slate-950 pb-20">
@@ -126,13 +120,7 @@ const UserProfile: React.FC = () => {
                 <p className="text-slate-400">كوّن وشارك تشكيلة أحلامك النهائية.</p>
             </div>
             
-            {/* 
-               This container is what gets exported. 
-               We use 'group' to handle some conditional styling during export if needed.
-               Ref is attached here.
-            */}
             <div ref={exportRef} className="relative h-[550px] md:h-[600px] bg-slate-900 group border-y mt-6 border-slate-800 overflow-hidden">
-                {/* Controls Area */}
                 <div className="absolute top-24 right-4 z-50 flex flex-col gap-2" data-html2canvas-ignore>
                     <button 
                         onClick={() => setShowTactics(!showTactics)}
@@ -150,7 +138,6 @@ const UserProfile: React.FC = () => {
                     </button>
                 </div>
 
-                {/* Main Content Area */}
                 <div className="absolute inset-0">
                     {!showTactics ? (
                         <>
@@ -170,7 +157,6 @@ const UserProfile: React.FC = () => {
                         />
                     )}
 
-                    {/* Branding Overlay - Always visible on top of pitch/cover */}
                     <div className="absolute bottom-0 left-0 w-full p-6 md:p-8 flex flex-col md:flex-row items-center md:items-end gap-6 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent pt-20">
                         <div className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-emerald-500 bg-slate-800 overflow-hidden shadow-2xl relative shrink-0">
                             <img src={currentUser.avatar} className="w-full h-full object-cover" alt={currentUser.username} />
@@ -178,11 +164,6 @@ const UserProfile: React.FC = () => {
                         <div className="text-center md:text-right pb-2 flex-1">
                             <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
                                 <h1 className="text-3xl md:text-4xl font-black text-white">{currentUser.name}</h1>
-                                {currentUser.role === 'admin' && (
-                                    <span className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border border-red-400 shadow-lg shadow-red-900/50">
-                                        ADMIN
-                                    </span>
-                                )}
                                 {showTactics && (
                                     <div className="bg-yellow-500 text-slate-900 text-xs font-black px-2 py-0.5 rounded shadow-lg transform rotate-3">
                                         OVR {averageRating}
@@ -194,7 +175,6 @@ const UserProfile: React.FC = () => {
                                 @{currentUser.username} • عضو منذ {new Date(currentUser.joinDate).getFullYear()}
                             </p>
                         </div>
-                        {/* Site Logo for Export Branding */}
                         <div className="hidden md:block opacity-50 grayscale hover:grayscale-0 transition-all">
                              <div className="flex items-center gap-1">
                                 <span className="text-2xl font-black text-white tracking-tighter">gool<span className="text-primary">zon</span></span>
@@ -233,7 +213,7 @@ const UserProfile: React.FC = () => {
                             <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center">
                                 <span className="text-slate-500 text-xs font-bold block mb-1">عدد اللاعبين</span>
                                 <span className="text-2xl font-black text-white">
-                                    {Object.values(localDreamSquad).length} / 11
+                                    {Object.values(localDreamSquad).filter(p => p).length} / 11
                                 </span>
                             </div>
                         </div>
@@ -278,7 +258,6 @@ const InteractivePitch: React.FC<{
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-16 md:h-24 border-2 border-white/20 rounded-b-xl border-t-0 pointer-events-none"></div>
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/3 h-16 md:h-24 border-2 border-white/20 rounded-t-xl border-b-0 pointer-events-none"></div>
 
-            {/* Grass Texture Effect */}
             <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:50px_50px] pointer-events-none"></div>
 
             <div className="w-full h-full max-w-lg mx-auto relative z-10">
@@ -302,7 +281,7 @@ const InteractivePitch: React.FC<{
                                     <button
                                         onClick={(e) => onRemovePlayer(e, slot.id)}
                                         className="absolute -top-2 -right-2 w-6 h-6 bg-red-600 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110"
-                                        data-html2canvas-ignore // Don't show delete button in screenshot
+                                        data-html2canvas-ignore
                                     >
                                         <X size={14} />
                                     </button>
@@ -341,7 +320,7 @@ const PlayerSelectorModal: React.FC<{
       ? players
       : players.filter(p =>
           p.name.toLowerCase().includes(lowerQuery) ||
-          (p as any).clubName?.toLowerCase().includes(lowerQuery)
+          p.clubName?.toLowerCase().includes(lowerQuery)
         );
     
     const sorted = [...filtered].sort((a, b) => b.rating - a.rating);
@@ -380,7 +359,7 @@ const PlayerSelectorModal: React.FC<{
              </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-              {filteredPlayers.slice(0, 100).map(player => ( // Limiting to 100 for performance
+              {filteredPlayers.slice(0, 100).map(player => (
                 <button
                   key={player.id}
                   onClick={() => onSelect(player)}
@@ -396,7 +375,7 @@ const PlayerSelectorModal: React.FC<{
                     </div>
                     <div className="flex items-center gap-1 text-[10px] text-slate-500 mt-1">
                       {player.clubLogo && <img src={player.clubLogo} className="w-3 h-3 object-contain" />}
-                      <span>{(player as any).clubName}</span>
+                      <span>{player.clubName}</span>
                     </div>
                   </div>
                 </button>

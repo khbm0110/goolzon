@@ -70,7 +70,7 @@ const Login: React.FC = () => {
         )}
 
         {/* أزرار الدخول السريع */}
-        <div className="grid grid-cols-2 gap-4 mb-8">
+        <div className="grid grid-cols-1 gap-4 mb-8">
             <button 
                 type="button"
                 onClick={handleUserQuickLogin}
@@ -80,16 +80,6 @@ const Login: React.FC = () => {
                     <Users className="text-blue-500 group-hover:scale-110 transition-transform" size={20} />
                 </div>
                 <span className="text-xs font-bold text-blue-400 group-hover:text-blue-300">مستخدم تجريبي</span>
-            </button>
-            <button 
-                type="button"
-                onClick={handleAdminQuickLogin}
-                className="flex flex-col items-center justify-center p-4 bg-slate-950 border border-red-900/30 hover:border-red-500 rounded-xl hover:bg-red-900/10 transition-all group active:scale-95"
-            >
-                <div className="p-2 bg-red-500/10 rounded-full mb-2 group-hover:bg-red-500/20 transition-colors">
-                    <Shield className="text-red-500 group-hover:scale-110 transition-transform" size={20} />
-                </div>
-                <span className="text-xs font-bold text-red-400 group-hover:text-red-300">مدير النظام</span>
             </button>
         </div>
 

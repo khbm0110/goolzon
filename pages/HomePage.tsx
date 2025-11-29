@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
@@ -70,35 +69,13 @@ const HomePage: React.FC = () => {
              )}
            </div>
            <div className="space-y-4">
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 h-full">
-                 <h3 className="font-bold text-white mb-4 text-sm flex items-center border-b border-slate-800 pb-2">
-                   <TrendingUp size={16} className="ml-2 text-primary" />
-                   الأكثر قراءة
-                 </h3>
-                 <div className="grid grid-cols-2 lg:grid-cols-1 gap-4 lg:gap-5">
-                   {isLoadingInitial ? (
-                      Array(5).fill(0).map((_, i) => (
-                        <div key={i} className="flex gap-3 items-center">
-                            <div className="w-6 h-6 bg-slate-800 rounded animate-pulse" />
-                            <div className="flex-1 space-y-2">
-                                <div className="h-3 w-1/3 bg-slate-800 rounded animate-pulse" />
-                                <div className="h-3 w-full bg-slate-800 rounded animate-pulse" />
-                            </div>
-                        </div>
-                      ))
-                   ) : (
-                       mostReadArticles.map((article, idx) => (
-                         <Link key={idx} to={`/article/${article.id}`} className="flex gap-3 group items-start">
-                           <span className="text-2xl font-black text-slate-700 group-hover:text-primary transition-colors leading-none mt-1">{idx + 1}</span>
-                           <div>
-                             <span className="text-[10px] text-primary mb-1 block">{article.category}</span>
-                             <h4 className="text-sm font-bold text-slate-200 group-hover:text-primary transition-colors line-clamp-2 leading-snug">{article.title}</h4>
-                           </div>
-                         </Link>
-                       ))
-                   )}
-                 </div>
-              </div>
+                {isLoadingInitial ? (
+                  Array(5).fill(0).map((_, i) => <NewsCardSkeleton key={i} compact/>)
+               ) : (
+                   latestNews.slice(0,5).map(article => (
+                    <NewsCard key={article.id} article={article} compact={true} />
+                  ))
+               )}
            </div>
         </div>
       </div>

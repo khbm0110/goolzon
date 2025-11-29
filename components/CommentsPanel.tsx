@@ -1,7 +1,10 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { X, ThumbsUp, MessageSquare, Send, User as UserIcon, Flag, CornerDownRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { X, ThumbsUp, MessageSquare, Send, User as UserIcon, Flag, CornerDownRight, LogIn } from 'lucide-react';
 import { Comment } from '../types';
+import { useAuth } from '../contexts/AuthContext';
+import { formatDistanceToNow } from 'date-fns';
+import { ar } from 'date-fns/locale';
 
 interface CommentsPanelProps {
   isOpen: boolean;
@@ -57,12 +60,14 @@ const CommentItem: React.FC<{
     onReportComment: (commentId: string) => void;
 }> = ({ comment, allComments, onAddComment, onReportComment }) => {
     
+    const { currentUser } = useAuth();
     const [isLiked, setIsLiked] = useState(false);
     const [likes, setLikes] = useState(comment.likes);
     const [showReplies, setShowReplies] = useState(false);
     const [showReplyInput, setShowReplyInput] = useState(false);
 
     const replies = useMemo(() => allComments.filter(c => c.parentId === comment.id), [allComments, comment.id]);
+    const timeAgo = formatDistanceToNow(new Date(comment.time), { addSuffix: true, locale: ar });
 
     const handleLike = () => {
         setIsLiked(prev => !prev);
@@ -78,7 +83,7 @@ const CommentItem: React.FC<{
                 <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3">
                     <div className="flex items-center justify-between mb-1">
                         <h4 className="font-bold text-sm text-primary">{comment.user}</h4>
-                        <span className="text-xs text-slate-500">{comment.time}</span>
+                        <span className="text-xs text-slate-500">{timeAgo}</span>
                     </div>
                     <p className="text-slate-300 text-sm leading-relaxed">{comment.text}</p>
                 </div>
@@ -88,10 +93,10 @@ const CommentItem: React.FC<{
                         <ThumbsUp size={14} />
                         <span className="font-semibold">{likes}</span>
                     </button>
-                    <button onClick={() => setShowReplyInput(!showReplyInput)} className="flex items-center gap-1.5 hover:text-white">
+                    {currentUser && <button onClick={() => setShowReplyInput(!showReplyInput)} className="flex items-center gap-1.5 hover:text-white">
                         <MessageSquare size={14} />
                         <span>رد</span>
-                    </button>
+                    </button>}
                      {replies.length > 0 && (
                         <button onClick={() => setShowReplies(!showReplies)} className="flex items-center gap-1.5 hover:text-white">
                             <CornerDownRight size={14} />
@@ -125,6 +130,7 @@ const CommentItem: React.FC<{
 
 const CommentsPanel: React.FC<CommentsPanelProps> = ({ isOpen, onClose, commentsData, onAddComment, onReportComment }) => {
     
+    const { currentUser } = useAuth();
     const [newComment, setNewComment] = useState('');
     const commentInputRef = useRef<HTMLInputElement>(null);
 
@@ -141,7 +147,7 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({ isOpen, onClose, comments
     const handleSubmitComment = (e: React.FormEvent) => {
         e.preventDefault();
         if (newComment.trim() === '') return;
-        onAddComment(newComment); // This adds a top-level comment
+        onAddComment(newComment);
         setNewComment('');
     };
 
@@ -163,36 +169,49 @@ const CommentsPanel: React.FC<CommentsPanelProps> = ({ isOpen, onClose, comments
                 </header>
 
                 <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                    {topLevelComments.map(comment => (
-                       <CommentItem 
-                            key={comment.id}
-                            comment={comment}
-                            allComments={commentsData}
-                            onAddComment={onAddComment}
-                            onReportComment={onReportComment}
-                       />
-                    ))}
+                    {topLevelComments.length === 0 ? (
+                        <div className="text-center text-slate-500 pt-20">كن أول من يعلق!</div>
+                    ) : (
+                        topLevelComments.map(comment => (
+                           <CommentItem 
+                                key={comment.id}
+                                comment={comment}
+                                allComments={commentsData}
+                                onAddComment={onAddComment}
+                                onReportComment={onReportComment}
+                           />
+                        ))
+                    )}
                 </div>
 
                 <footer className="p-4 border-t border-slate-800 bg-slate-950 flex-shrink-0">
-                    <form className="flex gap-3" onSubmit={handleSubmitComment}>
-                        <div className="w-10 h-10 rounded-full bg-slate-800 overflow-hidden flex-shrink-0">
-                             <UserIcon className="w-full h-full text-slate-600 p-2" />
+                    {currentUser ? (
+                        <form className="flex gap-3" onSubmit={handleSubmitComment}>
+                            <div className="w-10 h-10 rounded-full bg-slate-800 overflow-hidden flex-shrink-0">
+                                 <img src={currentUser.avatar} alt={currentUser.name} />
+                            </div>
+                            <div className="relative flex-1">
+                                <input
+                                    ref={commentInputRef}
+                                    type="text"
+                                    value={newComment}
+                                    onChange={(e) => setNewComment(e.target.value)}
+                                    placeholder="أضف تعليقاً..."
+                                    className="w-full bg-slate-800 border border-slate-700 rounded-full py-2.5 pl-12 pr-4 text-white placeholder:text-slate-500 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition"
+                                />
+                                <button type="submit" className="absolute left-1 top-1/2 -translate-y-1/2 p-2 bg-primary text-slate-900 rounded-full hover:bg-emerald-400 transition-colors" aria-label="إرسال التعليق">
+                                    <Send size={16} />
+                                </button>
+                            </div>
+                        </form>
+                    ) : (
+                        <div className="text-center">
+                            <Link to="/login" className="font-bold text-primary hover:underline flex items-center justify-center gap-2">
+                                <LogIn size={16} />
+                                سجل الدخول للتعليق
+                            </Link>
                         </div>
-                        <div className="relative flex-1">
-                            <input
-                                ref={commentInputRef}
-                                type="text"
-                                value={newComment}
-                                onChange={(e) => setNewComment(e.target.value)}
-                                placeholder="أضف تعليقاً..."
-                                className="w-full bg-slate-800 border border-slate-700 rounded-full py-2.5 pl-12 pr-4 text-white placeholder:text-slate-500 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition"
-                            />
-                            <button type="submit" className="absolute left-1 top-1/2 -translate-y-1/2 p-2 bg-primary text-slate-900 rounded-full hover:bg-emerald-400 transition-colors" aria-label="إرسال التعليق">
-                                <Send size={16} />
-                            </button>
-                        </div>
-                    </form>
+                    )}
                 </footer>
             </div>
         </div>
