@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, X, ChevronLeft } from 'lucide-react';
 import { Article } from '../types';

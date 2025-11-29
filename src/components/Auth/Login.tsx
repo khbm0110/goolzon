@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, Lock, Loader2, AlertCircle, ArrowRight, Users } from 'lucide-react';
+import { User, Lock, Loader2, AlertCircle, ArrowRight, Users, Shield } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 const Login: React.FC = () => {
@@ -20,9 +19,12 @@ const Login: React.FC = () => {
     setError('');
   };
 
-  // وظيفة الدخول السريع
-  const handleQuickLogin = () => {
+  const handleUserQuickLogin = () => {
       setFormData({ email: 'demo@goolzon.com', password: 'password123' });
+  };
+  
+  const handleAdminQuickLogin = () => {
+      setFormData({ email: 'admin@goolzon.com', password: 'password123' });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,7 +35,11 @@ const Login: React.FC = () => {
     try {
         const result = await login(formData.email, formData.password);
         if (result.success) {
-            navigate('/profile');
+            if (result.isAdmin) {
+                navigate('/admin');
+            } else {
+                navigate('/profile');
+            }
         } else {
             setError(result.error || 'فشل تسجيل الدخول. تحقق من بياناتك.');
         }
@@ -63,11 +69,11 @@ const Login: React.FC = () => {
           </div>
         )}
 
-        {/* زر الدخول السريع */}
+        {/* أزرار الدخول السريع */}
         <div className="grid grid-cols-1 gap-4 mb-8">
             <button 
                 type="button"
-                onClick={handleQuickLogin}
+                onClick={handleUserQuickLogin}
                 className="flex flex-col items-center justify-center p-4 bg-slate-950 border border-blue-900/30 hover:border-blue-500 rounded-xl hover:bg-blue-900/10 transition-all group active:scale-95"
             >
                 <div className="p-2 bg-blue-500/10 rounded-full mb-2 group-hover:bg-blue-500/20 transition-colors">
@@ -75,6 +81,18 @@ const Login: React.FC = () => {
                 </div>
                 <span className="text-xs font-bold text-blue-400 group-hover:text-blue-300">مستخدم تجريبي</span>
             </button>
+            {/* 
+            <button 
+                type="button"
+                onClick={handleAdminQuickLogin}
+                className="flex flex-col items-center justify-center p-4 bg-slate-950 border border-red-900/30 hover:border-red-500 rounded-xl hover:bg-red-900/10 transition-all group active:scale-95"
+            >
+                <div className="p-2 bg-red-500/10 rounded-full mb-2 group-hover:bg-red-500/20 transition-colors">
+                    <Shield className="text-red-500 group-hover:scale-110 transition-transform" size={20} />
+                </div>
+                <span className="text-xs font-bold text-red-400 group-hover:text-red-300">مدير النظام</span>
+            </button>
+            */}
         </div>
 
         <div className="relative mb-6">

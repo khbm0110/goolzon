@@ -1,4 +1,3 @@
-
 import { Match, Category, MatchDetails, Standing } from '../types';
 
 // بيانات وهمية للمباريات

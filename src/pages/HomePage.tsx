@@ -47,6 +47,8 @@ const HomePage: React.FC = () => {
         )
       ).slice(0, 6)
     : [];
+    
+  const mostReadArticles = [...articles].sort((a,b) => b.views - a.views).slice(1, 6);
 
   const leagueSections = [
     { key: Category.ENGLAND, title: 'الدوري الإنجليزي', link: '/country/england' },
@@ -67,35 +69,13 @@ const HomePage: React.FC = () => {
              )}
            </div>
            <div className="space-y-4">
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 h-full">
-                 <h3 className="font-bold text-white mb-4 text-sm flex items-center border-b border-slate-800 pb-2">
-                   <TrendingUp size={16} className="ml-2 text-primary" />
-                   الأكثر قراءة
-                 </h3>
-                 <div className="grid grid-cols-2 lg:grid-cols-1 gap-4 lg:gap-5">
-                   {isLoadingInitial ? (
-                      Array(5).fill(0).map((_, i) => (
-                        <div key={i} className="flex gap-3 items-center">
-                            <div className="w-6 h-6 bg-slate-800 rounded animate-pulse" />
-                            <div className="flex-1 space-y-2">
-                                <div className="h-3 w-1/3 bg-slate-800 rounded animate-pulse" />
-                                <div className="h-3 w-full bg-slate-800 rounded animate-pulse" />
-                            </div>
-                        </div>
-                      ))
-                   ) : (
-                       articles.slice(1, 6).sort((a,b) => b.views - a.views).map((article, idx) => (
-                         <Link key={idx} to={`/article/${article.id}`} className="flex gap-3 group items-start">
-                           <span className="text-2xl font-black text-slate-700 group-hover:text-primary transition-colors leading-none mt-1">{idx + 1}</span>
-                           <div>
-                             <span className="text-[10px] text-primary mb-1 block">{article.category}</span>
-                             <h4 className="text-sm font-bold text-slate-200 group-hover:text-primary transition-colors line-clamp-2 leading-snug">{article.title}</h4>
-                           </div>
-                         </Link>
-                       ))
-                   )}
-                 </div>
-              </div>
+               {isLoadingInitial ? (
+                  Array(5).fill(0).map((_, i) => <NewsCardSkeleton key={i} compact/>)
+               ) : (
+                   latestNews.slice(0,5).map(article => (
+                    <NewsCard key={article.id} article={article} compact={true} />
+                  ))
+               )}
            </div>
         </div>
       </div>
@@ -189,7 +169,7 @@ const HomePage: React.FC = () => {
                          <div key={match.id} onClick={() => setSelectedMatch(match)} className="p-3 hover:bg-slate-800/50 transition-colors cursor-pointer group">
                            <div className="flex justify-between text-[10px] text-slate-400 mb-2">
                              <span>{match.league}</span>
-                             <span className="text-red-500 font-bold">{match.time}</span>
+                             <span className={match.status === 'LIVE' ? 'text-red-500 font-bold' : ''}>{match.time}</span>
                            </div>
                            <div className="flex justify-between items-center">
                               <div className="flex items-center gap-2 w-1/3">

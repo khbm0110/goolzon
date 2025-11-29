@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Search, Trophy, Youtube, Calendar, Bell, User as UserIcon, LogIn } from 'lucide-react';
+import { Menu, X, Search, Trophy, Youtube, Calendar, Bell, User as UserIcon, LogIn, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSettings } from '../contexts/SettingsContext';
 
@@ -12,7 +12,7 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ onSearchClick }) => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
-  const { currentUser, followedTeams } = useAuth();
+  const { currentUser, isAdmin, followedTeams } = useAuth();
   const { featureFlags } = useSettings();
 
   const navItems = [
@@ -69,6 +69,18 @@ const Header: React.FC<HeaderProps> = ({ onSearchClick }) => {
                 {item.label}
               </Link>
             ))}
+            {isAdmin && (
+              <Link
+                to="/admin"
+                className={`text-sm font-bold whitespace-nowrap transition-colors duration-200 flex items-center gap-1 ${
+                  location.pathname.startsWith('/admin')
+                    ? 'text-red-500 border-b-2 border-red-500 py-5'
+                    : 'text-slate-300 hover:text-red-400 py-5 border-b-2 border-transparent'
+                }`}
+              >
+                <Shield size={14} /> لوحة التحكم
+              </Link>
+            )}
           </nav>
 
           {/* Actions */}
@@ -106,9 +118,9 @@ const Header: React.FC<HeaderProps> = ({ onSearchClick }) => {
             {featureFlags.userSystem && (
               currentUser ? (
                 <Link 
-                  to="/profile" 
+                  to={isAdmin ? "/admin" : "/profile"}
                   className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors border border-slate-700 overflow-hidden"
-                  title="الملف الشخصي"
+                  title={isAdmin ? "لوحة التحكم" : "الملف الشخصي"}
                 >
                   {currentUser.avatar ? <img src={currentUser.avatar} alt={currentUser.username} className="w-full h-full object-cover"/> : <UserIcon size={16} />}
                 </Link>
@@ -147,7 +159,7 @@ const Header: React.FC<HeaderProps> = ({ onSearchClick }) => {
             <div className="border-t border-slate-800 my-2 pt-2">
                 {featureFlags.userSystem && (
                   currentUser ? (
-                    <Link to="/profile" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-slate-300 hover:text-white font-bold text-primary">
+                    <Link to={isAdmin ? "/admin" : "/profile"} onClick={() => setIsOpen(false)} className="block px-3 py-2 text-slate-300 hover:text-white font-bold text-primary">
                       مرحباً، {currentUser.name}
                     </Link>
                   ) : (
@@ -156,6 +168,11 @@ const Header: React.FC<HeaderProps> = ({ onSearchClick }) => {
                       تسجيل الدخول
                     </Link>
                   )
+                )}
+                 {isAdmin && (
+                    <Link to="/admin" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-red-400 hover:text-red-300 font-bold flex items-center gap-2">
+                        <Shield size={16} /> لوحة التحكم
+                    </Link>
                 )}
                 {featureFlags.matches && <Link to="/matches" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-slate-300 hover:text-white">مباريات اليوم</Link>}
                 {featureFlags.videos && <Link to="/videos" onClick={() => setIsOpen(false)} className="block px-3 py-2 text-slate-300 hover:text-white">فيديو</Link>}

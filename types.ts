@@ -32,15 +32,16 @@ export interface ApiConfig {
 }
 
 export interface User {
-  id: string;
+  id: string; // This will be the Supabase auth user ID
   name: string;
   username: string;
   email: string;
-  password: string;
+  password?: string; // Re-added for mock data compatibility
   avatar?: string;
   joinDate: string;
-  role?: 'admin' | 'user'; // Added role for DB permissions
+  role: 'admin' | 'user';
   dreamSquad?: Record<number, any>;
+  status?: 'active' | 'banned';
 }
 
 export interface Sponsor {
@@ -193,4 +194,86 @@ export interface ExtractedMatchFacts {
   away_team: string | null;
   home_score: number | null;
   away_score: number | null;
+}
+
+// NOTE: The following types are removed as they are related to the
+// full database implementation which has been temporarily rolled back.
+// SeoSettings, AdSettings, Comment, AnalyticsData, etc.
+// This simplifies the app back to its mock data state.
+export interface SeoSettings {
+  siteTitle: string;
+  metaDescription: string;
+  metaKeywords: string; 
+  ogImageUrl: string;
+}
+
+export interface AdSettings {
+  provider: 'adsense' | 'other' | 'none';
+  headerAd: { code: string; enabled: boolean };
+  sidebarAd: { code: string; enabled: boolean };
+  inArticleAd: { code: string; enabled: boolean };
+}
+
+// FIX: Add missing analytics types for Admin Dashboard.
+export interface VisitorCountry {
+  name: string;
+  code: string;
+  visitors: number;
+}
+
+export interface DevicePerformance {
+  device: 'Desktop' | 'Mobile';
+  value: number;
+}
+
+export interface PagePerformance {
+  path: string;
+  visits: number;
+}
+
+export interface Goal {
+  name: string;
+  completions: number;
+  conversionRate: number;
+}
+
+export interface PageSpeed {
+  path: string;
+  loadTime: number;
+}
+
+export interface VisitorStats {
+  daily: { total: number; change: number };
+  weekly: { total: number; change: number };
+  monthly: { total: number; change: number };
+  yearly: { total: number; change: number };
+}
+
+export interface AnalyticsData {
+    summary: {
+        totalVisitors: number;
+        newUsers: number;
+        bounceRate: number;
+        avgSessionDuration: string;
+    };
+    dailyVisitors: { day: string; visitors: number }[];
+    trafficSources: { source: string; value: number; color: string }[];
+    visitorCountries: VisitorCountry[];
+    devicePerformance: DevicePerformance[];
+    landingPages: PagePerformance[];
+    exitPages: PagePerformance[];
+    goals: Goal[];
+    pageSpeeds: PageSpeed[];
+    visitorStats: VisitorStats;
+}
+export interface Comment {
+    id: string;
+    user: string;
+    avatar: string;
+    time: string;
+    text: string;
+    likes: number;
+    articleId: string;
+    status: 'visible' | 'reported' | 'hidden';
+    parentId?: string;
 }

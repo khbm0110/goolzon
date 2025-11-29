@@ -1,4 +1,3 @@
-
 import { getSmartImageUrl } from "./imageService";
 import { Match } from "../types";
 

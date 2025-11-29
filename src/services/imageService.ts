@@ -1,4 +1,3 @@
-
 // This service acts as a "Virtual Image Server"
 // Since we cannot scrape or host images directly in the browser environment,
 // we map keywords (returned by AI) to a curated list of high-quality, reliable URLs.
@@ -112,11 +111,6 @@ const KEYWORD_MAPPING: Record<string, string[]> = {
   'neymar': IMAGE_POOLS.NEYMAR,
 };
 
-const getRandomImage = (pool: string[]): string => {
-  if (!pool || pool.length === 0) return IMAGE_POOLS.NEUTRAL[0];
-  return pool[Math.floor(Math.random() * pool.length)];
-};
-
 export const getSmartImageUrl = (keyword?: string | null): string => {
   if (!keyword) return getRandomImage(IMAGE_POOLS.NEUTRAL);
 
@@ -137,4 +131,9 @@ export const getSmartImageUrl = (keyword?: string | null): string => {
 
   // 3. Final Fallback
   return getRandomImage(IMAGE_POOLS.NEUTRAL);
+};
+
+const getRandomImage = (pool: string[]): string => {
+  if (!pool || pool.length === 0) return IMAGE_POOLS.NEUTRAL[0];
+  return pool[Math.floor(Math.random() * pool.length)];
 };

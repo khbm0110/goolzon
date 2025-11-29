@@ -48,6 +48,8 @@ const HomePage: React.FC = () => {
         )
       ).slice(0, 6)
     : [];
+    
+  const mostReadArticles = [...articles].sort((a,b) => b.views - a.views).slice(1, 6);
 
   const leagueSections = [
     { key: Category.ENGLAND, title: 'الدوري الإنجليزي', link: '/country/england' },
@@ -85,7 +87,7 @@ const HomePage: React.FC = () => {
                         </div>
                       ))
                    ) : (
-                       articles.slice(1, 6).sort((a,b) => b.views - a.views).map((article, idx) => (
+                       mostReadArticles.map((article, idx) => (
                          <Link key={idx} to={`/article/${article.id}`} className="flex gap-3 group items-start">
                            <span className="text-2xl font-black text-slate-700 group-hover:text-primary transition-colors leading-none mt-1">{idx + 1}</span>
                            <div>

@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 export const NewsCardSkeleton: React.FC<{ featured?: boolean; compact?: boolean }> = ({ featured = false, compact = false }) => {

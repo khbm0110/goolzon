@@ -1,10 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { X, Clock, MapPin, Share2, BarChart2, Users, AlertCircle, Loader2 } from 'lucide-react';
 import { Match, MatchDetails, MatchEvent } from '../types';
 import TeamLogo from './TeamLogo';
 import { fetchFixtureDetails } from '../services/apiFootball';
-import { API_FOOTBALL_KEY } from '../config/apiFootballConfig';
 
 interface MatchCenterModalProps {
   match: Match | null;
@@ -22,18 +20,16 @@ const MatchCenterModal: React.FC<MatchCenterModalProps> = ({ match, onClose }) =
       setDetails(null);
       
       const loadDetails = async () => {
-          let data: MatchDetails | null = null;
-          
-          if (API_FOOTBALL_KEY) {
-              try {
-                  data = await fetchFixtureDetails(API_FOOTBALL_KEY, match.id);
-              } catch (e) {
-                  console.warn("API Fetch failed.", e);
-              }
+          try {
+              // Reverted to use mock data service
+              const data = await fetchFixtureDetails('', match.id); // API key is ignored by mock service
+              setDetails(data);
+          } catch (e) {
+              console.warn("Mock fetch for details failed.", e);
+              setDetails(null);
+          } finally {
+              setLoading(false);
           }
-          
-          setDetails(data);
-          setLoading(false);
       };
 
       loadDetails();

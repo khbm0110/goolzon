@@ -22,7 +22,7 @@ const FORMATION_433 = [
 
 const UserProfile: React.FC = () => {
     const { clubs } = useData();
-    const { currentUser, logout, dreamSquad, updateDreamSquad, profileLoading } = useAuth();
+    const { currentUser, logout, dreamSquad, updateDreamSquad, profileLoading, isAdmin } = useAuth();
     const navigate = useNavigate();
     const [showTactics, setShowTactics] = useState(true);
     const [activeSlot, setActiveSlot] = useState<number | null>(null);
@@ -105,7 +105,13 @@ const UserProfile: React.FC = () => {
     const totalRating = squadPlayers.reduce((acc: number, player) => acc + (player.rating || 0), 0);
     const averageRating = squadPlayers.length > 0 ? Math.round(totalRating / 11) : 0;
 
-    if (!currentUser) return null;
+    if (!currentUser) {
+        return (
+            <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+                <Loader2 className="w-12 h-12 text-primary animate-spin" />
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-slate-950 pb-20">

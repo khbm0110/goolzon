@@ -14,9 +14,9 @@ import ArticleDetailPage from './pages/ArticleDetailPage';
 import ClubsPage from './pages/ClubsPage';
 import ClubDashboard from './components/ClubDashboard';
 import UserProfile from './components/UserProfile';
-import AdminDashboard from './components/AdminDashboard';
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
+import AdminDashboard from './components/AdminDashboard';
 
 // 🔹 Protected Route
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -27,8 +27,8 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 // 🔹 Admin Route
 const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { currentUser, isAdmin } = useAuth();
-  if (!currentUser || !isAdmin) return <Navigate to="/login" replace />;
+  const { isAdmin } = useAuth();
+  if (!isAdmin) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
 

@@ -1,4 +1,5 @@
-import { Article, Category, ClubProfile } from './types';
+
+import { Article, Category, ClubProfile, AnalyticsData } from './types';
 
 export const POPULAR_CLUBS = [
   // Saudi
@@ -160,5 +161,143 @@ export const INITIAL_ARTICLES: Article[] = [
     author: 'فيديو goolzon',
     views: 45000,
     videoEmbedId: 'dQw4w9WgXcQ' // Mock ID
+  },
+  {
+    id: '6',
+    title: 'النصر يحقق فوزاً صعباً على الأهلي بهدف رونالدو',
+    summary: 'في مباراة مثيرة، تمكن النصر من خطف ثلاث نقاط ثمينة من الأهلي بفضل هدف قاتل من كريستيانو رونالدو.',
+    content: 'تفاصيل المباراة...',
+    imageUrl: 'https://images.unsplash.com/photo-1510563800743-aed236490d94?auto=format&fit=crop&q=80&w=1200',
+    category: Category.SAUDI,
+    date: new Date(Date.now() - 2 * 3600000).toISOString(),
+    author: 'عبدالعزيز الدوسري',
+    views: 9800
+  },
+  {
+    id: '7',
+    title: 'شباب الأهلي يتعادل مع الشارقة في ديربي الإمارات',
+    summary: 'انتهت قمة الجولة في دوري أدنوك للمحترفين بالتعادل الإيجابي 1-1 بين شباب الأهلي والشارقة.',
+    content: 'تفاصيل المباراة...',
+    imageUrl: 'https://images.unsplash.com/photo-1522778526097-ce0a22ceb253?auto=format&fit=crop&q=80&w=1200',
+    category: Category.UAE,
+    date: new Date(Date.now() - 4 * 3600000).toISOString(),
+    author: 'علي المهيري',
+    views: 6200
+  },
+  {
+    id: '8',
+    title: 'ملخص وأهداف مباراة ريال مدريد وبايرن ميونخ (2-1)',
+    summary: 'شاهد أهداف الريمونتادا التاريخية لريال مدريد في دوري أبطال أوروبا.',
+    content: 'ملخص كامل...',
+    imageUrl: 'https://images.unsplash.com/photo-1489944440615-453fc2b6a9a9?auto=format&fit=crop&q=80&w=1200',
+    category: Category.VIDEO,
+    date: new Date(Date.now() - 1.5 * 86400000).toISOString(),
+    author: 'فيديو goolzon',
+    views: 65000,
+    videoEmbedId: 'rokGy0huYEA' 
+  },
+  {
+    id: '9',
+    title: 'تحليل تكتيكي: كيف تفوق الهلال على الاتحاد؟',
+    summary: 'نظرة فنية على الأسباب التكتيكية التي منحت الهلال السيطرة الكاملة في الكلاسيكو الأخير.',
+    content: 'تحليل فني...',
+    imageUrl: 'https://images.unsplash.com/photo-1551972251-12070d63502a?auto=format&fit=crop&q=80&w=1000',
+    category: Category.SAUDI,
+    date: new Date(Date.now() - 3 * 86400000).toISOString(),
+    author: 'فهد المولد',
+    views: 11500
+  },
+  {
+    id: '10',
+    title: 'ميسي يقود برشلونة للفوز بالليغا',
+    summary: 'برشلونة يحسم لقب الدوري الإسباني بعد فوز مثير على أتلتيكو مدريد بفضل هدف من ليونيل ميسي.',
+    content: 'في مباراة حاسمة، تمكن برشلونة...',
+    imageUrl: 'https://images.unsplash.com/photo-1511886921339-7b34a34ac929?auto=format&fit=crop&q=80&w=1200',
+    category: Category.SPAIN,
+    date: new Date(Date.now() - 5 * 86400000).toISOString(),
+    author: 'سالم الشمري',
+    views: 22000
+  },
+  {
+    id: '11',
+    title: 'مانشستر سيتي بطلاً للدوري الإنجليزي',
+    summary: 'للمرة الرابعة على التوالي، مانشستر سيتي يتربع على عرش الكرة الإنجليزية.',
+    content: 'حقق مانشستر سيتي...',
+    imageUrl: 'https://images.unsplash.com/photo-1628891638290-72124506371c?auto=format&fit=crop&q=80&w=1200',
+    category: Category.ENGLAND,
+    date: new Date(Date.now() - 2 * 86400000).toISOString(),
+    author: 'جون دو',
+    views: 31000
+  },
+  {
+    id: '12',
+    title: 'نهائي دوري أبطال أوروبا: قمة نارية منتظرة',
+    summary: 'العالم يترقب المواجهة الكبرى بين ريال مدريد وليفربول في نهائي دوري الأبطال.',
+    content: 'يستعد عشاق كرة القدم...',
+    imageUrl: 'https://images.unsplash.com/photo-1606925797300-0b35e9d17927?auto=format&fit=crop&q=80&w=1200',
+    category: Category.CHAMPIONS_LEAGUE,
+    date: new Date(Date.now() - 6 * 3600000).toISOString(),
+    author: 'فريق التحرير',
+    views: 18000
   }
 ];
+
+// FIX: Added missing mock data for the analytics dashboard.
+export const INITIAL_ANALYTICS_DATA: AnalyticsData = {
+  summary: {
+    totalVisitors: 125430,
+    newUsers: 1520,
+    bounceRate: 45.6,
+    avgSessionDuration: '3m 15s',
+  },
+  dailyVisitors: [
+    { day: 'سبت', visitors: 1200 },
+    { day: 'أحد', visitors: 1800 },
+    { day: 'اثنين', visitors: 1600 },
+    { day: 'ثلاثاء', visitors: 2200 },
+    { day: 'أربعاء', visitors: 2500 },
+    { day: 'خميس', visitors: 3000 },
+    { day: 'جمعة', visitors: 2800 },
+  ],
+  trafficSources: [
+    { source: 'بحث مباشر', value: 40, color: 'bg-primary' },
+    { source: 'وسائل التواصل', value: 30, color: 'bg-blue-500' },
+    { source: 'إحالات', value: 20, color: 'bg-indigo-500' },
+    { source: 'أخرى', value: 10, color: 'bg-slate-600' },
+  ],
+  visitorCountries: [
+    { name: 'السعودية', code: 'sa', visitors: 50000 },
+    { name: 'الإمارات', code: 'ae', visitors: 25000 },
+    { name: 'مصر', code: 'eg', visitors: 15000 },
+    { name: 'الكويت', code: 'kw', visitors: 10000 },
+  ],
+  devicePerformance: [
+    { device: 'Desktop', value: 35 },
+    { device: 'Mobile', value: 65 },
+  ],
+  landingPages: [
+    { path: '/', visits: 40000 },
+    { path: '/article/1', visits: 15000 },
+    { path: '/matches', visits: 10000 },
+  ],
+  exitPages: [
+    { path: '/article/2', visits: 12000 },
+    { path: '/', visits: 8000 },
+    { path: '/profile', visits: 5000 },
+  ],
+  goals: [
+    { name: 'تسجيل مستخدم جديد', completions: 1520, conversionRate: 1.2 },
+    { name: 'مشاركة مقال', completions: 8000, conversionRate: 6.4 },
+  ],
+  pageSpeeds: [
+    { path: '/', loadTime: 1.2 },
+    { path: '/article/:id', loadTime: 1.8 },
+    { path: '/matches', loadTime: 2.1 },
+  ],
+  visitorStats: {
+    daily: { total: 3200, change: 15.2 },
+    weekly: { total: 22400, change: 8.1 },
+    monthly: { total: 91000, change: -2.5 },
+    yearly: { total: 1100000, change: 45.0 },
+  },
+};
