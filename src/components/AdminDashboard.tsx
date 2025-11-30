@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
@@ -255,8 +256,9 @@ const SeoTab: React.FC<{settings: SeoSettings, onSave: (s: SeoSettings) => void}
 
 const AdsTab: React.FC<{settings: AdSettings, onSave: (s: AdSettings) => void}> = ({settings, onSave}) => {
     const [data, setData] = useState(settings);
-    const handleCodeChange = (e: React.ChangeEvent<HTMLTextAreaElement>, key: keyof AdSettings) => setData(prev => ({...prev, [key]: {...prev[key as keyof AdSettings], code: e.target.value}}));
-    const handleToggleChange = (e: React.ChangeEvent<HTMLInputElement>, key: keyof AdSettings) => setData(prev => ({...prev, [key]: {...prev[key as keyof AdSettings], enabled: e.target.checked}}));
+    // Explicit keys to avoid spread error
+    const handleCodeChange = (e: React.ChangeEvent<HTMLTextAreaElement>, key: 'headerAd' | 'sidebarAd' | 'inArticleAd') => setData(prev => ({...prev, [key]: {...prev[key], code: e.target.value}}));
+    const handleToggleChange = (e: React.ChangeEvent<HTMLInputElement>, key: 'headerAd' | 'sidebarAd' | 'inArticleAd') => setData(prev => ({...prev, [key]: {...prev[key], enabled: e.target.checked}}));
     const handleProviderChange = (e: React.ChangeEvent<HTMLSelectElement>) => setData(prev => ({...prev, provider: e.target.value as AdSettings['provider']}));
     const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(data); alert('تم حفظ إعدادات الإعلانات'); };
 
@@ -280,7 +282,7 @@ const AdsTab: React.FC<{settings: AdSettings, onSave: (s: AdSettings) => void}> 
 const AdSlot: React.FC<{field: 'headerAd' | 'sidebarAd' | 'inArticleAd', label: string, data: AdSettings, onCodeChange: any, onToggleChange: any}> = ({field, label, data, onCodeChange, onToggleChange}) => (
     <div className="space-y-3">
         <div className="flex items-center justify-between"><label className="text-sm font-bold text-slate-300">{label}</label><ToggleSwitch checked={data[field].enabled} onChange={(e) => onToggleChange(e, field)} /></div>
-        <TextareaField name={field} value={data[field].code} onChange={(e) => onCodeChange(e, field)} rows={4} placeholder="<script>...</script>" />
+        <TextareaField name={field} value={data[field].code} onChange={(e) => onCodeChange(e, field)} rows={4} placeholder="<script>...</script>" label="الكود" />
     </div>
 );
 

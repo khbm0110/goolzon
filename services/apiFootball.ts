@@ -1,46 +1,44 @@
 import { Match, MatchDetails, Standing } from '../types';
+import { MOCK_MATCHES, MOCK_STANDINGS } from '../constants';
 
-// These functions now call the Backend-for-Frontend (BFF) serverless functions
-// located in the /api directory, which securely handle the API key and caching.
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const fetchLiveMatches = async (apiKey: string, leagueIds: string): Promise<Match[]> => {
-  try {
-    const response = await fetch(`/api/matches?leagues=${leagueIds}`);
-    if (!response.ok) {
-      console.error('Failed to fetch live matches from BFF');
-      return [];
-    }
-    return response.json();
-  } catch (error) {
-    console.error('Error fetching live matches:', error);
-    return [];
-  }
-};
-
-export const fetchFixtureDetails = async (apiKey: string, fixtureId: string): Promise<MatchDetails | null> => {
-    try {
-        const response = await fetch(`/api/fixture-details?id=${fixtureId}`);
-        if (!response.ok) {
-            console.error(`Failed to fetch fixture details for ${fixtureId}`);
-            return null;
-        }
-        return response.json();
-    } catch (error) {
-        console.error(`Error fetching fixture details for ${fixtureId}:`, error);
-        return null;
-    }
+  await sleep(500); // Simulate network latency
+  console.log('[MOCK] Fetching live matches...');
+  return MOCK_MATCHES;
 };
 
 export const fetchStandings = async (apiKey: string, leagueIds: string): Promise<Standing[]> => {
-    try {
-        const response = await fetch('/api/standings');
-        if (!response.ok) {
-            console.error('Failed to fetch standings from BFF');
-            return [];
-        }
-        return response.json();
-    } catch (error) {
-        console.error('Error fetching standings:', error);
-        return [];
-    }
+  await sleep(500);
+  console.log('[MOCK] Fetching standings...');
+  return MOCK_STANDINGS;
+};
+
+export const fetchFixtureDetails = async (apiKey: string, fixtureId: string): Promise<MatchDetails | null> => {
+  await sleep(800);
+  console.log(`[MOCK] Fetching details for fixture: ${fixtureId}`);
+  
+  // Return generic mock details for any match
+  return {
+    stats: {
+      possession: 55,
+      shotsHome: 12,
+      shotsAway: 8,
+      shotsOnTargetHome: 5,
+      shotsOnTargetAway: 3,
+      cornersHome: 6,
+      cornersAway: 4,
+    },
+    lineups: {
+      home: ['الحارس', 'مدافع أيمن', 'مدافع أيسر', 'قلب دفاع 1', 'قلب دفاع 2', 'وسط 1', 'وسط 2', 'وسط 3', 'مهاجم 1', 'مهاجم 2', 'مهاجم 3'],
+      away: ['الحارس', 'مدافع أيمن', 'مدافع أيسر', 'قلب دفاع 1', 'قلب دفاع 2', 'وسط 1', 'وسط 2', 'وسط 3', 'مهاجم 1', 'مهاجم 2', 'مهاجم 3'],
+    },
+    events: [
+      { time: '12\'', team: 'HOME', type: 'GOAL', player: 'المهاجم الهداف' },
+      { time: '34\'', team: 'AWAY', type: 'YELLOW', player: 'لاعب الوسط' },
+      { time: '67\'', team: 'HOME', type: 'SUB', player: 'لاعب بديل' },
+    ],
+    summary: 'هذه مباراة تجريبية ببيانات وهمية لغرض العرض.',
+  };
 };

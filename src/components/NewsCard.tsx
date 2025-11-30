@@ -1,10 +1,8 @@
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Clock, Eye, Share2, ImageOff } from 'lucide-react';
 import { Article } from '../types';
-import { formatDistanceToNow } from 'date-fns';
-import { ar } from 'date-fns/locale';
+import { formatTimeAgo } from '../services/dateService';
 
 interface NewsCardProps {
   article: Article;
@@ -15,7 +13,7 @@ interface NewsCardProps {
 const NewsCard: React.FC<NewsCardProps> = ({ article, featured = false, compact = false }) => {
   const [imgError, setImgError] = useState(false);
   
-  const timeAgo = formatDistanceToNow(new Date(article.date), { addSuffix: true, locale: ar });
+  const timeAgo = formatTimeAgo(article.date);
   const fallbackImage = "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&q=80&w=800"; // Generic Sports
 
   if (compact) {

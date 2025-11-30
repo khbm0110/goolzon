@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { X, ThumbsUp, MessageSquare, Send, User as UserIcon, Flag, CornerDownRight, LogIn } from 'lucide-react';
+import { X, ThumbsUp, MessageSquare, Send, Flag, CornerDownRight, LogIn } from 'lucide-react';
 import { Comment, User } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { formatTimeAgo } from '../services/dateService';

@@ -1,7 +1,7 @@
-
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
+import { useAuth } from '../contexts/AuthContext';
 import { Category } from '../types';
 import NewsCard from '../components/NewsCard';
 import CommentsPanel from '../components/CommentsPanel';
@@ -23,6 +23,7 @@ const WhatsAppIcon = () => (
 
 const ArticleDetailPage: React.FC = () => {
     const { articles, comments, addComment, updateCommentStatus } = useData();
+    const { currentUser } = useAuth();
     const { id } = useParams<{ id: string }>();
     const article = articles.find(a => a.id === id);
     
@@ -66,11 +67,14 @@ const ArticleDetailPage: React.FC = () => {
     };
     
     const handleAddComment = (text: string, parentId?: string) => {
+        if (!currentUser) {
+            alert("Please log in to comment.");
+            return;
+        }
         addComment({
             text,
             articleId: article.id,
-            user: 'زائر',
-            avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=guest_user'
+            user: currentUser
         }, parentId);
     };
 

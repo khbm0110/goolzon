@@ -5,9 +5,10 @@ import { useData } from '../contexts/DataContext';
 import { Article, Category, ClubProfile, Sponsor, FeatureFlags, Match, SeoSettings, AdSettings, User, AnalyticsData, Comment, VisitorCountry, DevicePerformance, PagePerformance, Goal, PageSpeed, VisitorStats } from '../types';
 import { useSettings } from '../contexts/SettingsContext';
 import ArticleEditor from './ArticleEditor';
-import { Shield, Plus, Edit, Trash2, LayoutGrid, FileText, Users, ShoppingBag, Settings, X, Globe, Megaphone, UserCheck, Ban, BarChart2, MessageCircle, Check, AlertTriangle, Clock, Monitor, Smartphone, ArrowDownToLine, ArrowUpFromLine, Target, Timer, ArrowUp, ArrowDown } from 'lucide-react';
+import AutopilotTab from './AutopilotTab';
+import { Shield, Plus, Edit, Trash2, LayoutGrid, FileText, Users, ShoppingBag, Settings, X, Globe, Megaphone, UserCheck, Ban, BarChart2, MessageCircle, Check, AlertTriangle, Clock, Monitor, Smartphone, ArrowDownToLine, ArrowUpFromLine, Target, Timer, ArrowUp, ArrowDown, Bot } from 'lucide-react';
 
-type AdminTab = 'OVERVIEW' | 'ARTICLES' | 'CLUBS' | 'SPONSORS' | 'SETTINGS' | 'SEO' | 'ADS' | 'ADMINS' | 'USERS' | 'ANALYTICS' | 'MODERATION';
+type AdminTab = 'OVERVIEW' | 'ARTICLES' | 'CLUBS' | 'SPONSORS' | 'SETTINGS' | 'SEO' | 'ADS' | 'ADMINS' | 'USERS' | 'ANALYTICS' | 'MODERATION' | 'AUTOPILOT';
 
 const AdminDashboard: React.FC = () => {
     const { 
@@ -103,6 +104,7 @@ const AdminDashboard: React.FC = () => {
             case 'ADMINS': return <UsersManagementTab role="admin" users={users} onToggleStatus={handleToggleUserStatus} onDelete={handleDeleteUser} onAddNew={() => handleAddNewUser('admin')} />;
             case 'USERS': return <UsersManagementTab role="user" users={users} onToggleStatus={handleToggleUserStatus} onDelete={handleDeleteUser} onAddNew={() => handleAddNewUser('user')} />;
             case 'SETTINGS': return <SettingsTab featureFlags={featureFlags} setFeatureFlag={setFeatureFlag} />;
+            case 'AUTOPILOT': return <AutopilotTab setEditingArticle={setEditingArticle} />;
             default: return null;
         }
     }
@@ -110,6 +112,7 @@ const AdminDashboard: React.FC = () => {
     const tabs: { id: AdminTab, label: string, icon: React.ElementType }[] = [
         { id: 'OVERVIEW', label: 'نظرة عامة', icon: LayoutGrid },
         { id: 'ANALYTICS', label: 'التحليلات', icon: BarChart2 },
+        { id: 'AUTOPILOT', label: 'الطيار الآلي', icon: Bot },
         { id: 'ARTICLES', label: 'المقالات', icon: FileText },
         { id: 'MODERATION', label: 'الإشراف', icon: MessageCircle },
         { id: 'CLUBS', label: 'الأندية', icon: Users },
@@ -256,8 +259,8 @@ const SeoTab: React.FC<{settings: SeoSettings, onSave: (s: SeoSettings) => void}
 
 const AdsTab: React.FC<{settings: AdSettings, onSave: (s: AdSettings) => void}> = ({settings, onSave}) => {
     const [data, setData] = useState(settings);
-    const handleCodeChange = (e: React.ChangeEvent<HTMLTextAreaElement>, key: keyof AdSettings) => setData(prev => ({...prev, [key]: {...prev[key as keyof AdSettings], code: e.target.value}}));
-    const handleToggleChange = (e: React.ChangeEvent<HTMLInputElement>, key: keyof AdSettings) => setData(prev => ({...prev, [key]: {...prev[key as keyof AdSettings], enabled: e.target.checked}}));
+    const handleCodeChange = (e: React.ChangeEvent<HTMLTextAreaElement>, key: 'headerAd' | 'sidebarAd' | 'inArticleAd') => setData(prev => ({...prev, [key]: {...prev[key], code: e.target.value}}));
+    const handleToggleChange = (e: React.ChangeEvent<HTMLInputElement>, key: 'headerAd' | 'sidebarAd' | 'inArticleAd') => setData(prev => ({...prev, [key]: {...prev[key], enabled: e.target.checked}}));
     const handleProviderChange = (e: React.ChangeEvent<HTMLSelectElement>) => setData(prev => ({...prev, provider: e.target.value as AdSettings['provider']}));
     const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(data); alert('تم حفظ إعدادات الإعلانات'); };
 
@@ -281,7 +284,7 @@ const AdsTab: React.FC<{settings: AdSettings, onSave: (s: AdSettings) => void}> 
 const AdSlot: React.FC<{field: 'headerAd' | 'sidebarAd' | 'inArticleAd', label: string, data: AdSettings, onCodeChange: any, onToggleChange: any}> = ({field, label, data, onCodeChange, onToggleChange}) => (
     <div className="space-y-3">
         <div className="flex items-center justify-between"><label className="text-sm font-bold text-slate-300">{label}</label><ToggleSwitch checked={data[field].enabled} onChange={(e) => onToggleChange(e, field)} /></div>
-        <TextareaField name={field} value={data[field].code} onChange={(e) => onCodeChange(e, field)} rows={4} placeholder="<script>...</script>" />
+        <TextareaField name={field} value={data[field].code} onChange={(e) => onCodeChange(e, field)} rows={4} placeholder="<script>...</script>" label="الكود" />
     </div>
 );
 

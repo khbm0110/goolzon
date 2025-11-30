@@ -1,6 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import { supabase } from '../services/supabaseClient';
-import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import { supabase } from '../services/supabaseClient'; 
 import { User } from '../types';
 
 interface AuthContextType {
@@ -11,8 +10,8 @@ interface AuthContextType {
   register: (data: any) => Promise<{ success: boolean; error?: string }>;
   followedTeams: string[];
   toggleFollow: (teamName: string) => void;
-  dreamSquad: any;
-  updateDreamSquad: (squad: any) => Promise<void>;
+  dreamSquad: Record<number, any>;
+  updateDreamSquad: (squad: Record<number, any>) => Promise<void>;
   profileLoading: boolean;
 }
 
@@ -24,98 +23,83 @@ export const useAuth = () => {
   return context;
 };
 
+// Helper for managing dream squad in localStorage
+const mockStorage = {
+  getDreamSquad: (userId: string) => {
+      const item = localStorage.getItem(`goolzon_squad_${userId}`);
+      return item ? JSON.parse(item) : {};
+  },
+  saveDreamSquad: (userId: string, squad: any) => {
+      localStorage.setItem(`goolzon_squad_${userId}`, JSON.stringify(squad));
+  }
+};
+
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [followedTeams, setFollowedTeams] = useState<string[]>([]);
-  const [dreamSquad, setDreamSquad] = useState<any>({});
+  const [dreamSquad, setDreamSquad] = useState<Record<number, any>>({});
   const [profileLoading, setProfileLoading] = useState(true);
 
+  // Effect to handle auth state changes from the mock client
   useEffect(() => {
-    // Load non-user-specific data from local storage
-    const savedFollows = localStorage.getItem('goolzon_followed_teams');
-    if (savedFollows) setFollowedTeams(JSON.parse(savedFollows));
-
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        await fetchUserProfile(session.user);
-      } else {
-        setProfileLoading(false);
-      }
-    };
-    getSession();
-
+    setProfileLoading(true);
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session) {
-        await fetchUserProfile(session.user);
+      const user = session?.user;
+      if (user) {
+        // In mock mode, the user object from auth contains the profile data
+        const appUser: User = {
+          id: user.id,
+          email: user.email!,
+          name: user.user_metadata?.name || 'مستخدم',
+          username: user.user_metadata?.username || 'user',
+          avatar: user.user_metadata?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`,
+          role: user.user_metadata?.role as 'admin' | 'user' || 'user',
+          joinDate: user.created_at,
+          status: 'active',
+          dreamSquad: mockStorage.getDreamSquad(user.id) || {},
+        };
+        setCurrentUser(appUser);
+        setIsAdmin(appUser.role === 'admin');
+        setDreamSquad(appUser.dreamSquad);
       } else {
         setCurrentUser(null);
         setIsAdmin(false);
         setDreamSquad({});
-        setProfileLoading(false);
       }
+      setProfileLoading(false);
     });
 
     return () => {
-      authListener?.unsubscribe();
+      authListener?.subscription.unsubscribe();
     };
   }, []);
 
-  const fetchUserProfile = async (user: SupabaseUser) => {
-    setProfileLoading(true);
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-
-    if (error) {
-      console.error('Error fetching profile:', error.message);
-      setProfileLoading(false);
-      return;
-    }
-
-    if (profile) {
-      const appUser: User = {
-        id: user.id,
-        email: user.email!,
-        name: profile.name,
-        username: profile.username,
-        avatar: profile.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`,
-        role: profile.role,
-        joinDate: user.created_at,
-        status: profile.status,
-        dreamSquad: profile.dream_squad || {},
-      };
-      setCurrentUser(appUser);
-      setIsAdmin(profile.role === 'admin');
-      setDreamSquad(profile.dream_squad || {});
-    }
-    setProfileLoading(false);
-  };
+  // Effect for non-user-specific data
+  useEffect(() => {
+    const savedFollows = localStorage.getItem('goolzon_followed_teams');
+    if (savedFollows) setFollowedTeams(JSON.parse(savedFollows));
+  }, []);
   
   const login = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { success: false, error: error.message };
-    const isAdminUser = data.user?.id && (await supabase.from('profiles').select('role').eq('id', data.user.id).single()).data?.role === 'admin';
-    return { success: true, isAdmin: isAdminUser }; 
+    setProfileLoading(true);
+    const result = await supabase.auth.signInWithPassword({ email, password });
+    setProfileLoading(false);
+    if (result.error) return { success: false, error: result.error.message };
+    const userRole = result.data.user?.user_metadata?.role || 'user';
+    return { success: true, isAdmin: userRole === 'admin' };
   };
 
   const register = async (userData: any) => {
-    const { error } = await supabase.auth.signUp({
+    setProfileLoading(true);
+    const result = await supabase.auth.signUp({
       email: userData.email,
       password: userData.password,
-      options: {
-        data: {
-          name: userData.name,
-          username: userData.username,
-          avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userData.username}`,
-        }
-      }
+      options: { data: userData }
     });
-    if (error) return { success: false, error: error.message };
-    // The handle_new_user trigger in Supabase will create the profile.
+    setProfileLoading(false);
+    if (result.error) return { success: false, error: result.error.message };
     return { success: true };
   };
 
@@ -126,8 +110,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const toggleFollow = (team: string) => {
-    // This functionality is not stored in the database in the current schema,
-    // so we will keep it in localStorage for now.
     const newFollows = followedTeams.includes(team)
       ? followedTeams.filter(t => t !== team)
       : [...followedTeams, team];
@@ -138,13 +120,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const updateDreamSquad = async (squad: any) => {
     if (!currentUser) return;
     setDreamSquad(squad); // Optimistic update
-    const { error } = await supabase
-      .from('profiles')
-      .update({ dream_squad: squad })
-      .eq('id', currentUser.id);
-    if (error) {
-      console.error("Failed to update dream squad:", error.message);
-    }
+    mockStorage.saveDreamSquad(currentUser.id, squad);
   };
 
   return (

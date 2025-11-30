@@ -1,10 +1,10 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Shield, LayoutTemplate, Settings, Trophy, Users, Plus, X, Search, LogOut, Loader2, Share2, Download } from 'lucide-react';
+import { User, Shield, LayoutTemplate, Settings, Trophy, Users, Plus, X, Search, LogOut, Loader2, Download } from 'lucide-react';
 import { Player } from '../types';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { toPng } from 'html-to-image';
 
 const FORMATION_433 = [
     { id: 0, role: 'GK', top: '85%', left: '50%' },
@@ -27,9 +27,8 @@ const UserProfile: React.FC = () => {
     const [showTactics, setShowTactics] = useState(true);
     const [activeSlot, setActiveSlot] = useState<number | null>(null);
     const [isSelectorOpen, setIsSelectorOpen] = useState(false);
-    const [isExporting, setIsExporting] = useState(false);
     
-    // Ref for the element we want to convert to image
+    // Ref for the element we want to convert to image (functionality disabled in mock mode)
     const exportRef = useRef<HTMLDivElement>(null);
     
     // Local state for squad to provide immediate UI feedback
@@ -50,7 +49,7 @@ const UserProfile: React.FC = () => {
         if (activeSlot !== null) {
             const newSquad = { ...localDreamSquad, [activeSlot]: player };
             setLocalDreamSquad(newSquad);
-            updateDreamSquad(newSquad); // Sync with Supabase
+            updateDreamSquad(newSquad); // Sync with LocalStorage
             setIsSelectorOpen(false);
             setActiveSlot(null);
         }
@@ -61,7 +60,7 @@ const UserProfile: React.FC = () => {
         const newSquad = { ...localDreamSquad };
         delete newSquad[slotId];
         setLocalDreamSquad(newSquad);
-        updateDreamSquad(newSquad); // Sync with Supabase
+        updateDreamSquad(newSquad); // Sync with LocalStorage
     };
 
     const handleLogout = () => {
@@ -69,36 +68,8 @@ const UserProfile: React.FC = () => {
         navigate('/');
     };
 
-    const handleExportImage = async () => {
-        if (!exportRef.current || isExporting) return;
-        
-        setIsExporting(true);
-        // Ensure tactics view is visible before capture
-        setShowTactics(true);
-        
-        try {
-            // Wait a moment for any state updates or images to settle
-            await new Promise(resolve => setTimeout(resolve, 100));
-            
-            const dataUrl = await toPng(exportRef.current, {
-                cacheBust: true,
-                quality: 0.95,
-                backgroundColor: '#020617', // Match slate-950
-                style: {
-                    transform: 'none', // Reset any potential transforms during capture
-                }
-            });
-
-            const link = document.createElement('a');
-            link.download = `goolzon-squad-${currentUser?.username || 'user'}.png`;
-            link.href = dataUrl;
-            link.click();
-        } catch (err) {
-            console.error('Failed to export image:', err);
-            alert('حدث خطأ أثناء تصدير الصورة. يرجى المحاولة مرة أخرى.');
-        } finally {
-            setIsExporting(false);
-        }
+    const handleExportImage = () => {
+        alert('ميزة التصدير غير متاحة في النسخة التجريبية (Mock Mode).');
     };
 
     const squadPlayers = Object.values(localDreamSquad) as (Player & { clubLogo?: string })[];
@@ -120,14 +91,9 @@ const UserProfile: React.FC = () => {
                 <p className="text-slate-400">كوّن وشارك تشكيلة أحلامك النهائية.</p>
             </div>
             
-            {/* 
-               This container is what gets exported. 
-               We use 'group' to handle some conditional styling during export if needed.
-               Ref is attached here.
-            */}
             <div ref={exportRef} className="relative h-[550px] md:h-[600px] bg-slate-900 group border-y mt-6 border-slate-800 overflow-hidden">
                 {/* Controls Area */}
-                <div className="absolute top-24 right-4 z-50 flex flex-col gap-2" data-html2canvas-ignore>
+                <div className="absolute top-24 right-4 z-50 flex flex-col gap-2">
                     <button 
                         onClick={() => setShowTactics(!showTactics)}
                         className="bg-slate-900/80 backdrop-blur border border-slate-700 text-white p-3 rounded-xl flex items-center gap-2 text-sm font-bold hover:bg-emerald-500 hover:text-slate-900 transition-all shadow-xl hover:scale-105"
@@ -136,10 +102,9 @@ const UserProfile: React.FC = () => {
                     </button>
                     <button 
                         onClick={handleExportImage}
-                        disabled={isExporting}
-                        className="bg-primary/90 backdrop-blur border border-primary text-slate-900 p-3 rounded-xl flex items-center gap-2 text-sm font-bold hover:bg-white transition-all shadow-xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="bg-primary/90 backdrop-blur border border-primary text-slate-900 p-3 rounded-xl flex items-center gap-2 text-sm font-bold hover:bg-white transition-all shadow-xl hover:scale-105 opacity-80"
                     >
-                        {isExporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+                        <Download size={18} />
                         حفظ الصورة
                     </button>
                 </div>
@@ -296,7 +261,6 @@ const InteractivePitch: React.FC<{
                                     <button
                                         onClick={(e) => onRemovePlayer(e, slot.id)}
                                         className="absolute -top-2 -right-2 w-6 h-6 bg-red-600 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110"
-                                        data-html2canvas-ignore // Don't show delete button in screenshot
                                     >
                                         <X size={14} />
                                     </button>

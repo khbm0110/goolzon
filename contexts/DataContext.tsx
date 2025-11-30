@@ -1,9 +1,7 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
-import { supabase } from '../services/supabaseClient';
 import { Article, Match, Standing, ClubProfile, Sponsor, User, SeoSettings, AdSettings, Comment, AnalyticsData } from '../types';
 import { fetchLiveMatches, fetchStandings } from '../services/apiFootball';
-import { useSettings } from './SettingsContext';
-import { INITIAL_ANALYTICS_DATA } from '../constants'; // Keep analytics mock for now
+import { INITIAL_ARTICLES, CLUB_DATABASE, INITIAL_ANALYTICS_DATA } from '../constants';
 
 interface DataContextType {
   articles: Article[];
@@ -25,12 +23,12 @@ interface DataContextType {
   updateUser: (user: User) => Promise<boolean>;
   deleteUser: (id: string) => Promise<boolean>;
   addUser: (data: any) => Promise<User | null>;
-  seoSettings: SeoSettings | null;
+  seoSettings: SeoSettings;
   updateSeoSettings: (settings: SeoSettings) => Promise<boolean>;
-  adSettings: AdSettings | null;
+  adSettings: AdSettings;
   updateAdSettings: (settings: AdSettings) => Promise<boolean>;
   comments: Comment[];
-  addComment: (comment: { text: string; articleId: string }, parentId?: string) => Promise<Comment | null>;
+  addComment: (comment: { text: string; articleId: string; user: User; }, parentId?: string) => Promise<Comment | null>;
   updateCommentStatus: (id: string, status: Comment['status']) => Promise<boolean>;
   analyticsData: AnalyticsData | null;
 }
@@ -43,146 +41,96 @@ export const useData = () => {
   return context;
 };
 
-// Helper to convert snake_case keys from Supabase to camelCase for the frontend
-const mapToCamelCase = (data: any[]): any[] => {
-    return data.map(item => 
-        Object.keys(item).reduce((acc, key) => {
-            const camelKey = key.replace(/_([a-z])/g, g => g[1].toUpperCase());
-            acc[camelKey] = item[key];
-            return acc;
-        }, {} as any)
-    );
-};
+// Mock Initial Data
+const INITIAL_SPONSORS: Sponsor[] = [
+    { id: '1', name: 'طيران الخليج', logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/e/e9/Gulf_Air_Logo.svg/1200px-Gulf_Air_Logo.svg.png', url: '#', active: true },
+    { id: '2', name: 'stc', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/STC_Logo_2019.svg/1200px-STC_Logo_2019.svg.png', url: '#', active: true },
+];
+const INITIAL_USERS_LIST: User[] = [
+    { id: 'admin-1', name: 'المدير', username: 'admin', email: 'admin@goolzon.com', role: 'admin', joinDate: new Date().toISOString(), status: 'active', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin' },
+    { id: 'user-1', name: 'مستخدم تجريبي', username: 'demo', email: 'demo@goolzon.com', role: 'user', joinDate: new Date().toISOString(), status: 'active', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=demo' }
+];
+const INITIAL_SEO_SETTINGS: SeoSettings = { siteTitle: 'goolzon', metaDescription: 'المصدر الأول لأخبار الرياضة الخليجية.', metaKeywords: 'كرة قدم, رياضة, الخليج', ogImageUrl: '' };
+const INITIAL_AD_SETTINGS: AdSettings = { provider: 'none', headerAd: {code:'', enabled:false}, sidebarAd: {code:'', enabled:false}, inArticleAd: {code:'', enabled:false} };
 
 
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { apiConfig } = useSettings();
-  
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [clubs, setClubs] = useState<ClubProfile[]>([]);
-  const [sponsors, setSponsors] = useState<Sponsor[]>([]);
+  const [articles, setArticles] = useState<Article[]>(INITIAL_ARTICLES);
+  const [clubs, setClubs] = useState<ClubProfile[]>(Object.values(CLUB_DATABASE));
+  const [sponsors, setSponsors] = useState<Sponsor[]>(INITIAL_SPONSORS);
   const [matches, setMatches] = useState<Match[]>([]);
   const [standings, setStandings] = useState<Standing[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [seoSettings, setSeoSettings] = useState<SeoSettings | null>(null);
-  const [adSettings, setAdSettings] = useState<AdSettings | null>(null);
+  const [users, setUsers] = useState<User[]>(INITIAL_USERS_LIST);
+  const [seoSettings, setSeoSettings] = useState<SeoSettings>(INITIAL_SEO_SETTINGS);
+  const [adSettings, setAdSettings] = useState<AdSettings>(INITIAL_AD_SETTINGS);
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoadingInitial, setIsLoadingInitial] = useState(true);
 
   useEffect(() => {
-    const fetchAllData = async () => {
+    const fetchMockData = async () => {
         setIsLoadingInitial(true);
-        try {
-            const [
-                articlesRes, clubsRes, sponsorsRes, commentsRes, settingsRes, profilesRes,
-                fetchedMatches, fetchedStandings
-            ] = await Promise.all([
-                supabase.from('articles').select('*').order('date', { ascending: false }),
-                supabase.from('clubs').select('*'),
-                supabase.from('sponsors').select('*'),
-                supabase.from('comments').select('*, user:profiles(name, avatar_url)').order('created_at', { ascending: true }),
-                supabase.from('settings').select('*').eq('id', 1).single(),
-                supabase.from('profiles').select('*'),
-                fetchLiveMatches('', apiConfig.leagueIds),
-                fetchStandings('', apiConfig.leagueIds),
-            ]);
+        const [fetchedMatches, fetchedStandings] = await Promise.all([
+            fetchLiveMatches('', ''), // API key and leagues are ignored by mock
+            fetchStandings('', ''),
+        ]);
+        setMatches(fetchedMatches);
+        setStandings(fetchedStandings);
+        setIsLoadingInitial(false);
+    }
+    fetchMockData();
+  }, []);
 
-            if (articlesRes.data) setArticles(mapToCamelCase(articlesRes.data) as Article[]);
-            if (clubsRes.data) setClubs(mapToCamelCase(clubsRes.data) as ClubProfile[]);
-            if (sponsorsRes.data) setSponsors(sponsorsRes.data);
-            if (commentsRes.data) {
-                const mappedComments = commentsRes.data.map((c: any) => ({
-                    id: c.id, articleId: c.article_id,
-                    user: c.user?.name || 'Anonymous', avatar: c.user?.avatar_url,
-                    time: c.created_at, text: c.text, likes: c.likes,
-                    status: c.status, parentId: c.parent_id,
-                }));
-                setComments(mappedComments);
-            }
-            if (settingsRes.data) {
-                setSeoSettings(settingsRes.data.seo_settings);
-                setAdSettings(settingsRes.data.ad_settings);
-            }
-            if (profilesRes.data) {
-              const mappedUsers = profilesRes.data.map((p: any) => ({
-                id: p.id, name: p.name, username: p.username, email: 'hidden',
-                avatar: p.avatar_url, role: p.role, joinDate: p.created_at, status: p.status
-              }));
-              setUsers(mappedUsers);
-            }
-            setMatches(fetchedMatches);
-            setStandings(fetchedStandings);
+  // CRUD Implementations (Local State Only)
+  const addArticle = async (article: Partial<Article>) => {
+      const newArticle = { ...article, id: `art-${Date.now()}`, date: new Date().toISOString(), views: 0 } as Article;
+      setArticles(prev => [newArticle, ...prev]);
+      return true;
+  };
+  const updateArticle = async (article: Article) => {
+      setArticles(prev => prev.map(a => a.id === article.id ? article : a));
+      return true;
+  };
+  const deleteArticle = async (id: string) => {
+      setArticles(prev => prev.filter(a => a.id !== id));
+      return true;
+  };
 
-        } catch (error) {
-            console.error("Error fetching initial data:", error);
-        } finally {
-            setIsLoadingInitial(false);
-        }
-    };
-    
-    fetchAllData();
-  }, [apiConfig.leagueIds]);
+  const addClub = async (club: ClubProfile) => { setClubs(prev => [...prev, club]); return true; };
+  const updateClub = async (club: ClubProfile) => { setClubs(prev => prev.map(c => c.id === club.id ? club : c)); return true; };
+  const deleteClub = async (id: string) => { setClubs(prev => prev.filter(c => c.id !== id)); return true; };
 
-  // Effect for Realtime subscription (runs once)
-  useEffect(() => {
-    const channel = supabase
-      .channel('articles-db-changes')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'articles' },
-        (payload) => {
-          console.log('New article received via realtime!', payload.new);
-          // Convert the new record from snake_case to camelCase
-          const newArticle = mapToCamelCase([payload.new])[0] as Article;
-          // Add the new article to the top of the list
-          setArticles(prevArticles => [newArticle, ...prevArticles]);
-        }
-      )
-      .subscribe();
+  const addSponsor = async (sponsor: Sponsor) => { setSponsors(prev => [...prev, sponsor]); return true; };
+  const updateSponsor = async (sponsor: Sponsor) => { setSponsors(prev => prev.map(s => s.id === sponsor.id ? sponsor : s)); return true; };
+  const deleteSponsor = async (id: string) => { setSponsors(prev => prev.filter(s => s.id !== id)); return true; };
 
-    // Cleanup subscription on component unmount
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []); // Empty dependency array, runs only once.
+  const addUser = async (data: any) => { 
+      const newUser: User = { ...data, id: `user-${Date.now()}`, joinDate: new Date().toISOString(), status: 'active', avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${data.username}` };
+      setUsers(prev => [...prev, newUser]); 
+      return newUser; 
+  };
+  const updateUser = async (user: User) => { setUsers(prev => prev.map(u => u.id === user.id ? user : u)); return true; };
+  const deleteUser = async (id: string) => { setUsers(prev => prev.filter(u => u.id !== id)); return true; };
 
-  // --- CRUD Handlers ---
-  const addArticle = async (article: Partial<Article>) => { /* ... */ return true; };
-  const updateArticle = async (article: Article) => { /* ... */ return true; };
-  const deleteArticle = async (id: string) => { /* ... */ return true; };
-  const addClub = async (club: ClubProfile) => { /* ... */ return true; };
-  const updateClub = async (club: ClubProfile) => { /* ... */ return true; };
-  const deleteClub = async (id: string) => { /* ... */ return true; };
-  const addSponsor = async (sponsor: Sponsor) => { /* ... */ return true; };
-  const updateSponsor = async (sponsor: Sponsor) => { /* ... */ return true; };
-  const deleteSponsor = async (id: string) => { /* ... */ return true; };
-  const addUser = async (data: any) => { /* ... This is handled by Auth now */ return null; };
-  const updateUser = async (user: User) => { /* ... */ return true; };
-  const deleteUser = async (id: string) => { /* ... */ return true; };
-  const updateSeoSettings = async (settings: SeoSettings) => { /* ... */ return true; };
-  const updateAdSettings = async (settings: AdSettings) => { /* ... */ return true; };
+  const updateSeoSettings = async (settings: SeoSettings) => { setSeoSettings(settings); return true; };
+  const updateAdSettings = async (settings: AdSettings) => { setAdSettings(settings); return true; };
 
-  const addComment = async (comment: { text: string; articleId: string }, parentId?: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { console.error("User must be logged in to comment."); return null; }
-    
-    const { data, error } = await supabase.from('comments').insert({
-        text: comment.text, article_id: comment.articleId, user_id: user.id, parent_id: parentId,
-    }).select('*, user:profiles(name, avatar_url)').single();
-
-    if (error) { console.error(error); return null; }
-    
+  const addComment = async (comment: { text: string; articleId: string; user: User; }, parentId?: string) => {
     const newComment: Comment = {
-        id: data.id, articleId: data.article_id, user: data.user.name, avatar: data.user.avatar_url,
-        time: data.created_at, text: data.text, likes: data.likes, status: data.status, parentId: data.parent_id
+        id: `comment-${Date.now()}`,
+        articleId: comment.articleId,
+        user: comment.user.name,
+        avatar: comment.user.avatar || '',
+        time: new Date().toISOString(),
+        text: comment.text,
+        likes: 0,
+        status: 'visible',
+        parentId,
     };
     setComments(prev => [...prev, newComment]);
     return newComment;
   };
 
   const updateCommentStatus = async (id: string, status: Comment['status']) => {
-    const { error } = await supabase.from('comments').update({ status }).eq('id', id);
-    if(error) { console.error(error); return false; }
     setComments(prev => prev.map(c => c.id === id ? { ...c, status } : c));
     return true;
   };

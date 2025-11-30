@@ -1,4 +1,4 @@
-import { Article, Category, ClubProfile, AnalyticsData } from './types';
+import { Article, Category, ClubProfile, AnalyticsData, Match, Standing } from './types';
 
 export const POPULAR_CLUBS = [
   // Saudi
@@ -22,6 +22,39 @@ export const POPULAR_CLUBS = [
 
   // Kuwait
   { name: 'الكويت', country: Category.KUWAIT, logo: 'https://upload.wikimedia.org/wikipedia/en/2/22/Kuwait_SC_logo.svg', id: 'kuwait' },
+];
+
+export const MOCK_MATCHES: Match[] = [
+    {
+        id: 'm1', homeTeam: 'الهلال', homeLogo: 'https://upload.wikimedia.org/wikipedia/en/f/fa/Al_Hilal_SFC_logo.svg',
+        awayTeam: 'النصر', awayLogo: 'https://upload.wikimedia.org/wikipedia/en/a/a1/Al_Nassr_FC_Logo.svg',
+        scoreHome: 2, scoreAway: 1, time: '75\'', status: 'LIVE', league: 'الدوري السعودي', country: Category.SAUDI
+    },
+    {
+        id: 'm2', homeTeam: 'ليفربول', homeLogo: 'https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg',
+        awayTeam: 'مانشستر سيتي', awayLogo: 'https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg',
+        scoreHome: 0, scoreAway: 0, time: '22:00', status: 'UPCOMING', league: 'الدوري الإنجليزي', country: Category.ENGLAND
+    },
+    {
+        id: 'm3', homeTeam: 'ريال مدريد', homeLogo: 'https://upload.wikimedia.org/wikipedia/en/5/56/Real_Madrid_CF.svg',
+        awayTeam: 'برشلونة', awayLogo: 'https://upload.wikimedia.org/wikipedia/en/4/47/FC_Barcelona_%28crest%29.svg',
+        scoreHome: 3, scoreAway: 1, time: 'انتهت', status: 'FINISHED', league: 'الدوري الإسباني', country: Category.SPAIN
+    },
+    {
+        id: 'm4', homeTeam: 'العين', homeLogo: 'https://upload.wikimedia.org/wikipedia/en/a/a3/Al_Ain_FC_Logo.png',
+        awayTeam: 'الوصل', awayLogo: 'https://upload.wikimedia.org/wikipedia/en/f/f2/Al_Wasl_FC_Logo.png',
+        scoreHome: 1, scoreAway: 0, time: '30\'', status: 'LIVE', league: 'الدوري الإماراتي', country: Category.UAE
+    }
+];
+
+export const MOCK_STANDINGS: Standing[] = [
+    { rank: 1, team: 'الهلال', logo: 'https://upload.wikimedia.org/wikipedia/en/f/fa/Al_Hilal_SFC_logo.svg', played: 20, won: 18, drawn: 2, lost: 0, gf: 55, ga: 10, gd: 45, points: 56, league: 'SAUDI' },
+    { rank: 2, team: 'النصر', logo: 'https://upload.wikimedia.org/wikipedia/en/a/a1/Al_Nassr_FC_Logo.svg', played: 20, won: 16, drawn: 1, lost: 3, gf: 48, ga: 20, gd: 28, points: 49, league: 'SAUDI' },
+    { rank: 3, team: 'الأهلي', logo: 'https://upload.wikimedia.org/wikipedia/en/b/b3/Al-Ahli_Saudi_FC_logo.svg', played: 20, won: 14, drawn: 3, lost: 3, gf: 40, ga: 18, gd: 22, points: 45, league: 'SAUDI' },
+    { rank: 1, team: 'مانشستر سيتي', logo: 'https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg', played: 25, won: 19, drawn: 4, lost: 2, gf: 60, ga: 20, gd: 40, points: 61, league: 'ENGLAND' },
+    { rank: 2, team: 'ليفربول', logo: 'https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg', played: 25, won: 18, drawn: 5, lost: 2, gf: 55, ga: 22, gd: 33, points: 59, league: 'ENGLAND' },
+    { rank: 1, team: 'ريال مدريد', logo: 'https://upload.wikimedia.org/wikipedia/en/5/56/Real_Madrid_CF.svg', played: 26, won: 20, drawn: 5, lost: 1, gf: 58, ga: 15, gd: 43, points: 65, league: 'SPAIN' },
+    { rank: 2, team: 'برشلونة', logo: 'https://upload.wikimedia.org/wikipedia/en/4/47/FC_Barcelona_%28crest%29.svg', played: 26, won: 18, drawn: 6, lost: 2, gf: 50, ga: 25, gd: 25, points: 60, league: 'SPAIN' },
 ];
 
 // NOTE: This database is used for the INITIAL SEEDING of Supabase from the Admin Panel.
