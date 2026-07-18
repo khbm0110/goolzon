@@ -19,7 +19,12 @@ export class ApiFootballRateLimitError extends Error {}
 function authHeaders(): HeadersInit {
   const key = process.env.API_FOOTBALL_KEY;
   if (!key) {
-    throw new Error('API_FOOTBALL_KEY is not set. Add it to .env.local to enable live player/club sync.');
+    // Generic on purpose: this runs in production too, where the key
+    // lives in the hosting platform's environment variables (e.g.
+    // Vercel → Project Settings → Environment Variables), not a
+    // .env.local file — that file only exists in local dev and is
+    // never deployed.
+    throw new Error('API_FOOTBALL_KEY is not set in the server environment.');
   }
   return { 'x-apisports-key': key };
 }

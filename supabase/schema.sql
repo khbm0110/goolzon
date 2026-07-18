@@ -3,10 +3,23 @@
 -- Run this in the Supabase SQL Editor (or via `supabase db push`).
 -- Mirrors exactly the data shapes used by lib/data/provider.ts and
 -- lib/auth/provider.ts, so the app's TypeScript types match 1:1.
+--
+-- IDEMPOTENT: safe to run this file over and over on the same project
+-- (e.g. after pulling an updated version of this file). Every CREATE
+-- TABLE uses IF NOT EXISTS, every CREATE POLICY/TRIGGER is preceded by
+-- a matching DROP ... IF EXISTS, functions use CREATE OR REPLACE, and
+-- singleton-row INSERTs use ON CONFLICT DO NOTHING. Re-running it will
+-- never error with "already exists" and will never duplicate data —
+-- but note it also won't retroactively add a new column to a table
+-- that already exists with an older shape (Postgres doesn't support
+-- IF NOT EXISTS on individual columns inside CREATE TABLE). If a
+-- future version of this file adds a column to an existing table,
+-- run the ALTER TABLE ... ADD COLUMN IF NOT EXISTS for it manually,
+-- or drop that one table and re-run this file.
 -- ============================================================================
 
 -- ---------- PROFILES (extends auth.users) ----------
-create table public.profiles (
+create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   name text not null,
   username text unique not null,
@@ -18,7 +31,7 @@ create table public.profiles (
 );
 
 -- Auto-create a profile row whenever a new auth user signs up.
-create function public.handle_new_user()
+create or replace function public.handle_new_user()
 returns trigger as $$
 begin
   insert into public.profiles (id, name, username, email, avatar)
@@ -33,12 +46,13 @@ begin
 end;
 $$ language plpgsql security definer;
 
+drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
 -- ---------- ARTICLES ----------
-create table public.articles (
+create table if not exists public.articles (
   id text primary key,
   title text not null,
   summary text,
@@ -53,7 +67,7 @@ create table public.articles (
 );
 
 -- ---------- MATCHES & STANDINGS ----------
-create table public.matches (
+create table if not exists public.matches (
   id text primary key,
   home_team text not null,
   home_logo text,
@@ -82,7 +96,7 @@ create index if not exists idx_matches_live_with_fixture
   on public.matches (api_fixture_id)
   where status = 'LIVE' and api_fixture_id is not null;
 
-create table public.match_details (
+create table if not exists public.match_details (
   match_id text primary key references public.matches(id) on delete cascade,
   stats jsonb,   -- { possession, shotsHome, shotsAway, shotsOnTargetHome, shotsOnTargetAway, cornersHome, cornersAway }
   lineups jsonb, -- { home: string[], away: string[] }
@@ -90,7 +104,7 @@ create table public.match_details (
   summary text
 );
 
-create table public.standings (
+create table if not exists public.standings (
   id uuid primary key default gen_random_uuid(),
   rank integer not null,
   team text not null,
@@ -107,7 +121,7 @@ create table public.standings (
 );
 
 -- ---------- CLUBS, PLAYERS, TROPHIES ----------
-create table public.clubs (
+create table if not exists public.clubs (
   id text primary key,
   name text not null,
   english_name text,
@@ -124,7 +138,7 @@ create table public.clubs (
   history_text text
 );
 
-create table public.players (
+create table if not exists public.players (
   id text not null,
   club_id text not null references public.clubs(id) on delete cascade,
   name text not null,
@@ -146,14 +160,14 @@ create table public.players (
   primary key (club_id, id)
 );
 
-create table public.trophies (
+create table if not exists public.trophies (
   id uuid primary key default gen_random_uuid(),
   club_id text not null references public.clubs(id) on delete cascade,
   name text not null,
   count integer not null default 0
 );
 
-create table public.player_transfers (
+create table if not exists public.player_transfers (
   id uuid primary key default gen_random_uuid(),
   club_id text not null,
   player_id text not null,
@@ -164,7 +178,7 @@ create table public.player_transfers (
   foreign key (club_id, player_id) references public.players(club_id, id) on delete cascade
 );
 
-create table public.player_injuries (
+create table if not exists public.player_injuries (
   id uuid primary key default gen_random_uuid(),
   club_id text not null,
   player_id text not null,
@@ -175,7 +189,7 @@ create table public.player_injuries (
   foreign key (club_id, player_id) references public.players(club_id, id) on delete cascade
 );
 
-create table public.player_awards (
+create table if not exists public.player_awards (
   id uuid primary key default gen_random_uuid(),
   club_id text not null,
   player_id text not null,
@@ -184,7 +198,7 @@ create table public.player_awards (
   foreign key (club_id, player_id) references public.players(club_id, id) on delete cascade
 );
 
-create table public.coach_career (
+create table if not exists public.coach_career (
   id uuid primary key default gen_random_uuid(),
   club_id text not null references public.clubs(id) on delete cascade,
   coach_club text not null,
@@ -194,7 +208,7 @@ create table public.coach_career (
 );
 
 -- ---------- COMMENTS ----------
-create table public.comments (
+create table if not exists public.comments (
   id uuid primary key default gen_random_uuid(),
   article_id text not null references public.articles(id) on delete cascade,
   user_id uuid not null references public.profiles(id) on delete cascade,
@@ -206,39 +220,39 @@ create table public.comments (
 );
 
 -- ---------- USER: FOLLOWS, FAVORITES, ACTIVITY ----------
-create table public.followed_teams (
+create table if not exists public.followed_teams (
   user_id uuid references public.profiles(id) on delete cascade,
   team_name text not null,
   primary key (user_id, team_name)
 );
 
-create table public.followed_leagues (
+create table if not exists public.followed_leagues (
   user_id uuid references public.profiles(id) on delete cascade,
   league text not null,
   primary key (user_id, league)
 );
 
-create table public.favorites (
+create table if not exists public.favorites (
   user_id uuid references public.profiles(id) on delete cascade,
   article_id text references public.articles(id) on delete cascade,
   created_at timestamptz not null default now(),
   primary key (user_id, article_id)
 );
 
-create table public.activity_log (
+create table if not exists public.activity_log (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references public.profiles(id) on delete cascade,
   text text not null,
   created_at timestamptz not null default now()
 );
 
-create table public.dream_squads (
+create table if not exists public.dream_squads (
   user_id uuid primary key references public.profiles(id) on delete cascade,
   squad jsonb not null default '{}'::jsonb
 );
 
 -- ---------- PREDICTIONS & LEADERBOARD ----------
-create table public.predictions (
+create table if not exists public.predictions (
   match_id text references public.matches(id) on delete cascade,
   user_id uuid references public.profiles(id) on delete cascade,
   predicted_home integer not null,
@@ -248,21 +262,21 @@ create table public.predictions (
 );
 
 -- ---------- POLLS ----------
-create table public.polls (
+create table if not exists public.polls (
   id uuid primary key default gen_random_uuid(),
   question text not null,
   active boolean not null default true,
   created_at timestamptz not null default now()
 );
 
-create table public.poll_options (
+create table if not exists public.poll_options (
   id uuid primary key default gen_random_uuid(),
   poll_id uuid not null references public.polls(id) on delete cascade,
   label text not null,
   votes integer not null default 0
 );
 
-create table public.poll_votes (
+create table if not exists public.poll_votes (
   poll_id uuid references public.polls(id) on delete cascade,
   user_id uuid references public.profiles(id) on delete cascade,
   option_id uuid references public.poll_options(id) on delete cascade,
@@ -270,7 +284,7 @@ create table public.poll_votes (
 );
 
 -- ---------- ADMIN: SPONSORS, SEO, FEATURE FLAGS ----------
-create table public.sponsors (
+create table if not exists public.sponsors (
   id text primary key,
   name text not null,
   logo text,
@@ -278,7 +292,7 @@ create table public.sponsors (
   active boolean not null default true
 );
 
-create table public.seo_settings (
+create table if not exists public.seo_settings (
   id int primary key default 1,
   site_title text,
   meta_description text,
@@ -287,7 +301,7 @@ create table public.seo_settings (
   constraint single_row check (id = 1)
 );
 
-create table public.feature_flags (
+create table if not exists public.feature_flags (
   id int primary key default 1,
   matches boolean not null default true,
   clubs boolean not null default true,
@@ -298,7 +312,7 @@ create table public.feature_flags (
   constraint single_row check (id = 1)
 );
 
-create table public.ad_slots (
+create table if not exists public.ad_slots (
   id text primary key,
   placement text not null,
   label text not null,
@@ -311,7 +325,7 @@ create table public.ad_slots (
   updated_at timestamptz not null default now()
 );
 
-create table public.ads_global_settings (
+create table if not exists public.ads_global_settings (
   id int primary key default 1,
   master_enabled boolean not null default true,
   ads_txt_content text not null default '',
@@ -322,7 +336,7 @@ create table public.ads_global_settings (
 -- Admin-managed (searched + added from the API-Football /leagues
 -- endpoint) rather than hardcoded, since league ids AND the "current
 -- season" id both vary and shift every year.
-create table public.tracked_leagues (
+create table if not exists public.tracked_leagues (
   id text primary key, -- 'af-{league_api_id}-{season}'
   league_api_id integer not null,
   season integer not null,
@@ -338,7 +352,7 @@ create table public.tracked_leagues (
 -- auto-publishes if nobody reviews it. Admin-only in both directions —
 -- this is internal operational config, not something the public site
 -- needs to read.
-create table public.autopilot_settings (
+create table if not exists public.autopilot_settings (
   id int primary key default 1,
   enabled boolean not null default false,
   active_provider text not null default 'gemini',
@@ -351,7 +365,7 @@ create table public.autopilot_settings (
 -- an AI provider sits here until an admin approves/rejects it, or the
 -- review window elapses and /api/cron/autopilot-publish promotes it to
 -- a real `articles` row automatically.
-create table public.pending_articles (
+create table if not exists public.pending_articles (
   id text primary key, -- 'af-rss-{hash of source url}'
   title text not null,
   summary text,
@@ -370,10 +384,10 @@ create index if not exists idx_pending_articles_status_created
   on public.pending_articles (status, created_at)
   where status = 'PENDING';
 
-insert into public.seo_settings (id) values (1);
-insert into public.feature_flags (id) values (1);
-insert into public.ads_global_settings (id) values (1);
-insert into public.autopilot_settings (id) values (1);
+insert into public.seo_settings (id) values (1) on conflict (id) do nothing;
+insert into public.feature_flags (id) values (1) on conflict (id) do nothing;
+insert into public.ads_global_settings (id) values (1) on conflict (id) do nothing;
+insert into public.autopilot_settings (id) values (1) on conflict (id) do nothing;
 
 -- ============================================================================
 -- ROW LEVEL SECURITY
@@ -411,7 +425,7 @@ alter table public.autopilot_settings enable row level security;
 alter table public.pending_articles enable row level security;
 
 -- Helper: is the current user an admin?
-create function public.is_admin()
+create or replace function public.is_admin()
 returns boolean as $$
   select exists (select 1 from public.profiles where id = auth.uid() and role = 'admin');
 $$ language sql security definer stable;
@@ -419,81 +433,173 @@ $$ language sql security definer stable;
 -- Atomically increments a poll option's vote count (called after a
 -- poll_votes insert succeeds, so double-voting is prevented by the
 -- poll_votes primary key rather than this function).
-create function public.increment_poll_vote(option_id_input uuid)
+create or replace function public.increment_poll_vote(option_id_input uuid)
 returns void as $$
   update public.poll_options set votes = votes + 1 where id = option_id_input;
 $$ language sql security definer;
 
 -- Public read-only content: anyone (even logged out) can read.
+drop policy if exists "public read" on public.articles;
 create policy "public read" on public.articles for select using (true);
+
+drop policy if exists "public read" on public.matches;
 create policy "public read" on public.matches for select using (true);
+
+drop policy if exists "public read" on public.match_details;
 create policy "public read" on public.match_details for select using (true);
+
+drop policy if exists "public read" on public.standings;
 create policy "public read" on public.standings for select using (true);
+
+drop policy if exists "public read" on public.clubs;
 create policy "public read" on public.clubs for select using (true);
+
+drop policy if exists "public read" on public.players;
 create policy "public read" on public.players for select using (true);
+
+drop policy if exists "public read" on public.trophies;
 create policy "public read" on public.trophies for select using (true);
+
+drop policy if exists "public read" on public.player_transfers;
 create policy "public read" on public.player_transfers for select using (true);
+
+drop policy if exists "public read" on public.player_injuries;
 create policy "public read" on public.player_injuries for select using (true);
+
+drop policy if exists "public read" on public.player_awards;
 create policy "public read" on public.player_awards for select using (true);
+
+drop policy if exists "public read" on public.coach_career;
 create policy "public read" on public.coach_career for select using (true);
+
+drop policy if exists "public read" on public.sponsors;
 create policy "public read" on public.sponsors for select using (true);
+
+drop policy if exists "public read" on public.seo_settings;
 create policy "public read" on public.seo_settings for select using (true);
+
+drop policy if exists "public read" on public.feature_flags;
 create policy "public read" on public.feature_flags for select using (true);
+
+drop policy if exists "public read enabled ad slots" on public.ad_slots;
 create policy "public read enabled ad slots" on public.ad_slots for select using (enabled = true or public.is_admin());
+
+drop policy if exists "public read ads settings" on public.ads_global_settings;
 create policy "public read ads settings" on public.ads_global_settings for select using (true);
+
+drop policy if exists "public read tracked leagues" on public.tracked_leagues;
 create policy "public read tracked leagues" on public.tracked_leagues for select using (true);
+
+drop policy if exists "public read visible comments" on public.comments;
 create policy "public read visible comments" on public.comments for select using (status = 'visible' or public.is_admin());
+
+drop policy if exists "public read polls" on public.polls;
 create policy "public read polls" on public.polls for select using (true);
+
+drop policy if exists "public read poll options" on public.poll_options;
 create policy "public read poll options" on public.poll_options for select using (true);
+
+drop policy if exists "public read standings write via admin only" on public.standings;
 create policy "public read standings write via admin only" on public.standings for all using (public.is_admin());
 
 -- Admin-only writes on content tables.
+drop policy if exists "admin write" on public.articles;
 create policy "admin write" on public.articles for insert with check (public.is_admin());
+drop policy if exists "admin update" on public.articles;
 create policy "admin update" on public.articles for update using (public.is_admin());
+drop policy if exists "admin delete" on public.articles;
 create policy "admin delete" on public.articles for delete using (public.is_admin());
+
+drop policy if exists "admin write" on public.clubs;
 create policy "admin write" on public.clubs for insert with check (public.is_admin());
+drop policy if exists "admin update" on public.clubs;
 create policy "admin update" on public.clubs for update using (public.is_admin());
+drop policy if exists "admin delete" on public.clubs;
 create policy "admin delete" on public.clubs for delete using (public.is_admin());
+
+drop policy if exists "admin all" on public.players;
 create policy "admin all" on public.players for insert with check (public.is_admin());
+drop policy if exists "admin all update" on public.players;
 create policy "admin all update" on public.players for update using (public.is_admin());
+drop policy if exists "admin all delete" on public.players;
 create policy "admin all delete" on public.players for delete using (public.is_admin());
+
+drop policy if exists "admin all" on public.sponsors;
 create policy "admin all" on public.sponsors for insert with check (public.is_admin());
+drop policy if exists "admin all update" on public.sponsors;
 create policy "admin all update" on public.sponsors for update using (public.is_admin());
+drop policy if exists "admin all delete" on public.sponsors;
 create policy "admin all delete" on public.sponsors for delete using (public.is_admin());
+
+drop policy if exists "admin update seo" on public.seo_settings;
 create policy "admin update seo" on public.seo_settings for update using (public.is_admin());
+
+drop policy if exists "admin update flags" on public.feature_flags;
 create policy "admin update flags" on public.feature_flags for update using (public.is_admin());
+
+drop policy if exists "admin all" on public.ad_slots;
 create policy "admin all" on public.ad_slots for insert with check (public.is_admin());
+drop policy if exists "admin all update" on public.ad_slots;
 create policy "admin all update" on public.ad_slots for update using (public.is_admin());
+drop policy if exists "admin all delete" on public.ad_slots;
 create policy "admin all delete" on public.ad_slots for delete using (public.is_admin());
+
+drop policy if exists "admin update ads settings" on public.ads_global_settings;
 create policy "admin update ads settings" on public.ads_global_settings for update using (public.is_admin());
+
+drop policy if exists "admin manage tracked leagues insert" on public.tracked_leagues;
 create policy "admin manage tracked leagues insert" on public.tracked_leagues for insert with check (public.is_admin());
+drop policy if exists "admin manage tracked leagues update" on public.tracked_leagues;
 create policy "admin manage tracked leagues update" on public.tracked_leagues for update using (public.is_admin());
+drop policy if exists "admin manage tracked leagues delete" on public.tracked_leagues;
 create policy "admin manage tracked leagues delete" on public.tracked_leagues for delete using (public.is_admin());
+
+drop policy if exists "admin only read autopilot settings" on public.autopilot_settings;
 create policy "admin only read autopilot settings" on public.autopilot_settings for select using (public.is_admin());
+drop policy if exists "admin only update autopilot settings" on public.autopilot_settings;
 create policy "admin only update autopilot settings" on public.autopilot_settings for update using (public.is_admin());
+
+drop policy if exists "admin only read pending articles" on public.pending_articles;
 create policy "admin only read pending articles" on public.pending_articles for select using (public.is_admin());
+drop policy if exists "admin only update pending articles" on public.pending_articles;
 create policy "admin only update pending articles" on public.pending_articles for update using (public.is_admin());
+drop policy if exists "admin only delete pending articles" on public.pending_articles;
 create policy "admin only delete pending articles" on public.pending_articles for delete using (public.is_admin());
 
 -- Profiles: users read/update their own; admins read & update all (ban etc).
+drop policy if exists "read own profile" on public.profiles;
 create policy "read own profile" on public.profiles for select using (auth.uid() = id or public.is_admin());
+drop policy if exists "update own profile" on public.profiles;
 create policy "update own profile" on public.profiles for update using (auth.uid() = id or public.is_admin());
 
 -- Comments: logged-in users create their own; owner or admin can update (e.g. report/hide).
+drop policy if exists "insert own comment" on public.comments;
 create policy "insert own comment" on public.comments for insert with check (auth.uid() = user_id);
+drop policy if exists "update own or admin" on public.comments;
 create policy "update own or admin" on public.comments for update using (auth.uid() = user_id or public.is_admin());
+drop policy if exists "delete own or admin" on public.comments;
 create policy "delete own or admin" on public.comments for delete using (auth.uid() = user_id or public.is_admin());
 
 -- Personal data: strictly owner-only.
+drop policy if exists "own follows teams" on public.followed_teams;
 create policy "own follows teams" on public.followed_teams for all using (auth.uid() = user_id);
+drop policy if exists "own follows leagues" on public.followed_leagues;
 create policy "own follows leagues" on public.followed_leagues for all using (auth.uid() = user_id);
+drop policy if exists "own favorites" on public.favorites;
 create policy "own favorites" on public.favorites for all using (auth.uid() = user_id);
+drop policy if exists "own activity" on public.activity_log;
 create policy "own activity" on public.activity_log for all using (auth.uid() = user_id);
+drop policy if exists "own dream squad" on public.dream_squads;
 create policy "own dream squad" on public.dream_squads for all using (auth.uid() = user_id);
+drop policy if exists "own predictions read" on public.predictions;
 create policy "own predictions read" on public.predictions for select using (true); -- needed for leaderboard aggregation
+drop policy if exists "own predictions write" on public.predictions;
 create policy "own predictions write" on public.predictions for insert with check (auth.uid() = user_id);
+drop policy if exists "own predictions update" on public.predictions;
 create policy "own predictions update" on public.predictions for update using (auth.uid() = user_id);
 
 -- Poll votes: users can insert their own vote once (unique constraint via PK).
+drop policy if exists "insert own vote" on public.poll_votes;
 create policy "insert own vote" on public.poll_votes for insert with check (auth.uid() = user_id);
+drop policy if exists "read own vote" on public.poll_votes;
 create policy "read own vote" on public.poll_votes for select using (auth.uid() = user_id or public.is_admin());

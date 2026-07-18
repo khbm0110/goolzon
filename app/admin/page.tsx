@@ -128,7 +128,13 @@ export default function AdminDashboardPage() {
         body: JSON.stringify(patch),
       });
       const json = await res.json();
-      if (res.ok) setAutopilotSettings(json.settings);
+      if (res.ok) {
+        setAutopilotSettings(json.settings);
+      } else {
+        alert(`فشل الحفظ (${res.status}): ${json.error || 'خطأ غير معروف'}`);
+      }
+    } catch (e: any) {
+      alert(`فشل الحفظ: ${e?.message ?? 'تحقق من اتصالك بالإنترنت'}`);
     } finally {
       setAutopilotBusy(false);
     }
@@ -148,11 +154,16 @@ export default function AdminDashboardPage() {
   }
 
   async function handleReviewAction(id: string, action: 'publish-now' | 'reject') {
-    await fetch('/api/admin/autopilot/review', {
+    const res = await fetch('/api/admin/autopilot/review', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, action }),
     });
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      alert(`فشل الإجراء (${res.status}): ${json.error || 'خطأ غير معروف'}`);
+      return;
+    }
     refreshAutopilot();
     refreshAll();
   }
@@ -179,7 +190,7 @@ export default function AdminDashboardPage() {
       alert('ما قدرنا نحدد الموسم الحالي لهذا الدوري تلقائيًا من API-Football.');
       return;
     }
-    await fetch('/api/admin/leagues', {
+    const res = await fetch('/api/admin/leagues', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -190,16 +201,26 @@ export default function AdminDashboardPage() {
         logo: result.logo,
       }),
     });
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      alert(`فشل إضافة الدوري (${res.status}): ${json.error || 'خطأ غير معروف'}`);
+      return;
+    }
     refreshTrackedLeagues();
   }
 
   async function handleRemoveLeague(id: string) {
     if (!confirm('إيقاف متابعة هذا الدوري؟ المباريات المستوردة سابقًا بتفضل موجودة، بس ما بتتحدث تلقائيًا بعد كذا.')) return;
-    await fetch('/api/admin/leagues', {
+    const res = await fetch('/api/admin/leagues', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
     });
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      alert(`فشل الحذف (${res.status}): ${json.error || 'خطأ غير معروف'}`);
+      return;
+    }
     refreshTrackedLeagues();
   }
 
