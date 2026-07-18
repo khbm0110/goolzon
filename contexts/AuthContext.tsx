@@ -1,131 +1,126 @@
-import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import { supabase } from '../services/supabaseClient'; 
-import { User } from '../types';
+'use client';
 
-interface AuthContextType {
-  currentUser: User | null;
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { auth } from '@/lib/auth';
+import { data } from '@/lib/data';
+import type { AuthUser } from '@/lib/auth/provider';
+
+interface AuthContextValue {
+  currentUser: AuthUser | null;
   isAdmin: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; isAdmin?: boolean; error?: string }>;
-  logout: () => Promise<void>;
-  register: (data: any) => Promise<{ success: boolean; error?: string }>;
+  loading: boolean;
+  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signUp: (name: string, username: string, email: string, password: string) => Promise<{ error: string | null }>;
+  signOut: () => Promise<void>;
   followedTeams: string[];
   toggleFollow: (teamName: string) => void;
+  followedLeagues: string[];
+  toggleFollowLeague: (league: string) => void;
+  favorites: string[];
+  toggleFavorite: (articleId: string) => void;
+  activityLog: { id: string; text: string; time: string }[];
   dreamSquad: Record<number, any>;
-  updateDreamSquad: (squad: Record<number, any>) => Promise<void>;
+  updateDreamSquad: (squad: Record<number, any>) => void;
   profileLoading: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within an AuthProvider");
-  return context;
-};
-
-// Helper for managing dream squad in localStorage
-const mockStorage = {
-  getDreamSquad: (userId: string) => {
-      const item = localStorage.getItem(`goolzon_squad_${userId}`);
-      return item ? JSON.parse(item) : {};
-  },
-  saveDreamSquad: (userId: string, squad: any) => {
-      localStorage.setItem(`goolzon_squad_${userId}`, JSON.stringify(squad));
-  }
-};
-
-
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [loading, setLoading] = useState(true);
   const [followedTeams, setFollowedTeams] = useState<string[]>([]);
+  const [followedLeagues, setFollowedLeagues] = useState<string[]>([]);
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [activityLog, setActivityLog] = useState<{ id: string; text: string; time: string }[]>([]);
   const [dreamSquad, setDreamSquad] = useState<Record<number, any>>({});
-  const [profileLoading, setProfileLoading] = useState(true);
 
-  // Effect to handle auth state changes from the mock client
+  // All preference data now lives in Postgres (see supabase/schema.sql).
+  // Whenever the logged-in user changes, load their saved state; on
+  // logout, clear it from memory.
   useEffect(() => {
-    setProfileLoading(true);
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      const user = session?.user;
+    const unsubscribe = auth.onChange(async (user) => {
+      setCurrentUser(user);
+      setLoading(false);
+
       if (user) {
-        // In mock mode, the user object from auth contains the profile data
-        const appUser: User = {
-          id: user.id,
-          email: user.email!,
-          name: user.user_metadata?.name || 'مستخدم',
-          username: user.user_metadata?.username || 'user',
-          avatar: user.user_metadata?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`,
-          role: user.user_metadata?.role as 'admin' | 'user' || 'user',
-          joinDate: user.created_at,
-          status: 'active',
-          dreamSquad: mockStorage.getDreamSquad(user.id) || {},
-        };
-        setCurrentUser(appUser);
-        setIsAdmin(appUser.role === 'admin');
-        setDreamSquad(appUser.dreamSquad);
+        const [teams, leagues, favs, activity, squad] = await Promise.all([
+          data.getFollowedTeams(user.id),
+          data.getFollowedLeagues(user.id),
+          data.getFavorites(user.id),
+          data.getActivityLog(user.id),
+          data.getDreamSquad(user.id),
+        ]);
+        setFollowedTeams(teams);
+        setFollowedLeagues(leagues);
+        setFavorites(favs);
+        setActivityLog(activity);
+        setDreamSquad(squad);
       } else {
-        setCurrentUser(null);
-        setIsAdmin(false);
+        setFollowedTeams([]);
+        setFollowedLeagues([]);
+        setFavorites([]);
+        setActivityLog([]);
         setDreamSquad({});
       }
-      setProfileLoading(false);
     });
-
-    return () => {
-      authListener?.subscription.unsubscribe();
-    };
+    return unsubscribe;
   }, []);
 
-  // Effect for non-user-specific data
-  useEffect(() => {
-    const savedFollows = localStorage.getItem('goolzon_followed_teams');
-    if (savedFollows) setFollowedTeams(JSON.parse(savedFollows));
-  }, []);
-  
-  const login = async (email: string, password: string) => {
-    setProfileLoading(true);
-    const result = await supabase.auth.signInWithPassword({ email, password });
-    setProfileLoading(false);
-    if (result.error) return { success: false, error: result.error.message };
-    const userRole = result.data.user?.user_metadata?.role || 'user';
-    return { success: true, isAdmin: userRole === 'admin' };
+  const value: AuthContextValue = {
+    currentUser,
+    isAdmin: currentUser?.role === 'admin',
+    loading,
+    signIn: async (email, password) => {
+      const { error } = await auth.signIn(email, password);
+      return { error };
+    },
+    signUp: async (name, username, email, password) => {
+      const { error } = await auth.signUp(name, username, email, password);
+      return { error };
+    },
+    signOut: () => auth.signOut(),
+
+    followedTeams,
+    toggleFollow: (teamName: string) => {
+      if (!currentUser) return;
+      const isFollowing = followedTeams.includes(teamName);
+      setFollowedTeams((prev) => (isFollowing ? prev.filter((t) => t !== teamName) : [...prev, teamName]));
+      data.toggleFollowedTeam(currentUser.id, teamName).then(() => data.getActivityLog(currentUser.id).then(setActivityLog));
+    },
+
+    followedLeagues,
+    toggleFollowLeague: (league: string) => {
+      if (!currentUser) return;
+      const isFollowing = followedLeagues.includes(league);
+      setFollowedLeagues((prev) => (isFollowing ? prev.filter((l) => l !== league) : [...prev, league]));
+      data.toggleFollowedLeague(currentUser.id, league).then(() => data.getActivityLog(currentUser.id).then(setActivityLog));
+    },
+
+    favorites,
+    toggleFavorite: (articleId: string) => {
+      if (!currentUser) return;
+      const isFav = favorites.includes(articleId);
+      setFavorites((prev) => (isFav ? prev.filter((a) => a !== articleId) : [...prev, articleId]));
+      data.toggleFavoriteArticle(currentUser.id, articleId).then(() => data.getActivityLog(currentUser.id).then(setActivityLog));
+    },
+
+    activityLog,
+
+    dreamSquad,
+    updateDreamSquad: (squad: Record<number, any>) => {
+      setDreamSquad(squad);
+      if (currentUser) data.updateDreamSquad(currentUser.id, squad);
+    },
+
+    profileLoading: loading,
   };
 
-  const register = async (userData: any) => {
-    setProfileLoading(true);
-    const result = await supabase.auth.signUp({
-      email: userData.email,
-      password: userData.password,
-      options: { data: userData }
-    });
-    setProfileLoading(false);
-    if (result.error) return { success: false, error: result.error.message };
-    return { success: true };
-  };
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
 
-  const logout = async () => {
-    await supabase.auth.signOut();
-    setCurrentUser(null);
-    setIsAdmin(false);
-  };
-
-  const toggleFollow = (team: string) => {
-    const newFollows = followedTeams.includes(team)
-      ? followedTeams.filter(t => t !== team)
-      : [...followedTeams, team];
-    setFollowedTeams(newFollows);
-    localStorage.setItem('goolzon_followed_teams', JSON.stringify(newFollows));
-  };
-
-  const updateDreamSquad = async (squad: any) => {
-    if (!currentUser) return;
-    setDreamSquad(squad); // Optimistic update
-    mockStorage.saveDreamSquad(currentUser.id, squad);
-  };
-
-  return (
-    <AuthContext.Provider value={{ currentUser, isAdmin, login, logout, register, followedTeams, toggleFollow, dreamSquad, updateDreamSquad, profileLoading }}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  return ctx;
+}
