@@ -94,6 +94,10 @@ export interface Match {
   date?: string;   // ISO date, used for club fixtures list
   round?: string;  // e.g. "الجولة 36" or "نهائي"
   venue?: string;
+  // Present only for matches imported from API-Football — used to link
+  // each lineup player to a real, resolvable /player/af-{id}/af-{id} page.
+  homeTeamApiId?: number;
+  awayTeamApiId?: number;
 }
 
 export interface MatchEvent {
@@ -101,6 +105,22 @@ export interface MatchEvent {
   team: 'HOME' | 'AWAY';
   type: 'GOAL' | 'YELLOW' | 'RED' | 'SUB';
   player: string;
+}
+
+export interface LineupPlayer {
+  id: string;        // 'af-{apiPlayerId}' — same id scheme as everywhere else, always resolvable
+  apiPlayerId: number;
+  name: string;
+  number: number | null;
+  position: 'G' | 'D' | 'M' | 'F';
+}
+
+export interface TeamLineup {
+  clubId: string; // 'af-{apiTeamId}'
+  formation: string | null;
+  startXI: LineupPlayer[];
+  substitutes: LineupPlayer[];
+  coachName: string | null;
 }
 
 export interface MatchDetails {
@@ -113,10 +133,13 @@ export interface MatchDetails {
     cornersHome: number;
     cornersAway: number;
   };
+  // null until API-Football actually publishes lineups for this fixture
+  // (typically ~40 minutes before kickoff) — the UI falls back to the
+  // club's general squad list until then.
   lineups: {
-    home: string[];
-    away: string[];
-  };
+    home: TeamLineup;
+    away: TeamLineup;
+  } | null;
   events: MatchEvent[];
   summary: string;
 }

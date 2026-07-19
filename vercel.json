@@ -9,8 +9,16 @@
       "schedule": "0 3 * * *"
     },
     {
+      "path": "/api/cron/sync-lineups",
+      "schedule": "0 3 * * *"
+    },
+    {
       "path": "/api/cron/autopilot-import",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/agent-trends",
+      "schedule": "0 6 * * *"
     },
     {
       "path": "/api/cron/autopilot-publish",
