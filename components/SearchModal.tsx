@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Search, X, ChevronLeft } from 'lucide-react';
 import type { Article } from '@/types';
 
@@ -80,9 +81,8 @@ export default function SearchModal({ isOpen, onClose, articles }: SearchModalPr
 
           {results.map((article) => (
             <Link key={article.id} href={`/article/${article.id}`} onClick={onClose} className="flex items-start gap-4 p-3 hover:bg-[color-mix(in_srgb,var(--bg-surface-2)_50%,transparent)] rounded-xl transition-colors group">
-              <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-[var(--bg-surface-2)]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={article.imageUrl} alt={article.title} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+              <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-[var(--bg-surface-2)] relative">
+                <Image src={article.imageUrl} alt={article.title} fill sizes="64px" className="object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-center mb-1">

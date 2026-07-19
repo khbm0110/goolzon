@@ -55,6 +55,8 @@ function mapMatch(row: any): Match {
     date: row.date,
     round: row.round,
     venue: row.venue,
+    homeTeamApiId: row.home_team_api_id ?? undefined,
+    awayTeamApiId: row.away_team_api_id ?? undefined,
   };
 }
 
@@ -217,6 +219,53 @@ export const supabaseProvider: DataProvider = {
     const supabase = await getClient();
     const { data } = await supabase.from('matches').select('*').eq('id', id).maybeSingle();
     return data ? mapMatch(data) : null;
+  },
+  async addMatch(match) {
+    const supabase = await getClient();
+    const { error } = await supabase.from('matches').insert({
+      id: match.id,
+      home_team: match.homeTeam,
+      home_logo: match.homeLogo,
+      away_team: match.awayTeam,
+      away_logo: match.awayLogo,
+      score_home: match.scoreHome,
+      score_away: match.scoreAway,
+      time: match.time,
+      status: match.status,
+      league: match.league,
+      country: match.country,
+      date: match.date,
+      round: match.round,
+      venue: match.venue,
+    });
+    if (error) throw error;
+  },
+  async updateMatch(match) {
+    const supabase = await getClient();
+    const { error } = await supabase
+      .from('matches')
+      .update({
+        home_team: match.homeTeam,
+        home_logo: match.homeLogo,
+        away_team: match.awayTeam,
+        away_logo: match.awayLogo,
+        score_home: match.scoreHome,
+        score_away: match.scoreAway,
+        time: match.time,
+        status: match.status,
+        league: match.league,
+        country: match.country,
+        date: match.date,
+        round: match.round,
+        venue: match.venue,
+      })
+      .eq('id', match.id);
+    if (error) throw error;
+  },
+  async deleteMatch(id) {
+    const supabase = await getClient();
+    const { error } = await supabase.from('matches').delete().eq('id', id);
+    if (error) throw error;
   },
   async getMatchDetails(matchId) {
     const supabase = await getClient();

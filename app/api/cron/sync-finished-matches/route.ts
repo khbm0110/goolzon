@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { fetchFixtureStatus } from '@/lib/services/apiFootball';
 import { refreshClubPlayers } from '@/lib/data/playerSync';
+import { generateMatchAnalysis } from '@/lib/data/matchAnalysis';
 
 // This is the route that delivers "فوري بعد كل مباراة": it checks every
 // match we're currently tracking as LIVE and linked to a real
@@ -38,7 +39,7 @@ export async function GET(request: Request) {
 
   const { data: liveMatches } = await admin
     .from('matches')
-    .select('id, api_fixture_id, home_team_api_id, away_team_api_id')
+    .select('id, home_team, away_team, league, date, api_fixture_id, home_team_api_id, away_team_api_id')
     .eq('status', 'LIVE')
     .not('api_fixture_id', 'is', null);
 
@@ -73,6 +74,19 @@ export async function GET(request: Request) {
       const awayClubId = match.away_team_api_id ? `af-${match.away_team_api_id}` : null;
       if (homeClubId) await refreshClubPlayers(admin, homeClubId);
       if (awayClubId) await refreshClubPlayers(admin, awayClubId);
+
+      // 3) Let "وكيل التحليل" write a tactical analysis from the final
+      // score (+ stats if match_details has any) — no-ops quietly if
+      // that agent is disabled.
+      await generateMatchAnalysis(admin, {
+        id: match.id,
+        home_team: match.home_team,
+        away_team: match.away_team,
+        score_home: fixture.scoreHome,
+        score_away: fixture.scoreAway,
+        league: match.league,
+        date: match.date,
+      });
 
       finished++;
       results[match.id] = 'finished-and-synced';

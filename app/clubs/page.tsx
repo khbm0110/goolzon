@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Shield, Search, Check, Plus, Users, ArrowRight, Target, GitCompareArrows, Sparkles, Star } from 'lucide-react';
 import TeamLogo from '@/components/TeamLogo';
 import { useAuth } from '@/contexts/AuthContext';
@@ -72,8 +73,7 @@ export default function ClubsPage() {
                 <div className="relative h-24 bg-[var(--bg-base)]">
                   <div className="absolute inset-0 opacity-50">
                     {club.coverImage && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={club.coverImage} className="w-full h-full object-cover" alt="cover" />
+                      <Image src={club.coverImage} fill sizes="(max-width: 768px) 50vw, 25vw" className="object-cover" alt="cover" />
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent"></div>
                   </div>

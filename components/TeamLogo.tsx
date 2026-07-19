@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { Shield } from 'lucide-react';
 
 interface TeamLogoProps {
@@ -21,7 +22,8 @@ export default function TeamLogo({ src, alt, className = 'w-6 h-6' }: TeamLogoPr
   }
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt={alt} className={`${className} object-contain`} onError={() => setError(true)} loading="lazy" />
+    <div className={`${className} relative`}>
+      <Image src={src} alt={alt} fill sizes="64px" className="object-contain" onError={() => setError(true)} />
+    </div>
   );
 }

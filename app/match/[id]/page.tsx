@@ -116,7 +116,13 @@ export default function MatchCenterPage() {
               </div>
             </div>
           ) : activeTab === 'LINEUPS' ? (
-            <MatchLineupPitch homeTeam={match.homeTeam} awayTeam={match.awayTeam} />
+            <MatchLineupPitch
+              homeTeam={match.homeTeam}
+              awayTeam={match.awayTeam}
+              homeTeamApiId={match.homeTeamApiId}
+              awayTeamApiId={match.awayTeamApiId}
+              lineups={details.lineups}
+            />
           ) : activeTab === 'SUMMARY' ? (
             <div>
               <p className="text-[var(--fg-subtle)] text-sm mb-4">{details.summary}</p>

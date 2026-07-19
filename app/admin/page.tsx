@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   Shield, Plus, Edit, Trash2, LayoutGrid, FileText, Users, Settings, Check, Ban,
   MessageCircle, Clock, ShoppingBag, Globe, Megaphone, BarChart2, Bot, Save, LogOut,
@@ -12,10 +13,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { data } from '@/lib/data';
 import ArticleEditor from '@/components/admin/ArticleEditor';
 import ClubEditor from '@/components/admin/ClubEditor';
+import MatchEditor from '@/components/admin/MatchEditor';
 import AdSlotEditor from '@/components/admin/AdSlotEditor';
-import { Category, AD_PLACEMENT_LABELS, type Article, type User, type Comment, type ClubProfile, type Sponsor, type SeoSettings, type FeatureFlags, type AdSlot, type AdsGlobalSettings } from '@/types';
+import AgentCard from '@/components/admin/AgentCard';
+import { Category, AD_PLACEMENT_LABELS, type Article, type User, type Comment, type ClubProfile, type Sponsor, type SeoSettings, type FeatureFlags, type AdSlot, type AdsGlobalSettings, type Match } from '@/types';
 
-type AdminTab = 'OVERVIEW' | 'ARTICLES' | 'USERS' | 'MODERATION' | 'CLUBS' | 'SPONSORS' | 'SEO' | 'ADS' | 'LEAGUES' | 'ANALYTICS' | 'AUTOPILOT' | 'SETTINGS';
+type AdminTab = 'OVERVIEW' | 'ARTICLES' | 'MATCHES' | 'USERS' | 'MODERATION' | 'CLUBS' | 'SPONSORS' | 'SEO' | 'ADS' | 'LEAGUES' | 'ANALYTICS' | 'AUTOPILOT' | 'SETTINGS';
 
 const COMING_SOON_TABS: { key: AdminTab; label: string; icon: typeof ShoppingBag; note: string }[] = [
   { key: 'ANALYTICS', label: 'التحليلات', icon: BarChart2, note: 'يحتاج ربط Google Analytics أولاً' },
@@ -55,14 +58,15 @@ export default function AdminDashboardPage() {
   const [idSearchError, setIdSearchError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [autopilotSettings, setAutopilotSettings] = useState<any>(null);
+  const [autopilotAgents, setAutopilotAgents] = useState<any[]>([]);
   const [autopilotProviders, setAutopilotProviders] = useState<any[]>([]);
   const [pendingArticles, setPendingArticles] = useState<any[]>([]);
-  const [newRssName, setNewRssName] = useState('');
-  const [newRssUrl, setNewRssUrl] = useState('');
   const [autopilotBusy, setAutopilotBusy] = useState(false);
   const [editingArticle, setEditingArticle] = useState<Partial<Article> | null>(null);
   const [editorMode, setEditorMode] = useState<'NEW' | 'EDIT'>('NEW');
   const [editingClub, setEditingClub] = useState<ClubProfile | null>(null);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [editingMatch, setEditingMatch] = useState<Match | null>(null);
   const [editingAdSlot, setEditingAdSlot] = useState<AdSlot | null>(null);
 
   useEffect(() => {
@@ -70,7 +74,7 @@ export default function AdminDashboardPage() {
   }, [isAdmin, loading, router]);
 
   async function refreshAll() {
-    const [a, u, c, cl, sp, seo, ff, ads, adsG] = await Promise.all([
+    const [a, u, c, cl, sp, seo, ff, ads, adsG, m] = await Promise.all([
       data.getArticles(),
       data.getUsers(),
       data.getAllComments(),
@@ -80,6 +84,7 @@ export default function AdminDashboardPage() {
       data.getFeatureFlags(),
       data.getAdSlots(),
       data.getAdsGlobalSettings(),
+      data.getMatches(),
     ]);
     setArticles(a);
     setUsers(u);
@@ -90,6 +95,7 @@ export default function AdminDashboardPage() {
     setFeatureFlagsState(ff);
     setAdSlots(ads);
     setAdsGlobal(adsG);
+    setMatches(m);
   }
 
   async function refreshTrackedLeagues() {
@@ -111,6 +117,7 @@ export default function AdminDashboardPage() {
     if (settingsRes.ok) {
       const json = await settingsRes.json();
       setAutopilotSettings(json.settings);
+      setAutopilotAgents(json.agents ?? []);
       setAutopilotProviders(json.providers ?? []);
     }
     if (pendingRes.ok) {
@@ -140,17 +147,25 @@ export default function AdminDashboardPage() {
     }
   }
 
-  function handleAddRssSource() {
-    if (!newRssName.trim() || !newRssUrl.trim()) return;
-    const next = [...(autopilotSettings?.rss_sources ?? []), { name: newRssName.trim(), url: newRssUrl.trim() }];
-    handleSaveAutopilotSettings({ rss_sources: next });
-    setNewRssName('');
-    setNewRssUrl('');
-  }
-
-  function handleRemoveRssSource(url: string) {
-    const next = (autopilotSettings?.rss_sources ?? []).filter((s: any) => s.url !== url);
-    handleSaveAutopilotSettings({ rss_sources: next });
+  async function handleSaveAgent(id: string, patch: any) {
+    setAutopilotBusy(true);
+    try {
+      const res = await fetch('/api/admin/autopilot/agents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...patch }),
+      });
+      const json = await res.json();
+      if (res.ok) {
+        setAutopilotAgents((prev) => prev.map((a) => (a.id === id ? json.agent : a)));
+      } else {
+        alert(`فشل الحفظ (${res.status}): ${json.error || 'خطأ غير معروف'}`);
+      }
+    } catch (e: any) {
+      alert(`فشل الحفظ: ${e?.message ?? 'تحقق من اتصالك بالإنترنت'}`);
+    } finally {
+      setAutopilotBusy(false);
+    }
   }
 
   async function handleReviewAction(id: string, action: 'publish-now' | 'reject') {
@@ -353,6 +368,21 @@ export default function AdminDashboardPage() {
     }
   }
 
+  async function handleSaveMatch(matchData: Match) {
+    const exists = matches.some((m) => m.id === matchData.id);
+    if (exists) await data.updateMatch(matchData);
+    else await data.addMatch(matchData);
+    setEditingMatch(null);
+    refreshAll();
+  }
+
+  async function handleDeleteMatch(id: string) {
+    if (confirm('هل أنت متأكد أنك تريد حذف هذه المباراة؟')) {
+      await data.deleteMatch(id);
+      refreshAll();
+    }
+  }
+
   async function handleToggleSponsor(sponsor: Sponsor) {
     await data.updateSponsor({ ...sponsor, active: !sponsor.active });
     refreshAll();
@@ -427,6 +457,7 @@ export default function AdminDashboardPage() {
       group: 'المحتوى',
       items: [
         { key: 'ARTICLES', label: 'المقالات', icon: FileText },
+        { key: 'MATCHES', label: 'المباريات', icon: Trophy },
         { key: 'CLUBS', label: 'الأندية', icon: ShoppingBag },
       ],
     },
@@ -504,10 +535,9 @@ export default function AdminDashboardPage() {
           </Link>
           <div className="flex items-center justify-between gap-2 px-1">
             <div className="flex items-center gap-2 min-w-0 px-2 py-2">
-              <div className="w-8 h-8 rounded-full overflow-hidden bg-[var(--bg-surface-2)] flex items-center justify-center flex-shrink-0">
+              <div className="w-8 h-8 rounded-full overflow-hidden bg-[var(--bg-surface-2)] flex items-center justify-center flex-shrink-0 relative">
                 {currentUser?.avatar ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={currentUser.avatar} alt={currentUser.username} className="w-full h-full object-cover" />
+                  <Image src={currentUser.avatar} alt={currentUser.username} fill sizes="32px" className="object-cover" />
                 ) : (
                   <Shield size={14} className="text-[var(--fg-faint)]" />
                 )}
@@ -537,6 +567,7 @@ export default function AdminDashboardPage() {
               <StatCard label="المقالات" value={articles.length} icon={FileText} />
               <StatCard label="المستخدمون" value={users.length} icon={Users} />
               <StatCard label="الأندية" value={clubs.length} icon={ShoppingBag} />
+              <StatCard label="المباريات" value={matches.length} icon={Trophy} />
               <StatCard label="الرعاة" value={sponsors.length} icon={ShoppingBag} />
               <StatCard label="فتحات الإعلانات المفعّلة" value={adSlots.filter((s) => s.enabled).length} icon={Megaphone} />
               <StatCard label="التعليقات" value={comments.length} icon={MessageCircle} />
@@ -691,6 +722,86 @@ export default function AdminDashboardPage() {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'MATCHES' && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <h1 className="text-2xl font-black text-[var(--fg)]">المباريات ({matches.length})</h1>
+              <button
+                onClick={() =>
+                  setEditingMatch({
+                    id: `match-${Date.now()}`,
+                    homeTeam: '',
+                    homeLogo: '',
+                    awayTeam: '',
+                    awayLogo: '',
+                    scoreHome: null,
+                    scoreAway: null,
+                    time: '',
+                    status: 'UPCOMING',
+                    league: '',
+                    country: Category.SAUDI,
+                    date: new Date().toISOString(),
+                    round: '',
+                    venue: '',
+                  })
+                }
+                className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-emerald-600 text-[var(--fg)] rounded-lg font-bold text-sm"
+              >
+                <Plus size={16} /> مباراة جديدة
+              </button>
+            </div>
+
+            <p className="text-xs text-[var(--fg-faint)] mb-4">
+              المباريات المستوردة تلقائيًا من API-Football (معرّفها يبدأ بـ <code dir="ltr" className="text-primary">af-</code>) تُحدَّث نتائجها آليًا — عدّلها هنا يدويًا فقط عند الحاجة.
+            </p>
+
+            <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-[var(--bg-surface-2)] text-[var(--fg-subtle)] text-xs">
+                  <tr>
+                    <th className="p-3 text-right">المباراة</th>
+                    <th className="p-3 text-center">النتيجة</th>
+                    <th className="p-3 text-center">الحالة</th>
+                    <th className="p-3 text-right">الدوري</th>
+                    <th className="p-3 text-center">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border-subtle)]">
+                  {matches.map((m) => (
+                    <tr key={m.id} className="hover:bg-[color-mix(in_srgb,var(--bg-surface-2)_30%,transparent)]">
+                      <td className="p-3 text-[var(--fg)] font-bold whitespace-nowrap">{m.homeTeam} × {m.awayTeam}</td>
+                      <td className="p-3 text-center font-mono text-[var(--fg-muted)]">
+                        {m.scoreHome ?? '-'} : {m.scoreAway ?? '-'}
+                      </td>
+                      <td className="p-3 text-center">
+                        <span className={`text-xs px-2 py-1 rounded-full font-bold ${
+                          m.status === 'LIVE' ? 'bg-red-500/10 text-red-500' : m.status === 'FINISHED' ? 'bg-[var(--bg-surface-2)] text-[var(--fg-faint)]' : 'bg-emerald-500/10 text-emerald-400'
+                        }`}>
+                          {m.status === 'LIVE' ? 'مباشر' : m.status === 'FINISHED' ? 'انتهت' : 'لم تبدأ'}
+                        </span>
+                      </td>
+                      <td className="p-3 text-[var(--fg-faint)] text-xs whitespace-nowrap">{m.league}</td>
+                      <td className="p-3 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <button onClick={() => setEditingMatch(m)} className="p-1.5 bg-[var(--bg-surface-2)] hover:bg-[var(--bg-surface-3)] rounded text-[var(--fg-muted)]">
+                            <Edit size={14} />
+                          </button>
+                          <button onClick={() => handleDeleteMatch(m.id)} className="p-1.5 bg-[var(--bg-surface-2)] hover:bg-red-500/20 hover:text-red-500 rounded text-[var(--fg-muted)]">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {matches.length === 0 && (
+                <div className="text-center py-12 text-[var(--fg-faint)] text-sm">ما فيه مباريات بعد.</div>
+              )}
+            </div>
           </div>
         )}
 
@@ -906,16 +1017,16 @@ export default function AdminDashboardPage() {
         {activeTab === 'AUTOPILOT' && autopilotSettings && (
           <div>
             <div className="mb-6">
-              <h1 className="text-2xl font-black text-[var(--fg)]">الأتمتة (RSS + AI)</h1>
-              <p className="text-sm text-[var(--fg-faint)] mt-1">استيراد أخبار من RSS، إعادة صياغتها بالذكاء الاصطناعي، ونشرها تلقائيًا بعد {autopilotSettings.review_window_minutes} دقائق ما لم تراجعها.</p>
+              <h1 className="text-2xl font-black text-[var(--fg)]">الأتمتة — وكلاء الذكاء الاصطناعي</h1>
+              <p className="text-sm text-[var(--fg-faint)] mt-1">كل وكيل له شخصية ونموذج ومصدر محتوى مستقل. أي مقال ينتظر {autopilotSettings.review_window_minutes} دقائق بالمراجعة قبل ما ينشر تلقائيًا.</p>
             </div>
 
-            {/* Master toggle + provider + review window */}
+            {/* Master toggle + review window */}
             <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl p-5 mb-6 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-bold text-[var(--fg)]">تفعيل الأتمتة</p>
-                  <p className="text-xs text-[var(--fg-faint)]">لما توقفها، الاستيراد التلقائي يتوقف بالكامل.</p>
+                  <p className="font-bold text-[var(--fg)]">تفعيل الأتمتة (المفتاح الرئيسي)</p>
+                  <p className="text-xs text-[var(--fg-faint)]">لما توقفه، كل الوكلاء يتوقفون دفعة وحدة بغض النظر عن حالتهم الفردية.</p>
                 </div>
                 <button
                   onClick={() => handleSaveAutopilotSettings({ enabled: !autopilotSettings.enabled })}
@@ -925,62 +1036,33 @@ export default function AdminDashboardPage() {
                   {autopilotSettings.enabled ? 'مفعّلة' : 'موقوفة'}
                 </button>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[var(--border-subtle)]">
-                <div>
-                  <label className="block text-sm text-[var(--fg-subtle)] mb-1.5">نموذج الذكاء الاصطناعي</label>
-                  <select
-                    value={autopilotSettings.active_provider}
-                    onChange={(e) => handleSaveAutopilotSettings({ active_provider: e.target.value })}
-                    className="w-full bg-[var(--bg-surface-2)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--fg)]"
-                  >
-                    {autopilotProviders.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name} {p.configured ? '' : '— بدون مفتاح API'}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm text-[var(--fg-subtle)] mb-1.5">مهلة المراجعة (دقائق)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={autopilotSettings.review_window_minutes}
-                    onChange={(e) => setAutopilotSettings({ ...autopilotSettings, review_window_minutes: Number(e.target.value) })}
-                    onBlur={(e) => handleSaveAutopilotSettings({ review_window_minutes: Number(e.target.value) })}
-                    className="w-full bg-[var(--bg-surface-2)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--fg)]"
-                  />
-                </div>
+              <div className="pt-2 border-t border-[var(--border-subtle)] max-w-xs">
+                <label className="block text-sm text-[var(--fg-subtle)] mb-1.5">مهلة المراجعة (دقائق)</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={autopilotSettings.review_window_minutes}
+                  onChange={(e) => setAutopilotSettings({ ...autopilotSettings, review_window_minutes: Number(e.target.value) })}
+                  onBlur={(e) => handleSaveAutopilotSettings({ review_window_minutes: Number(e.target.value) })}
+                  className="w-full bg-[var(--bg-surface-2)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--fg)]"
+                />
               </div>
-
-              {!autopilotProviders.find((p) => p.id === autopilotSettings.active_provider)?.configured && (
-                <p className="text-xs text-amber-500">⚠️ ما فيه مفتاح API مضبوط لهذا النموذج بـ .env.local — الاستيراد بيفشل لين تضيفه.</p>
-              )}
             </div>
 
-            {/* RSS sources */}
-            <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl p-5 mb-6">
-              <h2 className="font-bold text-[var(--fg)] mb-3">مصادر RSS</h2>
-              <div className="space-y-2 mb-4">
-                {(autopilotSettings.rss_sources ?? []).length === 0 && (
-                  <p className="text-xs text-[var(--fg-faint)]">ما فيه مصادر مضافة بعد.</p>
-                )}
-                {(autopilotSettings.rss_sources ?? []).map((s: any) => (
-                  <div key={s.url} className="flex items-center justify-between gap-2 bg-[var(--bg-base)] rounded-lg p-2.5">
-                    <div className="min-w-0">
-                      <p className="text-sm font-bold text-[var(--fg)] truncate">{s.name}</p>
-                      <p className="text-[10px] text-[var(--fg-faint)] truncate" dir="ltr">{s.url}</p>
-                    </div>
-                    <button onClick={() => handleRemoveRssSource(s.url)} className="flex-shrink-0 p-1.5 rounded-lg text-[var(--fg-faint)] hover:bg-red-500/10 hover:text-red-500">
-                      <X size={14} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input value={newRssName} onChange={(e) => setNewRssName(e.target.value)} placeholder="اسم المصدر" className="flex-1 bg-[var(--bg-surface-2)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--fg)]" />
-                <input value={newRssUrl} onChange={(e) => setNewRssUrl(e.target.value)} placeholder="https://example.com/feed" dir="ltr" className="flex-[2] bg-[var(--bg-surface-2)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--fg)]" />
-                <button onClick={handleAddRssSource} className="px-4 py-2 bg-primary hover:bg-emerald-600 text-white rounded-lg text-sm font-bold whitespace-nowrap">إضافة</button>
-              </div>
+            {/* Agents */}
+            <div className="space-y-4 mb-8">
+              {autopilotAgents.map((agent) => (
+                <AgentCard
+                  key={agent.id}
+                  agent={agent}
+                  providers={autopilotProviders}
+                  onToggle={() => handleSaveAgent(agent.id, { enabled: !agent.enabled })}
+                  onChangeProvider={(providerId) => handleSaveAgent(agent.id, { provider_id: providerId })}
+                  onSavePersona={(persona) => handleSaveAgent(agent.id, { persona })}
+                  onAddRss={(name, url) => handleSaveAgent(agent.id, { rss_sources: [...(agent.rss_sources ?? []), { name, url }] })}
+                  onRemoveRss={(url) => handleSaveAgent(agent.id, { rss_sources: (agent.rss_sources ?? []).filter((s: any) => s.url !== url) })}
+                />
+              ))}
             </div>
 
             {/* Review queue */}
@@ -994,10 +1076,14 @@ export default function AdminDashboardPage() {
                 <div className="space-y-3">
                   {pendingArticles.filter((p) => p.status === 'PENDING').map((item) => {
                     const autoPublishAt = new Date(new Date(item.created_at).getTime() + autopilotSettings.review_window_minutes * 60000);
+                    const agentName = autopilotAgents.find((a) => a.id === item.agent_id)?.name;
                     return (
                       <div key={item.id} className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl p-4">
                         <div className="flex items-start justify-between gap-3 mb-2">
                           <div className="min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              {agentName && <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-primary/10 text-primary flex-shrink-0">{agentName}</span>}
+                            </div>
                             <p className="font-bold text-[var(--fg)]">{item.title}</p>
                             <p className="text-xs text-[var(--fg-faint)] mt-1">{item.source_name} • {item.ai_provider} • ينشر تلقائيًا الساعة {autoPublishAt.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })} ما لم تتصرف</p>
                           </div>
@@ -1010,9 +1096,11 @@ export default function AdminDashboardPage() {
                           <button onClick={() => handleReviewAction(item.id, 'reject')} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-500/10 text-red-500 hover:bg-red-500/20">
                             رفض
                           </button>
-                          <a href={item.source_url} target="_blank" rel="noreferrer" className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[var(--bg-surface-2)] text-[var(--fg-faint)] hover:text-[var(--fg)]">
-                            المصدر الأصلي
-                          </a>
+                          {item.source_url && (
+                            <a href={item.source_url} target="_blank" rel="noreferrer" className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[var(--bg-surface-2)] text-[var(--fg-faint)] hover:text-[var(--fg)]">
+                              المصدر الأصلي
+                            </a>
+                          )}
                         </div>
                       </div>
                     );
@@ -1143,8 +1231,7 @@ export default function AdminDashboardPage() {
                         <div key={apiId} className="flex items-center justify-between gap-3 bg-[var(--bg-base)] rounded-lg p-3">
                           <div className="flex items-center gap-2 min-w-0">
                             {(r.logo || r.photo) && (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={r.logo || r.photo} alt={r.name} className="w-7 h-7 rounded-full object-cover flex-shrink-0" />
+                              <Image src={r.logo || r.photo} alt={r.name} width={28} height={28} className="rounded-full object-cover flex-shrink-0" />
                             )}
                             <div className="min-w-0">
                               <p className="text-sm font-bold text-[var(--fg)] truncate">{r.name}</p>
@@ -1311,6 +1398,7 @@ export default function AdminDashboardPage() {
       )}
 
       {editingClub && <ClubEditor initialData={editingClub} onSave={handleSaveClub} onCancel={() => setEditingClub(null)} />}
+      {editingMatch && <MatchEditor initialData={editingMatch} onSave={handleSaveMatch} onCancel={() => setEditingMatch(null)} />}
       {editingAdSlot && <AdSlotEditor initialData={editingAdSlot} onSave={handleSaveAdSlot} onCancel={() => setEditingAdSlot(null)} />}
     </div>
   );

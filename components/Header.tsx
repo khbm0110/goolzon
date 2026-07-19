@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { Menu, X, Search, Trophy, Youtube, Calendar, User as UserIcon, LogIn, LogOut, Shield, Sun, Moon, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -145,10 +146,9 @@ export default function Header() {
                   className="flex items-center gap-1.5 pr-0.5 pl-1.5 py-0.5 rounded-full bg-[var(--bg-surface-2)] hover:bg-[var(--bg-surface-3)] text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors border border-[var(--border)]"
                   title={currentUser.name}
                 >
-                  <div className="w-7 h-7 rounded-full overflow-hidden bg-[var(--bg-surface-3)] flex items-center justify-center flex-shrink-0">
+                  <div className="w-7 h-7 rounded-full overflow-hidden bg-[var(--bg-surface-3)] flex items-center justify-center flex-shrink-0 relative">
                     {currentUser.avatar ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={currentUser.avatar} alt={currentUser.username} className="w-full h-full object-cover" />
+                      <Image src={currentUser.avatar} alt={currentUser.username} fill sizes="28px" className="object-cover" />
                     ) : (
                       <UserIcon size={14} />
                     )}

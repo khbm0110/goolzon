@@ -14,30 +14,36 @@ async function requireAdmin() {
   return user;
 }
 
+// GET: global settings (kill switch + review window) + every agent +
+// the raw provider list (so the UI can show "no API key configured"
+// next to any provider that isn't ready).
 export async function GET() {
   if (!(await requireAdmin())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const admin = createAdminClient();
-  const { data: settings } = await admin.from('autopilot_settings').select('*').eq('id', 1).single();
+  const [{ data: settings }, { data: agents }] = await Promise.all([
+    admin.from('autopilot_settings').select('*').eq('id', 1).single(),
+    admin.from('ai_agents').select('*').order('id'),
+  ]);
   const providers = AI_PROVIDERS.map((p) => ({ id: p.id, name: p.name, configured: p.isConfigured() }));
 
-  return NextResponse.json({ settings, providers });
+  return NextResponse.json({ settings, agents: agents ?? [], providers });
 }
 
+// POST: update the global settings only (enabled / review_window_minutes).
+// Per-agent config goes through /api/admin/autopilot/agents instead.
 export async function POST(request: Request) {
   if (!(await requireAdmin())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const body = await request.json();
-  const { enabled, active_provider, review_window_minutes, rss_sources } = body;
+  const { enabled, review_window_minutes } = body;
 
   const admin = createAdminClient();
   const { data, error } = await admin
     .from('autopilot_settings')
     .update({
       ...(enabled !== undefined && { enabled }),
-      ...(active_provider !== undefined && { active_provider }),
       ...(review_window_minutes !== undefined && { review_window_minutes }),
-      ...(rss_sources !== undefined && { rss_sources }),
     })
     .eq('id', 1)
     .select('*')

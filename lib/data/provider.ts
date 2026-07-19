@@ -18,6 +18,9 @@ export interface DataProvider {
 
   getMatches(): Promise<Match[]>;
   getMatchById(id: string): Promise<Match | null>;
+  addMatch(match: Match): Promise<void>;
+  updateMatch(match: Match): Promise<void>;
+  deleteMatch(id: string): Promise<void>;
   getMatchDetails(matchId: string): Promise<MatchDetails | null>;
 
   getStandings(league?: string): Promise<Standing[]>;

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { X, ThumbsUp, MessageSquare, Send, Flag, CornerDownRight, LogIn } from 'lucide-react';
 import type { Comment } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -78,9 +79,8 @@ function CommentItem({
 
   return (
     <div className="flex gap-3">
-      <div className="w-10 h-10 rounded-full bg-[var(--bg-surface-2)] overflow-hidden flex-shrink-0 mt-1">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={comment.avatar} alt={comment.user} />
+      <div className="w-10 h-10 rounded-full bg-[var(--bg-surface-2)] overflow-hidden flex-shrink-0 mt-1 relative">
+        <Image src={comment.avatar} alt={comment.user} fill sizes="40px" className="object-cover" />
       </div>
       <div className="flex-1">
         <div className="bg-[color-mix(in_srgb,var(--bg-surface-2)_50%,transparent)] border border-[var(--border)] rounded-xl p-3">
@@ -185,9 +185,8 @@ export default function CommentsPanel({ isOpen, onClose, commentsData, onAddComm
         <footer className="p-4 border-t border-[var(--border-subtle)] bg-[var(--bg-base)] flex-shrink-0">
           {currentUser ? (
             <form className="flex gap-3" onSubmit={handleSubmitComment}>
-              <div className="w-10 h-10 rounded-full bg-[var(--bg-surface-2)] overflow-hidden flex-shrink-0">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                {currentUser.avatar && <img src={currentUser.avatar} alt={currentUser.name} />}
+              <div className="w-10 h-10 rounded-full bg-[var(--bg-surface-2)] overflow-hidden flex-shrink-0 relative">
+                {currentUser.avatar && <Image src={currentUser.avatar} alt={currentUser.name} fill sizes="40px" className="object-cover" />}
               </div>
               <div className="relative flex-1">
                 <input

@@ -1,5 +1,5 @@
 import type { AIProvider, AIProviderConfig, RewrittenArticle } from './types';
-import { buildRewritePrompt, parseRewriteResponse } from './prompt';
+import { parseRewriteResponse } from './prompt';
 
 // Covers every provider whose API mimics OpenAI's /chat/completions
 // shape — which today is most of them (OpenAI itself, DeepSeek, Qwen,
@@ -12,7 +12,7 @@ export function createOpenAICompatibleProvider(config: AIProviderConfig & { base
     isConfigured() {
       return Boolean(process.env[config.envKey]);
     },
-    async rewrite(sourceText: string, sourceTitle: string): Promise<RewrittenArticle> {
+    async complete(prompt: string): Promise<RewrittenArticle> {
       const apiKey = process.env[config.envKey];
       if (!apiKey) throw new Error(`${config.name}: ${config.envKey} is not set`);
       const model = process.env[config.modelEnvKey] || config.defaultModel;
@@ -25,7 +25,7 @@ export function createOpenAICompatibleProvider(config: AIProviderConfig & { base
         },
         body: JSON.stringify({
           model,
-          messages: [{ role: 'user', content: buildRewritePrompt(sourceTitle, sourceText) }],
+          messages: [{ role: 'user', content: prompt }],
           temperature: 0.6,
         }),
       });

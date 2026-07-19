@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Star } from 'lucide-react';
 import { data } from '@/lib/data';
 import TeamLogo from '@/components/TeamLogo';
@@ -38,10 +39,9 @@ export default async function BestPlayersPage() {
               <span className={`w-8 text-center font-black ${idx === 0 ? 'text-yellow-400' : idx === 1 ? 'text-[var(--fg-muted)]' : idx === 2 ? 'text-amber-600' : 'text-[var(--fg-faint)]'}`}>
                 #{idx + 1}
               </span>
-              <div className="w-10 h-10 rounded-full bg-[var(--bg-surface-2)] overflow-hidden flex-shrink-0 border border-[var(--border-subtle)]">
+              <div className="w-10 h-10 rounded-full bg-[var(--bg-surface-2)] overflow-hidden flex-shrink-0 border border-[var(--border-subtle)] relative">
                 {entry.player.image ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={entry.player.image} alt={entry.player.name} className="w-full h-full object-cover" />
+                  <Image src={entry.player.image} alt={entry.player.name} fill sizes="40px" className="object-cover" />
                 ) : null}
               </div>
               <div className="flex-1 min-w-0">

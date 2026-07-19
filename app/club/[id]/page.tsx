@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Users, MapPin, Trophy, User, Activity, Check, Info } from 'lucide-react';
 import TeamLogo from '@/components/TeamLogo';
 import NewsCard from '@/components/NewsCard';
@@ -69,11 +70,13 @@ export default function ClubDashboardPage() {
     <div className="bg-[var(--bg-base)] min-h-screen pb-12">
       <div className="relative h-[450px] md:h-[500px]">
         <div className="absolute inset-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src={club.coverImage || 'https://images.unsplash.com/photo-1522778119026-d647f0565c6a?auto=format&fit=crop&q=80&w=1200'}
             alt={club.name}
-            className="w-full h-full object-cover"
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover"
           />
           <div className="absolute inset-0 opacity-90" style={{ background: `linear-gradient(to bottom, transparent 20%, ${secondaryColor} 90%, #020617 100%)` }} />
         </div>

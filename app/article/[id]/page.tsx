@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import Image from 'next/image';
 import { Clock, Eye } from 'lucide-react';
 import { data } from '@/lib/data';
 import { formatTimeAgo } from '@/lib/services/dateService';
@@ -32,8 +33,11 @@ export default async function ArticleDetailPage({ params }: { params: Promise<{ 
         <span>بقلم {article.author}</span>
       </div>
 
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={article.imageUrl} alt={article.title} className="w-full h-64 md:h-96 object-cover rounded-xl mb-6" />
+      {/* This is the LCP element on the article page — priority skips
+          lazy-loading so it doesn't compete with below-the-fold images. */}
+      <div className="relative w-full h-64 md:h-96 rounded-xl overflow-hidden mb-6">
+        <Image src={article.imageUrl} alt={article.title} fill priority sizes="(max-width: 768px) 100vw, 1024px" className="object-cover" />
+      </div>
 
       <p className="text-lg text-[var(--fg-muted)] leading-relaxed mb-6 font-bold">{article.summary}</p>
       <div className="prose prose-invert max-w-none text-[var(--fg-muted)] leading-loose whitespace-pre-line mb-8">{article.content}</div>

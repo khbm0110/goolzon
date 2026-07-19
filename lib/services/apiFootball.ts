@@ -312,3 +312,49 @@ export async function searchApiFootballPlayersByName(query: string): Promise<Api
     age: entry.player?.age ?? null,
   }));
 }
+
+export interface ApiFootballLineupPlayer {
+  apiPlayerId: number;
+  name: string;
+  number: number | null;
+  pos: 'G' | 'D' | 'M' | 'F';
+}
+
+export interface ApiFootballTeamLineup {
+  teamApiId: number;
+  formation: string | null;
+  startXI: ApiFootballLineupPlayer[];
+  substitutes: ApiFootballLineupPlayer[];
+  coachName: string | null;
+}
+
+function mapLineupPlayer(entry: any): ApiFootballLineupPlayer {
+  const p = entry.player ?? {};
+  const rawPos = (p.pos ?? '').toUpperCase();
+  const pos: ApiFootballLineupPlayer['pos'] = (['G', 'D', 'M', 'F'] as const).includes(rawPos) ? rawPos : 'M';
+  return { apiPlayerId: p.id, name: p.name, number: p.number ?? null, pos };
+}
+
+// Lineups are only published ~20-40 minutes before kickoff (later for
+// smaller competitions, sometimes not at all) — an empty `response`
+// array is the normal, expected result outside that window, not an
+// error. Returns null in that case so callers can just try again on
+// the next cron pass.
+//
+// Returns both teams as a plain array rather than guessing which is
+// home/away — API-Football doesn't guarantee response order, so the
+// caller should match each entry's `teamApiId` against the match's own
+// stored home_team_api_id / away_team_api_id.
+export async function fetchFixtureLineups(fixtureId: number): Promise<ApiFootballTeamLineup[] | null> {
+  const json = await callApiFootball(`/fixtures/lineups?fixture=${fixtureId}`);
+  const teams = json?.response ?? [];
+  if (teams.length < 2) return null;
+
+  return teams.map((entry: any) => ({
+    teamApiId: entry.team?.id,
+    formation: entry.formation ?? null,
+    startXI: (entry.startXI ?? []).map(mapLineupPlayer),
+    substitutes: (entry.substitutes ?? []).map(mapLineupPlayer),
+    coachName: entry.coach?.name ?? null,
+  }));
+}

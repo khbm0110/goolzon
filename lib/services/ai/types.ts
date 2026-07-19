@@ -16,5 +16,5 @@ export interface AIProviderConfig {
 
 export interface AIProvider extends AIProviderConfig {
   isConfigured(): boolean;
-  rewrite(sourceText: string, sourceTitle: string): Promise<RewrittenArticle>;
+  complete(prompt: string): Promise<RewrittenArticle>;
 }

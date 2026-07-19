@@ -1,5 +1,5 @@
 import type { AIProvider, AIProviderConfig, RewrittenArticle } from './types';
-import { buildRewritePrompt, parseRewriteResponse } from './prompt';
+import { parseRewriteResponse } from './prompt';
 
 export function createGeminiProvider(config: AIProviderConfig): AIProvider {
   return {
@@ -7,7 +7,7 @@ export function createGeminiProvider(config: AIProviderConfig): AIProvider {
     isConfigured() {
       return Boolean(process.env[config.envKey]);
     },
-    async rewrite(sourceText: string, sourceTitle: string): Promise<RewrittenArticle> {
+    async complete(prompt: string): Promise<RewrittenArticle> {
       const apiKey = process.env[config.envKey];
       if (!apiKey) throw new Error(`${config.name}: ${config.envKey} is not set`);
       const model = process.env[config.modelEnvKey] || config.defaultModel;
@@ -18,7 +18,7 @@ export function createGeminiProvider(config: AIProviderConfig): AIProvider {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: buildRewritePrompt(sourceTitle, sourceText) }] }],
+            contents: [{ parts: [{ text: prompt }] }],
           }),
         }
       );

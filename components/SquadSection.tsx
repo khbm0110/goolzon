@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Filter, Search, RefreshCw, ChevronLeft } from 'lucide-react';
 import type { Player } from '@/types';
 
@@ -123,11 +124,8 @@ export default function SquadSection({ clubId, squad }: { clubId: string; squad:
               <tr key={player.id} className="hover:bg-[var(--bg-surface-2)] transition-colors group">
                 <td className="p-3">
                   <Link href={`/player/${clubId}/${player.id}`} className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[var(--bg-surface-2)] overflow-hidden flex-shrink-0 border border-[var(--border-subtle)]">
-                      {player.image && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={player.image} alt={player.name} className="w-full h-full object-cover" />
-                      )}
+                    <div className="w-10 h-10 rounded-full bg-[var(--bg-surface-2)] overflow-hidden flex-shrink-0 border border-[var(--border-subtle)] relative">
+                      {player.image && <Image src={player.image} alt={player.name} fill sizes="40px" className="object-cover" />}
                     </div>
                     <div className="min-w-0">
                       <p className="font-bold text-[var(--fg)] group-hover:text-primary transition-colors truncate">{player.name}</p>
@@ -142,8 +140,7 @@ export default function SquadSection({ clubId, squad }: { clubId: string; squad:
                 <td className="p-3 text-center text-[var(--fg-muted)]">{player.age ?? '-'}</td>
                 <td className="p-3 text-center">
                   {player.nationality && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={player.nationality} alt="" className="w-5 h-3.5 object-cover rounded-sm inline-block" />
+                    <Image src={player.nationality} alt="" width={20} height={14} className="object-cover rounded-sm inline-block" />
                   )}
                 </td>
                 <td className="p-3 text-center text-[var(--fg-muted)]">{player.seasonStats?.matches ?? '-'}</td>
@@ -160,11 +157,8 @@ export default function SquadSection({ clubId, squad }: { clubId: string; squad:
       <div className="md:hidden divide-y divide-[var(--border-subtle)]">
         {filtered.map((player) => (
           <Link key={player.id} href={`/player/${clubId}/${player.id}`} className="flex items-center gap-3 p-4">
-            <div className="w-12 h-12 rounded-full bg-[var(--bg-surface-2)] overflow-hidden flex-shrink-0 border border-[var(--border-subtle)]">
-              {player.image && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={player.image} alt={player.name} className="w-full h-full object-cover" />
-              )}
+            <div className="w-12 h-12 rounded-full bg-[var(--bg-surface-2)] overflow-hidden flex-shrink-0 border border-[var(--border-subtle)] relative">
+              {player.image && <Image src={player.image} alt={player.name} fill sizes="48px" className="object-cover" />}
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-bold text-[var(--fg)] truncate">{player.name}</p>
@@ -172,8 +166,7 @@ export default function SquadSection({ clubId, squad }: { clubId: string; squad:
               <div className="flex items-center gap-2 text-xs text-[var(--fg-muted)]">
                 {player.age && <span>{player.age} سنة</span>}
                 {player.nationality && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={player.nationality} alt="" className="w-4 h-3 object-cover rounded-sm" />
+                  <Image src={player.nationality} alt="" width={16} height={12} className="object-cover rounded-sm" />
                 )}
                 <span className="font-mono">#{player.number}</span>
                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[var(--bg-surface-2)]">{positionLabel(player.position)}</span>

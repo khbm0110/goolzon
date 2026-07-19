@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   User, ArrowRight, TrendingUp, Award, Repeat, HeartPulse, IdCard, Newspaper, Briefcase,
 } from 'lucide-react';
@@ -137,12 +138,13 @@ export default function PlayerDetailPage() {
                 <TeamLogo src={club.logo} alt={club.name} className="w-8 h-8" />
               </div>
             </div>
-            <div className="absolute bottom-0 left-0 w-full flex items-end justify-center h-4/5">
+            <div className="absolute bottom-0 left-0 w-full h-4/5">
               {player.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={player.image} alt={player.name} className="w-full h-auto object-contain drop-shadow-2xl" />
+                <Image src={player.image} alt={player.name} fill sizes="260px" className="object-contain drop-shadow-2xl" />
               ) : (
-                <User size={160} className="text-white/20" />
+                <div className="w-full h-full flex items-end justify-center">
+                  <User size={160} className="text-white/20" />
+                </div>
               )}
             </div>
           </div>

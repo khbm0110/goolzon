@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { PlayCircle, Clock } from 'lucide-react';
 import { data } from '@/lib/data';
 import { Category } from '@/types';
@@ -37,8 +38,7 @@ export default async function VideosPage() {
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-[var(--fg-faint)]">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={video.imageUrl} alt={video.title} className="w-full h-full object-cover opacity-50" />
+                    <Image src={video.imageUrl} alt={video.title} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover opacity-50" />
                     <PlayCircle size={48} className="absolute text-[var(--fg)]" />
                   </div>
                 )}

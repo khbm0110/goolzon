@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { toPng } from 'html-to-image';
 import {
   User, Shield, LayoutTemplate, Settings, Trophy, Users, Plus, X, Search, LogOut, Loader2, Download, Bookmark, Bell, ListChecks,
@@ -148,8 +149,7 @@ export default function ProfilePage() {
         <div className="absolute inset-0">
           {!showTactics ? (
             <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&q=80&w=1200" alt="Cover" className="w-full h-full object-cover opacity-60" />
+              <Image src="https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&q=80&w=1200" alt="Cover" fill sizes="100vw" className="object-cover opacity-60" />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent" />
             </>
           ) : (
@@ -158,8 +158,13 @@ export default function ProfilePage() {
 
           <div className="absolute bottom-0 left-0 w-full p-6 md:p-8 flex flex-col md:flex-row items-center md:items-end gap-6 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent pt-20">
             <div className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-emerald-500 bg-[var(--bg-surface-2)] overflow-hidden shadow-2xl relative shrink-0">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={currentUser.avatar} className="w-full h-full object-cover" alt={currentUser.username} />
+              {currentUser.avatar ? (
+                <Image src={currentUser.avatar} fill sizes="128px" className="object-cover" alt={currentUser.username} />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <User size={40} className="text-[var(--fg-faint)]" />
+                </div>
+              )}
             </div>
             <div className="text-center md:text-right pb-2 flex-1">
               <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
@@ -342,10 +347,9 @@ function InteractivePitch({
               {player ? (
                 <div className="relative group cursor-pointer">
                   <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[var(--bg-surface)] border-4 border-yellow-500 flex flex-col items-center justify-center p-1 shadow-lg">
-                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[var(--bg-surface-2)] overflow-hidden border-2 border-[var(--border)]">
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[var(--bg-surface-2)] overflow-hidden border-2 border-[var(--border)] relative">
                       {player.image ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={player.image} alt={player.name} className="w-full h-full object-cover" />
+                        <Image src={player.image} alt={player.name} fill sizes="40px" className="object-cover" />
                       ) : (
                         <User size="100%" className="text-[var(--fg-faint)] p-1" />
                       )}
@@ -427,10 +431,9 @@ function PlayerSelectorModal({
                   onClick={() => onSelect(player)}
                   className="p-3 bg-[var(--bg-base)] rounded-xl border border-[var(--border-subtle)] hover:border-primary/50 transition-all hover:bg-[var(--bg-surface-2)] text-right group flex items-center gap-3"
                 >
-                  <div className="w-12 h-12 rounded-full bg-[var(--bg-surface)] border border-[var(--border)] overflow-hidden shrink-0">
+                  <div className="w-12 h-12 rounded-full bg-[var(--bg-surface)] border border-[var(--border)] overflow-hidden shrink-0 relative">
                     {player.image ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={player.image} alt={player.name} className="w-full h-full object-cover" />
+                      <Image src={player.image} alt={player.name} fill sizes="48px" className="object-cover" />
                     ) : (
                       <User className="w-full h-full p-2 text-[var(--fg-faint)]" />
                     )}
@@ -442,8 +445,7 @@ function PlayerSelectorModal({
                     </div>
                     <div className="flex items-center gap-1 text-[10px] text-[var(--fg-faint)] mt-1">
                       {player.clubLogo && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={player.clubLogo} className="w-3 h-3 object-contain" alt="" />
+                        <Image src={player.clubLogo} width={12} height={12} className="object-contain" alt="" />
                       )}
                       <span>{player.clubName}</span>
                     </div>

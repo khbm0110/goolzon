@@ -29,9 +29,11 @@ const nextConfig = {
   poweredByHeader: false, // hides "X-Powered-By: Next.js" from responses
   images: {
     remotePatterns: [
-      { protocol: 'https', hostname: '**.supabase.co' },
-      { protocol: 'https', hostname: 'media.api-sports.io' },
-      { protocol: 'https', hostname: 'api.dicebear.com' },
+      // Article images come from admin-pasted URLs (any external news
+      // site, CDN, etc.) — a wildcard hostname is what lets Next.js
+      // optimize/compress/resize those on the fly instead of serving
+      // the original multi-MB file straight to every visitor.
+      { protocol: 'https', hostname: '**' },
     ],
   },
   async headers() {

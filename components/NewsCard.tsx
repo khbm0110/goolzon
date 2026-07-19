@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Clock, Eye, Share2, ImageOff } from 'lucide-react';
 import type { Article } from '@/types';
 import { formatTimeAgo } from '@/lib/services/dateService';
@@ -22,11 +23,12 @@ export default function NewsCard({ article, featured = false, compact = false }:
       <Link href={`/article/${article.id}`} className="flex gap-4 group mb-4 items-start">
         <div className="w-24 h-24 flex-shrink-0 overflow-hidden rounded-lg relative bg-[var(--bg-surface-2)]">
           {!imgError ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={article.imageUrl}
               alt={article.title}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+              fill
+              sizes="96px"
+              className="object-cover transition-transform duration-500 group-hover:scale-110"
               onError={() => setImgError(true)}
             />
           ) : (
@@ -58,11 +60,12 @@ export default function NewsCard({ article, featured = false, compact = false }:
     >
       <div className={`relative overflow-hidden flex-shrink-0 bg-[var(--bg-base)] ${featured ? 'h-64 md:h-96' : 'h-32 md:h-48'}`}>
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent z-10 opacity-90" />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={imgError ? fallbackImage : article.imageUrl}
           alt={article.title}
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+          fill
+          sizes={featured ? '(max-width: 768px) 100vw, 66vw' : '(max-width: 768px) 100vw, 33vw'}
+          className="object-cover transition-transform duration-700 group-hover:scale-105"
           onError={() => setImgError(true)}
         />
         {article.isBreaking && (

@@ -2,9 +2,8 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { fetchRssFeed } from '@/lib/services/rss';
 import { getProvider } from '@/lib/services/ai/providers';
+import { buildRewritePrompt } from '@/lib/services/ai/prompt';
 
-// Simple, dependency-free stable id from a URL — good enough to dedupe
-// RSS items across runs without a database round-trip per item.
 function hashId(input: string): string {
   let hash = 0;
   for (let i = 0; i < input.length; i++) {
@@ -14,12 +13,21 @@ function hashId(input: string): string {
   return Math.abs(hash).toString(36);
 }
 
-// Step 1 of autopilot: fetch each tracked RSS source, rewrite any item
-// we haven't seen before with the admin's chosen AI provider, and drop
-// it into `pending_articles` with status PENDING. Nothing here ever
-// touches the public `articles` table directly — that's step 2
-// (/api/cron/autopilot-publish), which only promotes items whose
-// review window has elapsed (or that an admin approved early).
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Runs every enabled agent whose source_type = 'rss' (e.g. "وكيل
+// الدوريات العربية"): fetches each of the agent's RSS sources, and for
+// any item not already imported, rewrites it with THAT agent's own
+// persona + provider and drops it into `pending_articles`.
+//
+// A fixed delay between AI calls keeps this comfortably under the very
+// low requests-per-minute limits most providers' free tiers enforce —
+// without it, importing 10 items in a burst reliably 429s on things
+// like Gemini's free tier.
+const DELAY_BETWEEN_AI_CALLS_MS = 4000;
+
 export async function GET(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret) {
@@ -41,14 +49,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ message: 'الأتمتة موقوفة حاليًا من لوحة التحكم.' });
   }
 
-  const provider = getProvider(settings.active_provider);
-  if (!provider || !provider.isConfigured()) {
-    return NextResponse.json({ error: `المزوّد "${settings.active_provider}" غير مُفعّل أو ناقص مفتاح API.` }, { status: 503 });
-  }
-
-  const sources: { name: string; url: string }[] = settings.rss_sources ?? [];
-  if (sources.length === 0) {
-    return NextResponse.json({ message: 'ما فيه مصادر RSS مضافة بعد.' });
+  const { data: agents } = await admin.from('ai_agents').select('*').eq('source_type', 'rss').eq('enabled', true);
+  if (!agents || agents.length === 0) {
+    return NextResponse.json({ message: 'ما فيه وكلاء RSS مفعّلين حاليًا.' });
   }
 
   let fetched = 0;
@@ -56,47 +59,57 @@ export async function GET(request: Request) {
   let skipped = 0;
   const errors: string[] = [];
 
-  for (const source of sources) {
-    let items;
-    try {
-      items = await fetchRssFeed(source.url);
-    } catch (e: any) {
-      errors.push(`${source.name}: ${e?.message ?? 'فشل جلب RSS'}`);
+  for (const agent of agents) {
+    const provider = getProvider(agent.provider_id);
+    if (!provider || !provider.isConfigured()) {
+      errors.push(`${agent.name}: المزوّد "${agent.provider_id}" غير مُفعّل أو ناقص مفتاح API.`);
       continue;
     }
 
-    // Newest-first, cap per-source per-run so one huge feed can't burn
-    // the whole AI quota / cron time budget in a single pass.
-    for (const item of items.slice(0, 10)) {
-      fetched++;
-      if (!item.title || !item.link) continue;
-
-      const pendingId = `af-rss-${hashId(item.guid || item.link)}`;
-      const { data: existingPending } = await admin.from('pending_articles').select('id').eq('id', pendingId).maybeSingle();
-      const { data: existingPublished } = await admin.from('articles').select('id').eq('id', pendingId).maybeSingle();
-      if (existingPending || existingPublished) {
-        skipped++;
+    const sources: { name: string; url: string }[] = agent.rss_sources ?? [];
+    for (const source of sources) {
+      let items;
+      try {
+        items = await fetchRssFeed(source.url);
+      } catch (e: any) {
+        errors.push(`${agent.name} / ${source.name}: ${e?.message ?? 'فشل جلب RSS'}`);
         continue;
       }
 
-      try {
-        const rewritten = await provider.rewrite(item.description || item.title, item.title);
-        const { error } = await admin.from('pending_articles').insert({
-          id: pendingId,
-          title: rewritten.title,
-          summary: rewritten.summary,
-          content: rewritten.content,
-          category: 'SAUDI',
-          image_url: null,
-          source_url: item.link,
-          source_name: source.name,
-          ai_provider: provider.id,
-          status: 'PENDING',
-        });
-        if (error) throw new Error(error.message);
-        queued++;
-      } catch (e: any) {
-        errors.push(`"${item.title}": ${e?.message ?? 'فشل إعادة الصياغة'}`);
+      for (const item of items.slice(0, 10)) {
+        fetched++;
+        if (!item.title || !item.link) continue;
+
+        const pendingId = `af-rss-${hashId(item.guid || item.link)}`;
+        const { data: existingPending } = await admin.from('pending_articles').select('id').eq('id', pendingId).maybeSingle();
+        const { data: existingPublished } = await admin.from('articles').select('id').eq('id', pendingId).maybeSingle();
+        if (existingPending || existingPublished) {
+          skipped++;
+          continue;
+        }
+
+        try {
+          await sleep(DELAY_BETWEEN_AI_CALLS_MS);
+          const prompt = buildRewritePrompt(item.title, item.description || item.title, agent.persona);
+          const rewritten = await provider.complete(prompt);
+          const { error } = await admin.from('pending_articles').insert({
+            id: pendingId,
+            agent_id: agent.id,
+            title: rewritten.title,
+            summary: rewritten.summary,
+            content: rewritten.content,
+            category: agent.default_category,
+            image_url: null,
+            source_url: item.link,
+            source_name: source.name,
+            ai_provider: provider.id,
+            status: 'PENDING',
+          });
+          if (error) throw new Error(error.message);
+          queued++;
+        } catch (e: any) {
+          errors.push(`[${agent.name}] "${item.title}": ${e?.message ?? 'فشل إعادة الصياغة'}`);
+        }
       }
     }
   }
