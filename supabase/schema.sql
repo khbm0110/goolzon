@@ -347,32 +347,59 @@ create table if not exists public.tracked_leagues (
   created_at timestamptz not null default now()
 );
 
--- Article automation ("الأتمتة"): which AI provider is active, the
--- RSS sources to poll, and how long a rewritten draft waits before it
--- auto-publishes if nobody reviews it. Admin-only in both directions —
--- this is internal operational config, not something the public site
--- needs to read.
+-- Multi-agent system: each agent has its own persona (system prompt),
+-- its own AI provider, and its own content source. Replaces the old
+-- single "one provider + one RSS list" autopilot_settings design —
+-- that table now only holds the global kill switch + review window.
+create table if not exists public.ai_agents (
+  id text primary key, -- 'arab-leagues' | 'analysis' | 'trends' | future custom ids
+  name text not null,
+  persona text not null, -- system prompt describing this agent's voice/expertise
+  provider_id text not null, -- one of AI_PROVIDERS ids from lib/services/ai/providers.ts
+  source_type text not null check (source_type in ('rss', 'match_analysis', 'google_trends')),
+  rss_sources jsonb not null default '[]', -- [{ "name": "...", "url": "..." }] — used when source_type = 'rss'
+  default_category text not null default 'SAUDI',
+  enabled boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+insert into public.ai_agents (id, name, persona, provider_id, source_type, default_category) values
+  ('arab-leagues', 'وكيل الدوريات العربية',
+   'أنت محرر رياضي متخصص بالدوريات العربية (السعودي، الخليجي، المصري، وبقية الدوريات العربية). تعرف تاريخ الأندية والمنافسات المحلية بعمق، وتكتب بأسلوب صحفي عربي دقيق ومهني، وتستخدم المصطلحات المحلية الصحيحة لأسماء الأندية والبطولات.',
+   'gemini', 'rss', 'السعودية'),
+  ('analysis', 'وكيل التحليل التكتيكي',
+   'أنت محلل رياضي تكتيكي محترف. تكتب تحليلات عميقة تشرح أسباب النتائج من الناحية التكتيكية (الاستحواذ، التسديدات، الكفاءة الهجومية والدفاعية)، بأسلوب تحليلي متخصص يناسب القارئ المهتم بتفاصيل اللعبة لا مجرد النتيجة.',
+   'gemini', 'match_analysis', 'تحليلات'),
+  ('trends', 'وكيل الترند',
+   'أنت محرر رياضي متخصص برصد المواضيع المتصدّرة للبحث حاليًا. تكتب مقالات قصيرة وسريعة تشرح للقارئ ليش هذا الموضوع يتصدّر البحث الآن، بأسلوب جذاب ومباشر يناسب خبر "ترند".',
+   'gemini', 'google_trends', 'السعودية')
+on conflict (id) do nothing;
+
+-- Article automation ("الأتمتة"): global controls only now — which
+-- individual agents run and what they do is configured per-agent above
+-- (ai_agents). This table just holds the master kill switch and how
+-- long a rewritten draft waits before it auto-publishes if nobody
+-- reviews it.
 create table if not exists public.autopilot_settings (
   id int primary key default 1,
   enabled boolean not null default false,
-  active_provider text not null default 'gemini',
   review_window_minutes int not null default 3,
-  rss_sources jsonb not null default '[]', -- [{ "name": "...", "url": "..." }]
   constraint single_row check (id = 1)
 );
 
--- The review queue: every RSS item that's been fetched + rewritten by
--- an AI provider sits here until an admin approves/rejects it, or the
--- review window elapses and /api/cron/autopilot-publish promotes it to
--- a real `articles` row automatically.
+-- The review queue: every item fetched + rewritten by any agent sits
+-- here until an admin approves/rejects it, or the review window
+-- elapses and /api/cron/autopilot-publish promotes it to a real
+-- `articles` row automatically.
 create table if not exists public.pending_articles (
-  id text primary key, -- 'af-rss-{hash of source url}'
+  id text primary key, -- 'af-rss-{hash}' | 'af-analysis-{matchId}' | 'af-trend-{hash}'
+  agent_id text references public.ai_agents(id) on delete set null,
   title text not null,
   summary text,
   content text not null,
   category text not null default 'SAUDI',
   image_url text,
-  source_url text not null,
+  source_url text,
   source_name text,
   ai_provider text,
   status text not null default 'PENDING' check (status in ('PENDING', 'APPROVED', 'REJECTED', 'PUBLISHED')),
@@ -423,6 +450,7 @@ alter table public.ads_global_settings enable row level security;
 alter table public.tracked_leagues enable row level security;
 alter table public.autopilot_settings enable row level security;
 alter table public.pending_articles enable row level security;
+alter table public.ai_agents enable row level security;
 
 -- Helper: is the current user an admin?
 create or replace function public.is_admin()
@@ -565,6 +593,15 @@ drop policy if exists "admin only update pending articles" on public.pending_art
 create policy "admin only update pending articles" on public.pending_articles for update using (public.is_admin());
 drop policy if exists "admin only delete pending articles" on public.pending_articles;
 create policy "admin only delete pending articles" on public.pending_articles for delete using (public.is_admin());
+
+drop policy if exists "admin only read agents" on public.ai_agents;
+create policy "admin only read agents" on public.ai_agents for select using (public.is_admin());
+drop policy if exists "admin only update agents" on public.ai_agents;
+create policy "admin only update agents" on public.ai_agents for update using (public.is_admin());
+drop policy if exists "admin only insert agents" on public.ai_agents;
+create policy "admin only insert agents" on public.ai_agents for insert with check (public.is_admin());
+drop policy if exists "admin only delete agents" on public.ai_agents;
+create policy "admin only delete agents" on public.ai_agents for delete using (public.is_admin());
 
 -- Profiles: users read/update their own; admins read & update all (ban etc).
 drop policy if exists "read own profile" on public.profiles;
