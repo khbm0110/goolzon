@@ -48,7 +48,7 @@ export async function GET(request: Request) {
       image_url: item.image_url,
       is_breaking: false,
       views: 0,
-      author: item.ai_provider ? `تحرير آلي (${item.ai_provider})` : 'تحرير آلي',
+      author: item.author || 'فريق التحرير الرياضي',
       date: new Date().toISOString(),
     });
     if (insertError) {
