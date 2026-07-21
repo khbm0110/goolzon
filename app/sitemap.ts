@@ -24,6 +24,10 @@ const STATIC_PATHS = [
   '/analysis',
   '/compare',
   '/leaderboard',
+  '/about',
+  '/contact',
+  '/privacy',
+  '/terms',
 ];
 
 // Must match CATEGORY_MAP in app/country/[slug]/page.tsx — kept as a

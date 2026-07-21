@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
 import Image from 'next/image';
 import { Clock, Eye } from 'lucide-react';
 import { data } from '@/lib/data';
@@ -11,6 +12,33 @@ import AdSlot from '@/components/AdSlot';
 // changes constantly, so it must be rendered fresh on every request
 // rather than cached as a static page at build time.
 export const dynamic = 'force-dynamic';
+
+// Per-article title/description/OG image, so a link shared on
+// WhatsApp/Twitter/Facebook shows the actual article — not the generic
+// site-wide fallback from the root layout.
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const article = await data.getArticleById(id);
+  if (!article) return {};
+
+  return {
+    title: article.title,
+    description: article.summary,
+    openGraph: {
+      type: 'article',
+      title: article.title,
+      description: article.summary,
+      images: [{ url: article.imageUrl }],
+      publishedTime: article.date,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: article.title,
+      description: article.summary,
+      images: [article.imageUrl],
+    },
+  };
+}
 
 export default async function ArticleDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

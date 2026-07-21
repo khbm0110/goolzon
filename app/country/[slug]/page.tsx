@@ -1,4 +1,5 @@
 import { Trophy } from 'lucide-react';
+import type { Metadata } from 'next';
 import { data } from '@/lib/data';
 import NewsCard from '@/components/NewsCard';
 import FollowLeagueButton from '@/components/FollowLeagueButton';
@@ -35,6 +36,17 @@ const CATEGORY_MAP: Record<string, Category> = {
   'arab-cup': Category.ARAB_CUP,
   analysis: Category.ANALYSIS,
 };
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const currentCategory = CATEGORY_MAP[slug];
+  if (!currentCategory) return {};
+
+  return {
+    title: currentCategory,
+    description: `آخر أخبار وتحليلات ${currentCategory}: مباريات، نتائج، وترتيب الفرق.`,
+  };
+}
 
 export default async function CountryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
