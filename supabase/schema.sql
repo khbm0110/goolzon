@@ -359,9 +359,25 @@ create table if not exists public.ai_agents (
   source_type text not null check (source_type in ('rss', 'match_analysis', 'google_trends')),
   rss_sources jsonb not null default '[]', -- [{ "name": "...", "url": "..." }] — used when source_type = 'rss'
   default_category text not null default 'SAUDI',
+  -- Scopes an RSS agent to specific leagues/clubs: an item is only
+  -- worth an AI call if its title/description mentions at least one of
+  -- these (case-insensitive substring match — see isRelevant() in
+  -- app/api/cron/autopilot-import/route.ts). Empty = no filter, process
+  -- everything. This is what lets you run e.g. an agent scoped to
+  -- "الدوري الإنجليزي، مانشستر سيتي، ليفربول" without it picking up
+  -- unrelated world-football news.
+  keywords text[] not null default '{}',
+  min_words int not null default 250,
+  byline text not null default 'فريق التحرير الرياضي',
   enabled boolean not null default false,
   created_at timestamptz not null default now()
 );
+
+-- Retroactive column additions for projects that ran an earlier
+-- version of this file before keywords/min_words/byline existed.
+alter table public.ai_agents add column if not exists keywords text[] not null default '{}';
+alter table public.ai_agents add column if not exists min_words int not null default 250;
+alter table public.ai_agents add column if not exists byline text not null default 'فريق التحرير الرياضي';
 
 insert into public.ai_agents (id, name, persona, provider_id, source_type, default_category) values
   ('arab-leagues', 'وكيل الدوريات العربية',
@@ -402,14 +418,32 @@ create table if not exists public.pending_articles (
   source_url text,
   source_name text,
   ai_provider text,
+  author text,
   status text not null default 'PENDING' check (status in ('PENDING', 'APPROVED', 'REJECTED', 'PUBLISHED')),
   published_article_id text references public.articles(id) on delete set null,
   created_at timestamptz not null default now()
 );
 
+alter table public.pending_articles add column if not exists author text;
+
 create index if not exists idx_pending_articles_status_created
   on public.pending_articles (status, created_at)
   where status = 'PENDING';
+
+-- Messages submitted through /contact (app/api/contact/route.ts).
+-- Written via the service-role client (bypasses RLS by design — same
+-- pattern as pending_articles/ai_agents), so there's no public insert
+-- policy; only admins can read them back.
+create table if not exists public.contact_messages (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  email text not null,
+  message text not null,
+  status text not null default 'new' check (status in ('new', 'read')),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_contact_messages_created on public.contact_messages (created_at desc);
 
 insert into public.seo_settings (id) values (1) on conflict (id) do nothing;
 insert into public.feature_flags (id) values (1) on conflict (id) do nothing;
@@ -451,6 +485,7 @@ alter table public.tracked_leagues enable row level security;
 alter table public.autopilot_settings enable row level security;
 alter table public.pending_articles enable row level security;
 alter table public.ai_agents enable row level security;
+alter table public.contact_messages enable row level security;
 
 -- Helper: is the current user an admin?
 create or replace function public.is_admin()
@@ -602,6 +637,13 @@ drop policy if exists "admin only insert agents" on public.ai_agents;
 create policy "admin only insert agents" on public.ai_agents for insert with check (public.is_admin());
 drop policy if exists "admin only delete agents" on public.ai_agents;
 create policy "admin only delete agents" on public.ai_agents for delete using (public.is_admin());
+
+drop policy if exists "admin only read contact messages" on public.contact_messages;
+create policy "admin only read contact messages" on public.contact_messages for select using (public.is_admin());
+drop policy if exists "admin only update contact messages" on public.contact_messages;
+create policy "admin only update contact messages" on public.contact_messages for update using (public.is_admin());
+drop policy if exists "admin only delete contact messages" on public.contact_messages;
+create policy "admin only delete contact messages" on public.contact_messages for delete using (public.is_admin());
 
 -- Profiles: users read/update their own; admins read & update all (ban etc).
 drop policy if exists "read own profile" on public.profiles;

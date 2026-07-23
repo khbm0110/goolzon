@@ -37,22 +37,14 @@ export interface FeatureFlags {
   userSystem: boolean;
 }
 
-export interface ApiConfig {
-  provider: 'api-football' | 'sportmonks' | 'other';
-  leagueIds: string; // Comma separated IDs
-  autoSync: boolean;
-}
-
 export interface User {
   id: string; // This will be the Supabase auth user ID
   name: string;
   username: string;
   email: string;
-  password?: string; // Re-added for mock data compatibility
   avatar?: string;
   joinDate: string;
   role: 'admin' | 'user';
-  dreamSquad?: Record<number, any>;
   status?: 'active' | 'banned';
 }
 
@@ -205,23 +197,21 @@ export interface Player {
   seasonStats?: PlayerSeasonStats;
 }
 
-export interface PlayerPerformance {
-    match_api_id: number;
-    player_api_id: number;
-    team_api_id: number;
-    minutes?: number;
-    rating?: number;
-    goals?: number;
-    assists?: number;
-    yellow?: number;
-    red?: number;
+// A player slotted into a user's "Dream Squad" builder — same as
+// Player, plus the club context needed to render/link it outside the
+// club's own page (profile page shows players from many different
+// clubs side by side).
+export interface DreamSquadPlayer extends Player {
+  clubId?: string;
+  clubLogo?: string;
+  clubName?: string;
 }
 
 export interface ClubProfile {
   id: string;
   name: string;
   englishName: string;
-  apiFootballId: number;
+  apiFootballId?: number;
   logo: string;
   coverImage: string;
   founded: number;
@@ -244,17 +234,9 @@ export interface ClubProfile {
   history?: string; // free-text club history, written by editors/admins
 }
 
-export interface ExtractedMatchFacts {
-  home_team: string | null;
-  away_team: string | null;
-  home_score: number | null;
-  away_score: number | null;
-}
-
-// NOTE: The following types are removed as they are related to the
-// full database implementation which has been temporarily rolled back.
-// SeoSettings, AdSettings, Comment, AnalyticsData, etc.
-// This simplifies the app back to its mock data state.
+// Admin-configurable site settings and content types (SEO, feature
+// flags, sponsors, ads, comments, etc.) — all backed by real Supabase
+// tables, see supabase/schema.sql.
 export interface SeoSettings {
   siteTitle: string;
   metaDescription: string;
@@ -297,58 +279,6 @@ export interface AdsGlobalSettings {
   adsTxtContent: string;    // محتوى ملف ads.txt المطلوب لاعتماد AdSense
 }
 
-// FIX: Add missing analytics types for Admin Dashboard.
-export interface VisitorCountry {
-  name: string;
-  code: string;
-  visitors: number;
-}
-
-export interface DevicePerformance {
-  device: 'Desktop' | 'Mobile';
-  value: number;
-}
-
-export interface PagePerformance {
-  path: string;
-  visits: number;
-}
-
-export interface Goal {
-  name: string;
-  completions: number;
-  conversionRate: number;
-}
-
-export interface PageSpeed {
-  path: string;
-  loadTime: number;
-}
-
-export interface VisitorStats {
-  daily: { total: number; change: number };
-  weekly: { total: number; change: number };
-  monthly: { total: number; change: number };
-  yearly: { total: number; change: number };
-}
-
-export interface AnalyticsData {
-    summary: {
-        totalVisitors: number;
-        newUsers: number;
-        bounceRate: number;
-        avgSessionDuration: string;
-    };
-    dailyVisitors: { day: string; visitors: number }[];
-    trafficSources: { source: string; value: number; color: string }[];
-    visitorCountries: VisitorCountry[];
-    devicePerformance: DevicePerformance[];
-    landingPages: PagePerformance[];
-    exitPages: PagePerformance[];
-    goals: Goal[];
-    pageSpeeds: PageSpeed[];
-    visitorStats: VisitorStats;
-}
 export interface Comment {
     id: string;
     user: string;
