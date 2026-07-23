@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root,
+[data-theme='dark'] {
+  --bg-base: #020617;
+  --bg-surface: #0f172a;
+  --bg-surface-2: #1e293b;
+  --bg-surface-3: #334155;
+  --border-subtle: #1e293b;
+  --border: #334155;
+  --border-strong: #475569;
+  --fg: #f8fafc;
+  --fg-muted: #cbd5e1;
+  --fg-subtle: #94a3b8;
+  --fg-faint: #64748b;
+}
+
+[data-theme='light'] {
+  --bg-base: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-2: #f1f5f9;
+  --bg-surface-3: #e2e8f0;
+  --border-subtle: #e2e8f0;
+  --border: #cbd5e1;
+  --border-strong: #94a3b8;
+  --fg: #0f172a;
+  --fg-muted: #334155;
+  --fg-subtle: #64748b;
+  --fg-faint: #94a3b8;
+}
+
+body {
+  background-color: var(--bg-base);
+  color: var(--fg);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
