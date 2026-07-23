@@ -13,14 +13,14 @@ async function requireAdmin() {
   return user;
 }
 
-// POST { id, enabled?, provider_id?, persona?, rss_sources?, default_category? }
+// POST { id, enabled?, provider_id?, persona?, rss_sources?, default_category?, keywords?, min_words?, byline? }
 // Partial update of one agent — every field optional so the admin UI
 // can save a single toggle without resending the whole agent.
 export async function POST(request: Request) {
   if (!(await requireAdmin())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const body = await request.json();
-  const { id, enabled, provider_id, persona, rss_sources, default_category } = body;
+  const { id, enabled, provider_id, persona, rss_sources, default_category, keywords, min_words, byline } = body;
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
   const admin = createAdminClient();
@@ -32,6 +32,9 @@ export async function POST(request: Request) {
       ...(persona !== undefined && { persona }),
       ...(rss_sources !== undefined && { rss_sources }),
       ...(default_category !== undefined && { default_category }),
+      ...(keywords !== undefined && { keywords }),
+      ...(min_words !== undefined && { min_words }),
+      ...(byline !== undefined && { byline }),
     })
     .eq('id', id)
     .select('*')

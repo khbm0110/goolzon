@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { fetchFixturesForLeagueOnDate } from '@/lib/services/apiFootball';
+import { getErrorMessage } from '@/lib/utils/errors';
 
 // Pulls today's fixtures for every league an admin is tracking
 // (`tracked_leagues`) and upserts them into `matches`, filling in
@@ -64,8 +65,8 @@ export async function GET(request: Request) {
         if (error) errors.push(`${f.fixtureApiId}: ${error.message}`);
         else imported++;
       }
-    } catch (e: any) {
-      errors.push(`league ${league.name}: ${e?.message ?? 'unknown error'}`);
+    } catch (e: unknown) {
+      errors.push(`league ${league.name}: ${getErrorMessage(e, 'unknown error')}`);
     }
   }
 

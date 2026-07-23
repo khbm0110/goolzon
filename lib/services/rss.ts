@@ -8,6 +8,43 @@ export interface RssItem {
   guid: string; // stable identifier, falls back to link
 }
 
+// RSS/Atom feeds are genuinely heterogeneous across the wild web —
+// fast-xml-parser reflects that by returning fields like `guid` as
+// either a plain string or an object (`{ '#text': ..., '@_isPermaLink':
+// ... }`) depending on the source feed's own markup. These types cover
+// both shapes rather than pretending the field is always one or the
+// other.
+type XmlTextOrObject = string | { '#text'?: string };
+
+interface RawRssItem {
+  title?: string;
+  link?: string;
+  description?: string;
+  'content:encoded'?: string;
+  pubDate?: string;
+  guid?: XmlTextOrObject;
+}
+
+interface RawAtomLink {
+  '@_rel'?: string;
+  '@_href'?: string;
+}
+
+interface RawAtomEntry {
+  title?: string;
+  link?: RawAtomLink | RawAtomLink[];
+  summary?: string;
+  content?: string;
+  updated?: string;
+  published?: string;
+  id?: string;
+}
+
+interface RawFeedDocument {
+  rss?: { channel?: { item?: RawRssItem | RawRssItem[] } };
+  feed?: { entry?: RawAtomEntry | RawAtomEntry[] };
+}
+
 const parser = new XMLParser({ ignoreAttributes: false, trimValues: true });
 
 function stripHtml(html: string): string {
@@ -21,6 +58,11 @@ function stripHtml(html: string): string {
     .trim();
 }
 
+function textOf(value: XmlTextOrObject | undefined): string {
+  if (!value) return '';
+  return typeof value === 'object' ? value['#text'] ?? '' : value;
+}
+
 // Fetches and parses a standard RSS 2.0 (or Atom) feed. Deliberately
 // tolerant — real-world feeds vary a lot in exactly which fields they
 // populate, so every field falls back gracefully rather than throwing.
@@ -28,33 +70,34 @@ export async function fetchRssFeed(url: string): Promise<RssItem[]> {
   const res = await fetch(url, { headers: { 'User-Agent': 'GoolzonBot/1.0 (+autopilot)' }, cache: 'no-store' });
   if (!res.ok) throw new Error(`RSS fetch failed (${res.status}): ${url}`);
   const xml = await res.text();
-  const json = parser.parse(xml);
+  const json: RawFeedDocument = parser.parse(xml);
 
   // RSS 2.0
-  const rssItems = json?.rss?.channel?.item;
+  const rssItems = json.rss?.channel?.item;
   if (rssItems) {
     const list = Array.isArray(rssItems) ? rssItems : [rssItems];
-    return list.map((item: any) => ({
-      title: stripHtml(String(item.title ?? '')),
-      link: String(item.link ?? ''),
-      description: stripHtml(String(item.description ?? item['content:encoded'] ?? '')),
+    return list.map((item) => ({
+      title: stripHtml(item.title ?? ''),
+      link: item.link ?? '',
+      description: stripHtml(item.description ?? item['content:encoded'] ?? ''),
       pubDate: item.pubDate ?? null,
-      guid: String(typeof item.guid === 'object' ? item.guid['#text'] : item.guid ?? item.link ?? ''),
+      guid: textOf(item.guid) || item.link || '',
     }));
   }
 
   // Atom fallback
-  const atomEntries = json?.feed?.entry;
+  const atomEntries = json.feed?.entry;
   if (atomEntries) {
     const list = Array.isArray(atomEntries) ? atomEntries : [atomEntries];
-    return list.map((entry: any) => {
-      const link = Array.isArray(entry.link) ? entry.link.find((l: any) => l['@_rel'] !== 'self')?.['@_href'] : entry.link?.['@_href'];
+    return list.map((entry) => {
+      const links = Array.isArray(entry.link) ? entry.link : entry.link ? [entry.link] : [];
+      const link = (links.find((l) => l['@_rel'] !== 'self') ?? links[0])?.['@_href'] ?? '';
       return {
-        title: stripHtml(String(entry.title ?? '')),
-        link: String(link ?? ''),
-        description: stripHtml(String(entry.summary ?? entry.content ?? '')),
+        title: stripHtml(entry.title ?? ''),
+        link,
+        description: stripHtml(entry.summary ?? entry.content ?? ''),
         pubDate: entry.updated ?? entry.published ?? null,
-        guid: String(entry.id ?? link ?? ''),
+        guid: entry.id || link,
       };
     });
   }

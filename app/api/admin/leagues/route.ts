@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { searchApiFootballLeagues } from '@/lib/services/apiFootball';
+import { getErrorMessage } from '@/lib/utils/errors';
 
 async function requireAdmin() {
   const supabase = await createClient();
@@ -26,8 +27,8 @@ export async function GET(request: Request) {
     try {
       const results = await searchApiFootballLeagues(q);
       return NextResponse.json({ results });
-    } catch (e: any) {
-      return NextResponse.json({ error: e?.message ?? 'API-Football request failed' }, { status: 502 });
+    } catch (e: unknown) {
+      return NextResponse.json({ error: getErrorMessage(e, 'API-Football request failed') }, { status: 502 });
     }
   }
 

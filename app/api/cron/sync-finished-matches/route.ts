@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { fetchFixtureStatus } from '@/lib/services/apiFootball';
 import { refreshClubPlayers } from '@/lib/data/playerSync';
 import { generateMatchAnalysis } from '@/lib/data/matchAnalysis';
+import { getErrorMessage } from '@/lib/utils/errors';
 
 // This is the route that delivers "فوري بعد كل مباراة": it checks every
 // match we're currently tracking as LIVE and linked to a real
@@ -90,8 +91,8 @@ export async function GET(request: Request) {
 
       finished++;
       results[match.id] = 'finished-and-synced';
-    } catch (e: any) {
-      results[match.id] = `error: ${e?.message ?? 'unknown'}`;
+    } catch (e: unknown) {
+      results[match.id] = `error: ${getErrorMessage(e, 'unknown')}`;
     }
   }
 

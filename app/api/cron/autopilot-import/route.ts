@@ -4,6 +4,7 @@ import { fetchRssFeed } from '@/lib/services/rss';
 import { getProvider } from '@/lib/services/ai/providers';
 import { buildRewritePrompt } from '@/lib/services/ai/prompt';
 import { Category } from '@/types';
+import { getErrorMessage } from '@/lib/utils/errors';
 
 function hashId(input: string): string {
   let hash = 0;
@@ -92,8 +93,8 @@ export async function GET(request: Request) {
       let items;
       try {
         items = await fetchRssFeed(source.url);
-      } catch (e: any) {
-        errors.push(`${agent.name} / ${source.name}: ${e?.message ?? 'فشل جلب RSS'}`);
+      } catch (e: unknown) {
+        errors.push(`${agent.name} / ${source.name}: ${getErrorMessage(e, 'فشل جلب RSS')}`);
         continue;
       }
 
@@ -142,8 +143,8 @@ export async function GET(request: Request) {
           });
           if (error) throw new Error(error.message);
           queued++;
-        } catch (e: any) {
-          errors.push(`[${agent.name}] "${item.title}": ${e?.message ?? 'فشل إعادة الصياغة'}`);
+        } catch (e: unknown) {
+          errors.push(`[${agent.name}] "${item.title}": ${getErrorMessage(e, 'فشل إعادة الصياغة')}`);
         }
       }
     }

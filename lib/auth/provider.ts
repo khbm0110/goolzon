@@ -9,10 +9,8 @@ export interface AuthUser {
 }
 
 // Same idea as lib/data/provider.ts: the whole app only ever talks to
-// this interface. `mock-auth.ts` is a temporary, browser-only stand-in
-// for local UI development. It is NOT secure and must never be used
-// with real user data — it exists only so pages/components can be
-// built and tested before Appwrite Auth is wired in as the last step.
+// this interface. `supabase-auth.ts` is the one real implementation,
+// backed by Supabase Auth + the `profiles` table.
 export interface AuthProvider {
   getCurrentUser(): Promise<AuthUser | null>;
   signIn(email: string, password: string): Promise<{ user: AuthUser | null; error: string | null }>;

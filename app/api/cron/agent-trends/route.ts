@@ -3,6 +3,10 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { fetchDailyTrends, filterFootballTrends } from '@/lib/services/googleTrends';
 import { getProvider } from '@/lib/services/ai/providers';
 import { buildRewritePrompt } from '@/lib/services/ai/prompt';
+import { Category } from '@/types';
+import { getErrorMessage } from '@/lib/utils/errors';
+
+const ALL_CATEGORIES = Object.values(Category);
 
 function hashId(input: string): string {
   let hash = 0;
@@ -58,8 +62,8 @@ export async function GET(request: Request) {
   let trends;
   try {
     trends = filterFootballTrends(await fetchDailyTrends('SA'));
-  } catch (e: any) {
-    return NextResponse.json({ error: `فشل جلب Google Trends: ${e?.message ?? 'unknown'}` }, { status: 502 });
+  } catch (e: unknown) {
+    return NextResponse.json({ error: `فشل جلب Google Trends: ${getErrorMessage(e, 'unknown')}` }, { status: 502 });
   }
 
   let queued = 0;
@@ -83,25 +87,36 @@ export async function GET(request: Request) {
 
     try {
       await sleep(4000);
-      const prompt = buildRewritePrompt(`الأكثر بحثًا الآن: ${trend.title}`, sourceMaterial, agent.persona);
+      const minWords: number = agent.min_words ?? 250;
+      const byline: string = agent.byline || 'فريق التحرير الرياضي';
+      const prompt = buildRewritePrompt(`الأكثر بحثًا الآن: ${trend.title}`, sourceMaterial, agent.persona, minWords, ALL_CATEGORIES);
       const rewritten = await provider.complete(prompt);
+
+      // Same rule as the RSS agent: trust the AI's category pick only
+      // if it's a real category, otherwise fall back to the agent's
+      // default so a hallucinated label never breaks classification.
+      const category = ALL_CATEGORIES.includes(rewritten.category as Category)
+        ? (rewritten.category as string)
+        : agent.default_category;
+
       const { error } = await admin.from('pending_articles').insert({
         id: pendingId,
         agent_id: 'trends',
         title: rewritten.title,
         summary: rewritten.summary,
         content: rewritten.content,
-        category: agent.default_category,
+        category,
         image_url: null,
         source_url: trend.relatedArticles[0]?.url ?? null,
         source_name: `ترند Google (${trend.traffic ?? ''})`,
         ai_provider: provider.id,
+        author: byline,
         status: 'PENDING',
       });
       if (error) throw new Error(error.message);
       queued++;
-    } catch (e: any) {
-      errors.push(`"${trend.title}": ${e?.message ?? 'فشل إعادة الصياغة'}`);
+    } catch (e: unknown) {
+      errors.push(`"${trend.title}": ${getErrorMessage(e, 'فشل إعادة الصياغة')}`);
     }
   }
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ApiFootballRateLimitError } from '@/lib/services/apiFootball';
 import { ensureClub, ensurePlayer } from '@/lib/data/playerSync';
+import { getErrorMessage } from '@/lib/utils/errors';
 
 // Auto-provisions a club + player the very first time a visitor opens a
 // profile page for someone who appeared in a live match (API-Football)
@@ -64,10 +65,10 @@ export async function POST(request: Request) {
     if (!player) return NextResponse.json({ error: 'Player not found on API-Football' }, { status: 404 });
 
     return NextResponse.json({ club, player });
-  } catch (e: any) {
+  } catch (e: unknown) {
     if (e instanceof ApiFootballRateLimitError) {
       return NextResponse.json({ error: 'تم تجاوز الحد المسموح من طلبات API-Football، حاول بعد دقيقة.' }, { status: 429 });
     }
-    return NextResponse.json({ error: e?.message ?? 'API-Football request failed' }, { status: 502 });
+    return NextResponse.json({ error: getErrorMessage(e, 'API-Football request failed') }, { status: 502 });
   }
 }

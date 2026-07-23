@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ApiFootballRateLimitError } from '@/lib/services/apiFootball';
 import { ensureClub, ensurePlayer } from '@/lib/data/playerSync';
+import { getErrorMessage } from '@/lib/utils/errors';
 
 async function requireAdmin() {
   const supabase = await createClient();
@@ -86,13 +87,13 @@ export async function POST(request: Request) {
         clubCache.set(apiTeamId, clubId);
         if (created) summary.clubsCreated++;
         else summary.clubsExisting++;
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (e instanceof ApiFootballRateLimitError) {
           summary.rateLimited = true;
           break outer;
         }
         clubCache.set(apiTeamId, null);
-        summary.errors.push(`النادي af-${apiTeamId}: ${e?.message ?? 'خطأ غير معروف'}`);
+        summary.errors.push(`النادي af-${apiTeamId}: ${getErrorMessage(e, 'خطأ غير معروف')}`);
         continue;
       }
     }
@@ -109,13 +110,13 @@ export async function POST(request: Request) {
       }
       if (created) summary.playersCreated++;
       else summary.playersExisting++;
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (e instanceof ApiFootballRateLimitError) {
         summary.rateLimited = true;
         break outer;
       }
       summary.playersFailed++;
-      summary.errors.push(`اللاعب af-${apiPlayerId}: ${e?.message ?? 'خطأ غير معروف'}`);
+      summary.errors.push(`اللاعب af-${apiPlayerId}: ${getErrorMessage(e, 'خطأ غير معروف')}`);
     }
   }
 

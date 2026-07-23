@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { fetchFixtureLineups, ApiFootballRateLimitError, type ApiFootballTeamLineup } from '@/lib/services/apiFootball';
 import { ensureClub, ensurePlayer } from '@/lib/data/playerSync';
+import { getErrorMessage } from '@/lib/utils/errors';
 
 // Fetches the real starting XI + substitutes for every UPCOMING/LIVE
 // match close to kickoff (lineups publish ~20-40 min before) and
@@ -60,9 +61,9 @@ export async function GET(request: Request) {
     let teams;
     try {
       teams = await fetchFixtureLineups(match.api_fixture_id);
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (e instanceof ApiFootballRateLimitError) break; // Stop burning quota; the rest will get picked up next run.
-      errors.push(`${match.id}: ${e?.message ?? 'unknown error'}`);
+      errors.push(`${match.id}: ${getErrorMessage(e, 'unknown error')}`);
       continue;
     }
     if (!teams) {
@@ -106,9 +107,9 @@ export async function GET(request: Request) {
       const { error } = await admin.from('match_details').upsert({ match_id: match.id, lineups }, { onConflict: 'match_id' });
       if (error) throw new Error(error.message);
       stored++;
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (e instanceof ApiFootballRateLimitError) break;
-      errors.push(`${match.id}: ${e?.message ?? 'unknown error'}`);
+      errors.push(`${match.id}: ${getErrorMessage(e, 'unknown error')}`);
     }
   }
 

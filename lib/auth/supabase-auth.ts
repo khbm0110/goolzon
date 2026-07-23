@@ -3,9 +3,8 @@ import type { AuthProvider, AuthUser } from './provider';
 
 // Real authentication backed by Supabase Auth + the `profiles` table
 // (see supabase/schema.sql — a profile row is auto-created via trigger
-// whenever a new auth user signs up). This file is the only thing that
-// changed to go from the mock-auth dev mode to a real backend — every
-// page/component using useAuth() needed zero changes.
+// whenever a new auth user signs up). The only implementation of
+// AuthProvider — every page/component talks to it via useAuth().
 
 async function fetchProfile(userId: string): Promise<AuthUser | null> {
   const supabase = createClient();

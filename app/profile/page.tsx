@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { data } from '@/lib/data';
-import type { Player, ClubProfile, Article } from '@/types';
+import type { ClubProfile, Article, DreamSquadPlayer } from '@/types';
 
 const FORMATION_433 = [
   { id: 0, role: 'GK', top: '85%', left: '50%' },
@@ -25,7 +25,6 @@ const FORMATION_433 = [
   { id: 10, role: 'RW', top: '20%', left: '85%' },
 ];
 
-type SquadPlayer = Player & { clubLogo?: string; clubName?: string };
 
 export default function ProfilePage() {
   const { currentUser, signOut, dreamSquad, updateDreamSquad, profileLoading, isAdmin, favorites, activityLog, followedLeagues, followedTeams } = useAuth();
@@ -39,7 +38,7 @@ export default function ProfilePage() {
   const [isExporting, setIsExporting] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
 
-  const [localDreamSquad, setLocalDreamSquad] = useState<Record<number, SquadPlayer>>(dreamSquad || {});
+  const [localDreamSquad, setLocalDreamSquad] = useState<Record<number, DreamSquadPlayer>>(dreamSquad || {});
 
   useEffect(() => {
     data.getClubs().then(setClubs);
@@ -58,14 +57,14 @@ export default function ProfilePage() {
     setLocalDreamSquad(dreamSquad || {});
   }, [dreamSquad]);
 
-  const allPlayers: SquadPlayer[] = clubs.flatMap((c) => (c.squad || []).map((p) => ({ ...p, clubLogo: c.logo, clubName: c.name })));
+  const allPlayers: DreamSquadPlayer[] = clubs.flatMap((c) => (c.squad || []).map((p) => ({ ...p, clubLogo: c.logo, clubName: c.name })));
 
   const handleSlotClick = (slotId: number) => {
     setActiveSlot(slotId);
     setIsSelectorOpen(true);
   };
 
-  const handleSelectPlayer = (player: SquadPlayer) => {
+  const handleSelectPlayer = (player: DreamSquadPlayer) => {
     if (activeSlot !== null) {
       const newSquad = { ...localDreamSquad, [activeSlot]: player };
       setLocalDreamSquad(newSquad);
@@ -107,7 +106,7 @@ export default function ProfilePage() {
     }
   };
 
-  const squadPlayers = Object.values(localDreamSquad).filter((p) => p) as SquadPlayer[];
+  const squadPlayers = Object.values(localDreamSquad).filter((p) => p) as DreamSquadPlayer[];
   const totalRating = squadPlayers.reduce((acc, player) => acc + (player.rating || 0), 0);
   const averageRating = squadPlayers.length > 0 ? Math.round(totalRating / Math.min(squadPlayers.length, 11)) : 0;
 
@@ -316,7 +315,7 @@ function InteractivePitch({
   onRemovePlayer,
   isLoading,
 }: {
-  squad: Record<number, SquadPlayer>;
+  squad: Record<number, DreamSquadPlayer>;
   onSlotClick: (id: number) => void;
   onRemovePlayer: (e: React.MouseEvent, id: number) => void;
   isLoading: boolean;
@@ -384,8 +383,8 @@ function PlayerSelectorModal({
   onClose,
   positionLabel,
 }: {
-  players: SquadPlayer[];
-  onSelect: (player: SquadPlayer) => void;
+  players: DreamSquadPlayer[];
+  onSelect: (player: DreamSquadPlayer) => void;
   onClose: () => void;
   positionLabel: string;
 }) {

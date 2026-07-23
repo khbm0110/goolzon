@@ -10,6 +10,9 @@ interface Agent {
   provider_id: string;
   source_type: 'rss' | 'match_analysis' | 'google_trends';
   rss_sources: { name: string; url: string }[];
+  keywords: string[];
+  min_words: number;
+  byline: string;
   enabled: boolean;
 }
 
@@ -27,6 +30,10 @@ export default function AgentCard({
   onSavePersona,
   onAddRss,
   onRemoveRss,
+  onAddKeyword,
+  onRemoveKeyword,
+  onSaveByline,
+  onSaveMinWords,
 }: {
   agent: Agent;
   providers: { id: string; name: string; configured: boolean }[];
@@ -35,11 +42,17 @@ export default function AgentCard({
   onSavePersona: (persona: string) => void;
   onAddRss: (name: string, url: string) => void;
   onRemoveRss: (url: string) => void;
+  onAddKeyword: (keyword: string) => void;
+  onRemoveKeyword: (keyword: string) => void;
+  onSaveByline: (byline: string) => void;
+  onSaveMinWords: (minWords: number) => void;
 }) {
   const [editingPersona, setEditingPersona] = useState(false);
   const [personaDraft, setPersonaDraft] = useState(agent.persona);
   const [newRssName, setNewRssName] = useState('');
   const [newRssUrl, setNewRssUrl] = useState('');
+  const [newKeyword, setNewKeyword] = useState('');
+  const [bylineDraft, setBylineDraft] = useState(agent.byline);
 
   const currentProvider = providers.find((p) => p.id === agent.provider_id);
 
@@ -104,6 +117,65 @@ export default function AgentCard({
         ) : (
           <p className="text-xs text-[var(--fg-faint)] bg-[var(--bg-base)] rounded-lg p-2.5 line-clamp-2">{agent.persona}</p>
         )}
+      </div>
+
+      {agent.source_type === 'rss' && (
+        <div className="mb-3">
+          <label className="block text-xs text-[var(--fg-subtle)] mb-1.5">
+            كلمات مفتاحية لتحديد النطاق (دوري/نادٍ) — فاضية = يعالج كل الأخبار بدون فلترة
+          </label>
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {(agent.keywords ?? []).length === 0 && <p className="text-xs text-[var(--fg-faint)]">بدون فلترة حاليًا.</p>}
+            {(agent.keywords ?? []).map((kw) => (
+              <span key={kw} className="flex items-center gap-1 bg-[var(--bg-base)] text-[var(--fg-muted)] text-xs px-2 py-1 rounded-full">
+                {kw}
+                <button onClick={() => onRemoveKeyword(kw)} className="hover:text-red-500">
+                  <X size={10} />
+                </button>
+              </span>
+            ))}
+          </div>
+          <div className="flex gap-1.5">
+            <input
+              value={newKeyword}
+              onChange={(e) => setNewKeyword(e.target.value)}
+              placeholder="مثال: الدوري الإنجليزي، مانشستر سيتي"
+              className="flex-1 bg-[var(--bg-surface-2)] border border-[var(--border)] rounded-lg px-2.5 py-1.5 text-xs text-[var(--fg)]"
+            />
+            <button
+              onClick={() => {
+                if (!newKeyword.trim()) return;
+                onAddKeyword(newKeyword.trim());
+                setNewKeyword('');
+              }}
+              className="px-3 py-1.5 bg-primary hover:bg-emerald-600 text-white rounded-lg text-xs font-bold whitespace-nowrap"
+            >
+              إضافة
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <div>
+          <label className="block text-xs text-[var(--fg-subtle)] mb-1.5">التوقيع (Byline)</label>
+          <input
+            value={bylineDraft}
+            onChange={(e) => setBylineDraft(e.target.value)}
+            onBlur={() => bylineDraft !== agent.byline && onSaveByline(bylineDraft)}
+            className="w-full bg-[var(--bg-surface-2)] border border-[var(--border)] rounded-lg px-2.5 py-1.5 text-xs text-[var(--fg)]"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-[var(--fg-subtle)] mb-1.5">الحد الأدنى لعدد الكلمات</label>
+          <input
+            type="number"
+            min={50}
+            value={agent.min_words}
+            onChange={(e) => onSaveMinWords(Number(e.target.value))}
+            className="w-full bg-[var(--bg-surface-2)] border border-[var(--border)] rounded-lg px-2.5 py-1.5 text-xs text-[var(--fg)]"
+          />
+        </div>
       </div>
 
       {agent.source_type === 'rss' && (

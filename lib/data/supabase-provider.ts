@@ -2,8 +2,9 @@ import { createClient } from '@/lib/supabase/client';
 import { createPublicClient } from '@/lib/supabase/public';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { DataProvider } from './provider';
-import type { Article, Match, Standing, ClubProfile, Comment, User, Sponsor, SeoSettings, FeatureFlags, Player, MatchDetails, AdSlot, AdsGlobalSettings } from '@/types';
-import type { Prediction, LeaderboardEntry, Poll, TransferRecord, InjuryRecord, AwardRecord, CoachCareerEntry } from '@/types/community';
+import type { Article, Match, Standing, ClubProfile, Comment, User, Sponsor, Player, MatchDetails, AdsGlobalSettings } from '@/types';
+import type { LeaderboardEntry, Poll, TransferRecord, InjuryRecord, AwardRecord, CoachCareerEntry } from '@/types/community';
+import type { ArticleRow, MatchRow, StandingRow, PlayerRow, ClubRow, TrophyRow, CommentRow, ProfileRow, AdSlotRow } from './dbRows';
 
 // Runs in both server and client contexts. Server Components in this
 // app only ever do PUBLIC reads (articles, matches, clubs, standings —
@@ -23,48 +24,48 @@ async function getClient() {
   return createClient();
 }
 
-function mapArticle(row: any): Article {
+function mapArticle(row: ArticleRow): Article {
   return {
     id: row.id,
     title: row.title,
-    summary: row.summary,
+    summary: row.summary ?? '',
     content: row.content,
     category: row.category,
-    imageUrl: row.image_url,
+    imageUrl: row.image_url ?? '',
     isBreaking: row.is_breaking,
     views: row.views,
-    author: row.author,
-    videoEmbedId: row.video_embed_id,
+    author: row.author ?? '',
+    videoEmbedId: row.video_embed_id ?? undefined,
     date: row.date,
   };
 }
 
-function mapMatch(row: any): Match {
+function mapMatch(row: MatchRow): Match {
   return {
     id: row.id,
     homeTeam: row.home_team,
-    homeLogo: row.home_logo,
+    homeLogo: row.home_logo ?? '',
     awayTeam: row.away_team,
-    awayLogo: row.away_logo,
+    awayLogo: row.away_logo ?? '',
     scoreHome: row.score_home,
     scoreAway: row.score_away,
-    time: row.time,
+    time: row.time ?? '',
     status: row.status,
-    league: row.league,
+    league: row.league ?? '',
     country: row.country,
-    date: row.date,
-    round: row.round,
-    venue: row.venue,
+    date: row.date ?? undefined,
+    round: row.round ?? undefined,
+    venue: row.venue ?? undefined,
     homeTeamApiId: row.home_team_api_id ?? undefined,
     awayTeamApiId: row.away_team_api_id ?? undefined,
   };
 }
 
-function mapStanding(row: any): Standing {
+function mapStanding(row: StandingRow): Standing {
   return {
     rank: row.rank,
     team: row.team,
-    logo: row.logo,
+    logo: row.logo ?? '',
     played: row.played,
     won: row.won,
     drawn: row.drawn,
@@ -77,50 +78,52 @@ function mapStanding(row: any): Standing {
   };
 }
 
-function mapPlayer(row: any): Player {
+function mapPlayer(row: PlayerRow): Player {
   return {
     id: row.id,
     name: row.name,
-    englishName: row.english_name,
-    age: row.age,
-    birthDate: row.birth_date,
-    birthPlace: row.birth_place,
-    heightCm: row.height_cm,
-    weightKg: row.weight_kg,
-    preferredFoot: row.preferred_foot,
-    number: row.number,
+    englishName: row.english_name ?? '',
+    age: row.age ?? undefined,
+    birthDate: row.birth_date ?? undefined,
+    birthPlace: row.birth_place ?? undefined,
+    heightCm: row.height_cm ?? undefined,
+    weightKg: row.weight_kg ?? undefined,
+    preferredFoot: row.preferred_foot ?? undefined,
+    number: row.number ?? 0,
     position: row.position,
-    rating: row.rating,
-    nationality: row.nationality,
-    image: row.image,
-    marketValue: row.market_value,
-    stats: row.stats,
-    seasonStats: row.season_stats,
+    rating: row.rating ?? 0,
+    nationality: row.nationality ?? undefined,
+    image: row.image ?? undefined,
+    marketValue: row.market_value ?? undefined,
+    stats: row.stats ?? { pac: 0, sho: 0, pas: 0, dri: 0, def: 0, phy: 0 },
+    seasonStats: row.season_stats ?? undefined,
   };
 }
 
-function mapClub(row: any, players: any[] = [], trophies: any[] = []): ClubProfile {
+function mapClub(row: ClubRow, players: PlayerRow[] = [], trophies: TrophyRow[] = []): ClubProfile {
+  const apiFootballId = row.id.startsWith('af-') ? Number(row.id.slice(3)) : undefined;
   return {
     id: row.id,
     name: row.name,
-    englishName: row.english_name,
-    logo: row.logo,
-    coverImage: row.cover_image,
-    founded: row.founded,
-    stadium: row.stadium,
-    coach: row.coach,
-    nickname: row.nickname,
-    colors: row.colors,
-    social: row.social,
-    fanCount: row.fan_count,
+    englishName: row.english_name ?? '',
+    apiFootballId: Number.isFinite(apiFootballId) ? apiFootballId : undefined,
+    logo: row.logo ?? '',
+    coverImage: row.cover_image ?? '',
+    founded: row.founded ?? 0,
+    stadium: row.stadium ?? '',
+    coach: row.coach ?? '',
+    nickname: row.nickname ?? '',
+    colors: row.colors ?? { primary: '#10b981', secondary: '#0f172a', text: '#ffffff' },
+    social: { twitter: row.social?.twitter ?? '', instagram: row.social?.instagram ?? '' },
+    fanCount: row.fan_count ?? 0,
     country: row.country,
-    history: row.history_text,
+    history: row.history_text ?? undefined,
     squad: players.map(mapPlayer),
     trophies: trophies.map((t) => ({ name: t.name, count: t.count })),
-  } as ClubProfile;
+  };
 }
 
-function mapComment(row: any): Comment {
+function mapComment(row: CommentRow): Comment {
   return {
     id: row.id,
     user: row.profiles?.name ?? row.user_id,
@@ -134,13 +137,13 @@ function mapComment(row: any): Comment {
   };
 }
 
-function mapUser(row: any): User {
+function mapUser(row: ProfileRow): User {
   return {
     id: row.id,
     name: row.name,
     username: row.username,
     email: row.email,
-    avatar: row.avatar,
+    avatar: row.avatar ?? undefined,
     joinDate: row.join_date,
     role: row.role,
     status: row.status,
@@ -468,7 +471,7 @@ export const supabaseProvider: DataProvider = {
   async getAdSlots() {
     const supabase = await getClient();
     const { data } = await supabase.from('ad_slots').select('*').order('placement');
-    return (data ?? []).map((row: any) => ({
+    return (data ?? []).map((row: AdSlotRow) => ({
       id: row.id,
       placement: row.placement,
       label: row.label,
@@ -479,7 +482,7 @@ export const supabaseProvider: DataProvider = {
       startDate: row.start_date,
       endDate: row.end_date,
       updatedAt: row.updated_at,
-    })) as AdSlot[];
+    }));
   },
   async addAdSlot(slot) {
     const supabase = await getClient();

@@ -1,12 +1,12 @@
-import type { Article, Match, Standing, ClubProfile, Comment, User, Sponsor, SeoSettings, FeatureFlags, Player, MatchDetails, AdSlot, AdsGlobalSettings } from '@/types';
+import type { Article, Match, Standing, ClubProfile, Comment, User, Sponsor, SeoSettings, FeatureFlags, Player, DreamSquadPlayer, MatchDetails, AdSlot, AdsGlobalSettings } from '@/types';
 import type { Prediction, LeaderboardEntry, Poll, TransferRecord, InjuryRecord, AwardRecord, CoachCareerEntry } from '@/types/community';
 
 // This is the single "contract" the whole app talks to for data.
-// Right now `mock-provider.ts` implements it using local seed data
-// (lib/data/seed.ts, ported from the original project). Later, when
-// Appwrite is ready, we write `appwrite-provider.ts` implementing the
-// exact same interface and swap ONE line in `index.ts` — no page or
-// component needs to change.
+// `supabase-provider.ts` (lib/data/index.ts) is the one real
+// implementation, backed by Postgres/Supabase — see
+// supabase/schema.sql for the underlying tables. No page or component
+// ever imports Supabase directly; they only ever import `data` from
+// lib/data/index.ts.
 export interface DataProvider {
   getArticles(): Promise<Article[]>;
   getArticleById(id: string): Promise<Article | null>;
@@ -92,6 +92,6 @@ export interface DataProvider {
   toggleFavoriteArticle(userId: string, articleId: string): Promise<void>;
   getActivityLog(userId: string): Promise<{ id: string; text: string; time: string }[]>;
   logActivity(userId: string, text: string): Promise<void>;
-  getDreamSquad(userId: string): Promise<Record<number, any>>;
-  updateDreamSquad(userId: string, squad: Record<number, any>): Promise<void>;
+  getDreamSquad(userId: string): Promise<Record<number, DreamSquadPlayer>>;
+  updateDreamSquad(userId: string, squad: Record<number, DreamSquadPlayer>): Promise<void>;
 }

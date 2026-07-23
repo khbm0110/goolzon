@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     image_url: final.image_url,
     is_breaking: false,
     views: 0,
-    author: item.ai_provider ? `تحرير آلي (${item.ai_provider})` : 'تحرير آلي',
+    author: item.author || 'فريق التحرير الرياضي',
     date: new Date().toISOString(),
   });
   if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 });

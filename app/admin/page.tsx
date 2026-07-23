@@ -7,7 +7,7 @@ import Image from 'next/image';
 import {
   Shield, Plus, Edit, Trash2, LayoutGrid, FileText, Users, Settings, Check, Ban,
   MessageCircle, Clock, ShoppingBag, Globe, Megaphone, BarChart2, Bot, Save, LogOut,
-  Home, Power, Trophy, Search, X,
+  Home, Power, Trophy, Search, X, Mail,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { data } from '@/lib/data';
@@ -17,8 +17,11 @@ import MatchEditor from '@/components/admin/MatchEditor';
 import AdSlotEditor from '@/components/admin/AdSlotEditor';
 import AgentCard from '@/components/admin/AgentCard';
 import { Category, AD_PLACEMENT_LABELS, type Article, type User, type Comment, type ClubProfile, type Sponsor, type SeoSettings, type FeatureFlags, type AdSlot, type AdsGlobalSettings, type Match } from '@/types';
+import { getErrorMessage } from '@/lib/utils/errors';
+import type { ApiFootballLeagueSearchResult, ApiFootballTeamSearchResult, ApiFootballPlayerSearchResult } from '@/lib/services/apiFootball';
+import type { TrackedLeague, AiAgent, AiProviderInfo, AutopilotSettings, PendingArticle, BulkImportSummary, BulkImportRow, RssSource, ContactMessage } from '@/lib/types/admin';
 
-type AdminTab = 'OVERVIEW' | 'ARTICLES' | 'MATCHES' | 'USERS' | 'MODERATION' | 'CLUBS' | 'SPONSORS' | 'SEO' | 'ADS' | 'LEAGUES' | 'ANALYTICS' | 'AUTOPILOT' | 'SETTINGS';
+type AdminTab = 'OVERVIEW' | 'ARTICLES' | 'MATCHES' | 'USERS' | 'MODERATION' | 'MESSAGES' | 'CLUBS' | 'SPONSORS' | 'SEO' | 'ADS' | 'LEAGUES' | 'ANALYTICS' | 'AUTOPILOT' | 'SETTINGS';
 
 const COMING_SOON_TABS: { key: AdminTab; label: string; icon: typeof ShoppingBag; note: string }[] = [
   { key: 'ANALYTICS', label: 'التحليلات', icon: BarChart2, note: 'يحتاج ربط Google Analytics أولاً' },
@@ -43,24 +46,25 @@ export default function AdminDashboardPage() {
   const [featureFlags, setFeatureFlagsState] = useState<FeatureFlags | null>(null);
   const [adSlots, setAdSlots] = useState<AdSlot[]>([]);
   const [adsGlobal, setAdsGlobal] = useState<AdsGlobalSettings | null>(null);
-  const [trackedLeagues, setTrackedLeagues] = useState<any[]>([]);
+  const [trackedLeagues, setTrackedLeagues] = useState<TrackedLeague[]>([]);
+  const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [leagueQuery, setLeagueQuery] = useState('');
-  const [leagueResults, setLeagueResults] = useState<any[]>([]);
+  const [leagueResults, setLeagueResults] = useState<ApiFootballLeagueSearchResult[]>([]);
   const [leagueSearching, setLeagueSearching] = useState(false);
   const [leagueSearchError, setLeagueSearchError] = useState<string | null>(null);
-  const [importSummary, setImportSummary] = useState<any>(null);
+  const [importSummary, setImportSummary] = useState<BulkImportSummary | null>(null);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [idSearchType, setIdSearchType] = useState<'team' | 'player'>('team');
   const [idSearchQuery, setIdSearchQuery] = useState('');
-  const [idSearchResults, setIdSearchResults] = useState<any[]>([]);
+  const [idSearchResults, setIdSearchResults] = useState<(ApiFootballTeamSearchResult | ApiFootballPlayerSearchResult)[]>([]);
   const [idSearching, setIdSearching] = useState(false);
   const [idSearchError, setIdSearchError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
-  const [autopilotSettings, setAutopilotSettings] = useState<any>(null);
-  const [autopilotAgents, setAutopilotAgents] = useState<any[]>([]);
-  const [autopilotProviders, setAutopilotProviders] = useState<any[]>([]);
-  const [pendingArticles, setPendingArticles] = useState<any[]>([]);
+  const [autopilotSettings, setAutopilotSettings] = useState<AutopilotSettings | null>(null);
+  const [autopilotAgents, setAutopilotAgents] = useState<AiAgent[]>([]);
+  const [autopilotProviders, setAutopilotProviders] = useState<AiProviderInfo[]>([]);
+  const [pendingArticles, setPendingArticles] = useState<PendingArticle[]>([]);
   const [autopilotBusy, setAutopilotBusy] = useState(false);
   const [editingArticle, setEditingArticle] = useState<Partial<Article> | null>(null);
   const [editorMode, setEditorMode] = useState<'NEW' | 'EDIT'>('NEW');
@@ -106,10 +110,38 @@ export default function AdminDashboardPage() {
     }
   }
 
+  async function refreshContactMessages() {
+    const res = await fetch('/api/admin/contact-messages');
+    if (res.ok) {
+      const json = await res.json();
+      setContactMessages(json.messages ?? []);
+    }
+  }
+
+  async function handleMarkMessageRead(id: string) {
+    await fetch('/api/admin/contact-messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status: 'read' }),
+    });
+    refreshContactMessages();
+  }
+
+  async function handleDeleteMessage(id: string) {
+    if (!confirm('حذف هذه الرسالة نهائيًا؟')) return;
+    await fetch('/api/admin/contact-messages', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    refreshContactMessages();
+  }
+
   useEffect(() => {
     refreshAll();
     refreshTrackedLeagues();
     refreshAutopilot();
+    refreshContactMessages();
   }, []);
 
   async function refreshAutopilot() {
@@ -126,7 +158,7 @@ export default function AdminDashboardPage() {
     }
   }
 
-  async function handleSaveAutopilotSettings(patch: any) {
+  async function handleSaveAutopilotSettings(patch: Partial<AutopilotSettings>) {
     setAutopilotBusy(true);
     try {
       const res = await fetch('/api/admin/autopilot', {
@@ -140,14 +172,14 @@ export default function AdminDashboardPage() {
       } else {
         alert(`فشل الحفظ (${res.status}): ${json.error || 'خطأ غير معروف'}`);
       }
-    } catch (e: any) {
-      alert(`فشل الحفظ: ${e?.message ?? 'تحقق من اتصالك بالإنترنت'}`);
+    } catch (e: unknown) {
+      alert(`فشل الحفظ: ${getErrorMessage(e, 'تحقق من اتصالك بالإنترنت')}`);
     } finally {
       setAutopilotBusy(false);
     }
   }
 
-  async function handleSaveAgent(id: string, patch: any) {
+  async function handleSaveAgent(id: string, patch: Partial<AiAgent>) {
     setAutopilotBusy(true);
     try {
       const res = await fetch('/api/admin/autopilot/agents', {
@@ -161,8 +193,8 @@ export default function AdminDashboardPage() {
       } else {
         alert(`فشل الحفظ (${res.status}): ${json.error || 'خطأ غير معروف'}`);
       }
-    } catch (e: any) {
-      alert(`فشل الحفظ: ${e?.message ?? 'تحقق من اتصالك بالإنترنت'}`);
+    } catch (e: unknown) {
+      alert(`فشل الحفظ: ${getErrorMessage(e, 'تحقق من اتصالك بالإنترنت')}`);
     } finally {
       setAutopilotBusy(false);
     }
@@ -193,14 +225,14 @@ export default function AdminDashboardPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'فشل البحث');
       setLeagueResults(json.results ?? []);
-    } catch (e: any) {
-      setLeagueSearchError(e?.message ?? 'فشل البحث');
+    } catch (e: unknown) {
+      setLeagueSearchError(getErrorMessage(e, 'فشل البحث'));
     } finally {
       setLeagueSearching(false);
     }
   }
 
-  async function handleAddLeague(result: any) {
+  async function handleAddLeague(result: ApiFootballLeagueSearchResult) {
     if (!result.currentSeason) {
       alert('ما قدرنا نحدد الموسم الحالي لهذا الدوري تلقائيًا من API-Football.');
       return;
@@ -244,7 +276,7 @@ export default function AdminDashboardPage() {
       const json = JSON.parse(text);
       const list = Array.isArray(json) ? json : json.rows;
       if (!Array.isArray(list)) throw new Error('الملف لازم يكون مصفوفة JSON أو كائن فيه مفتاح rows.');
-      return list.map((r: any) => ({ club_api_id: Number(r.club_api_id), player_api_id: Number(r.player_api_id) }));
+      return list.map((r: BulkImportRow) => ({ club_api_id: Number(r.club_api_id), player_api_id: Number(r.player_api_id) }));
     }
     const lines = text.trim().split(/\r?\n/).filter(Boolean);
     if (lines.length < 2) throw new Error('ملف CSV فاضي أو ناقص صفوف.');
@@ -271,8 +303,8 @@ export default function AdminDashboardPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'فشل البحث');
       setIdSearchResults(json.results ?? []);
-    } catch (e: any) {
-      setIdSearchError(e?.message ?? 'فشل البحث');
+    } catch (e: unknown) {
+      setIdSearchError(getErrorMessage(e, 'فشل البحث'));
     } finally {
       setIdSearching(false);
     }
@@ -303,8 +335,8 @@ export default function AdminDashboardPage() {
       if (!res.ok) throw new Error(json.error || 'فشل الاستيراد');
       setImportSummary(json.summary);
       refreshAll();
-    } catch (err: any) {
-      setImportError(err?.message ?? 'فشل قراءة أو استيراد الملف');
+    } catch (err: unknown) {
+      setImportError(getErrorMessage(err, 'فشل قراءة أو استيراد الملف'));
     } finally {
       setImporting(false);
       e.target.value = '';
@@ -466,6 +498,7 @@ export default function AdminDashboardPage() {
       items: [
         { key: 'USERS', label: 'المستخدمون', icon: Users },
         { key: 'MODERATION', label: 'مراقبة التعليقات', icon: MessageCircle },
+        { key: 'MESSAGES', label: 'رسائل التواصل', icon: Mail },
       ],
     },
     {
@@ -717,6 +750,52 @@ export default function AdminDashboardPage() {
                           <Check size={14} />
                         </button>
                       )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'MESSAGES' && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <h1 className="text-2xl font-black text-[var(--fg)]">رسائل التواصل ({contactMessages.length})</h1>
+              {contactMessages.filter((m) => m.status === 'new').length > 0 && (
+                <span className="text-xs font-black px-2.5 py-1 rounded-full bg-primary/10 text-primary">
+                  {contactMessages.filter((m) => m.status === 'new').length} جديدة
+                </span>
+              )}
+            </div>
+            {contactMessages.length === 0 ? (
+              <div className="text-center py-20 bg-[var(--bg-surface)] rounded-xl border border-[var(--border-subtle)] border-dashed text-[var(--fg-faint)]">لا توجد رسائل بعد.</div>
+            ) : (
+              <div className="space-y-3">
+                {contactMessages.map((m) => (
+                  <div key={m.id} className={`bg-[var(--bg-surface)] border rounded-xl p-4 ${m.status === 'new' ? 'border-primary/40' : 'border-[var(--border-subtle)]'}`}>
+                    <div className="flex items-start justify-between gap-4 mb-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-bold text-[var(--fg)]">{m.name}</p>
+                          {m.status === 'new' && <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />}
+                        </div>
+                        <a href={`mailto:${m.email}`} className="text-xs text-[var(--fg-faint)] hover:text-primary" dir="ltr">{m.email}</a>
+                      </div>
+                      <span className="text-[10px] text-[var(--fg-faint)] flex-shrink-0 whitespace-nowrap">
+                        {new Date(m.created_at).toLocaleDateString('ar-SA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <p className="text-sm text-[var(--fg-muted)] whitespace-pre-line mb-3">{m.message}</p>
+                    <div className="flex items-center gap-2">
+                      {m.status === 'new' && (
+                        <button onClick={() => handleMarkMessageRead(m.id)} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20">
+                          تحديد كمقروءة
+                        </button>
+                      )}
+                      <button onClick={() => handleDeleteMessage(m.id)} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-500/10 text-red-500 hover:bg-red-500/20">
+                        حذف
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -1060,7 +1139,11 @@ export default function AdminDashboardPage() {
                   onChangeProvider={(providerId) => handleSaveAgent(agent.id, { provider_id: providerId })}
                   onSavePersona={(persona) => handleSaveAgent(agent.id, { persona })}
                   onAddRss={(name, url) => handleSaveAgent(agent.id, { rss_sources: [...(agent.rss_sources ?? []), { name, url }] })}
-                  onRemoveRss={(url) => handleSaveAgent(agent.id, { rss_sources: (agent.rss_sources ?? []).filter((s: any) => s.url !== url) })}
+                  onRemoveRss={(url) => handleSaveAgent(agent.id, { rss_sources: (agent.rss_sources ?? []).filter((s: RssSource) => s.url !== url) })}
+                  onAddKeyword={(kw) => handleSaveAgent(agent.id, { keywords: [...(agent.keywords ?? []), kw] })}
+                  onRemoveKeyword={(kw) => handleSaveAgent(agent.id, { keywords: (agent.keywords ?? []).filter((k) => k !== kw) })}
+                  onSaveByline={(byline) => handleSaveAgent(agent.id, { byline })}
+                  onSaveMinWords={(minWords) => handleSaveAgent(agent.id, { min_words: minWords })}
                 />
               ))}
             </div>
@@ -1226,16 +1309,19 @@ export default function AdminDashboardPage() {
                 {idSearchResults.length > 0 && (
                   <div className="mt-4 space-y-2">
                     {idSearchResults.map((r) => {
-                      const apiId = idSearchType === 'team' ? r.apiTeamId : r.apiPlayerId;
+                      const isTeam = 'apiTeamId' in r;
+                      const apiId = isTeam ? r.apiTeamId : r.apiPlayerId;
+                      const image = isTeam ? r.logo : r.photo;
+                      const subtitle = isTeam ? r.country : r.teamName;
                       return (
                         <div key={apiId} className="flex items-center justify-between gap-3 bg-[var(--bg-base)] rounded-lg p-3">
                           <div className="flex items-center gap-2 min-w-0">
-                            {(r.logo || r.photo) && (
-                              <Image src={r.logo || r.photo} alt={r.name} width={28} height={28} className="rounded-full object-cover flex-shrink-0" />
+                            {image && (
+                              <Image src={image} alt={r.name} width={28} height={28} className="rounded-full object-cover flex-shrink-0" />
                             )}
                             <div className="min-w-0">
                               <p className="text-sm font-bold text-[var(--fg)] truncate">{r.name}</p>
-                              <p className="text-[10px] text-[var(--fg-faint)] truncate">{idSearchType === 'team' ? r.country : r.teamName || '—'}</p>
+                              <p className="text-[10px] text-[var(--fg-faint)] truncate">{subtitle || '—'}</p>
                             </div>
                           </div>
                           <button

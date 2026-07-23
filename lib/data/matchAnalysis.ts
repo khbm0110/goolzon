@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getProvider } from '@/lib/services/ai/providers';
 import { buildAnalysisPrompt } from '@/lib/services/ai/prompt';
+import { getErrorMessage } from '@/lib/utils/errors';
 
 // Server-only. Called right after a match is marked FINISHED (see
 // /api/cron/sync-finished-matches). Turns whatever real data we have
@@ -59,7 +60,7 @@ export async function generateMatchAnalysis(
     });
     if (error) throw new Error(error.message);
     return { queued: true };
-  } catch (e: any) {
-    return { error: e?.message ?? 'unknown error' };
+  } catch (e: unknown) {
+    return { error: getErrorMessage(e, 'unknown error') };
   }
 }

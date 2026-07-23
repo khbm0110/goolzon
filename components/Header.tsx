@@ -8,7 +8,7 @@ import { Menu, X, Search, Trophy, Youtube, Calendar, User as UserIcon, LogIn, Lo
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import SearchModal from './SearchModal';
-import NotificationsPanel from './NotificationsPanel';
+
 import { data } from '@/lib/data';
 import type { Article } from '@/types';
 
@@ -120,8 +120,6 @@ export default function Header() {
             <button onClick={toggleTheme} className="text-[var(--fg-muted)] hover:text-primary transition-colors hidden sm:block" title={theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الليلي'}>
               {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
             </button>
-
-            <NotificationsPanel />
 
             <Link href="/leaderboard" className="text-[var(--fg-muted)] hover:text-accent transition-colors hidden sm:block" title="ترتيب المتوقعين">
               <Trophy size={20} />

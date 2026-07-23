@@ -11,6 +11,25 @@ export interface TrendItem {
   relatedArticles: { title: string; url: string; source: string; snippet: string }[];
 }
 
+interface RawTrendArticle {
+  title?: string;
+  url?: string;
+  source?: string;
+  snippet?: string;
+}
+
+interface RawTrendingSearch {
+  title?: { query?: string };
+  formattedTraffic?: string;
+  articles?: RawTrendArticle[];
+}
+
+interface RawDailyTrendsResponse {
+  default?: {
+    trendingSearchesDays?: { trendingSearches?: RawTrendingSearch[] }[];
+  };
+}
+
 export async function fetchDailyTrends(geo: string): Promise<TrendItem[]> {
   const res = await fetch(`https://trends.google.com/trends/api/dailytrends?hl=ar&geo=${geo}&ns=15`, {
     headers: { 'User-Agent': 'Mozilla/5.0 (GoolzonBot autopilot)' },
@@ -20,16 +39,16 @@ export async function fetchDailyTrends(geo: string): Promise<TrendItem[]> {
 
   const raw = await res.text();
   const jsonText = raw.replace(/^\)\]\}',?\n?/, '');
-  const json = JSON.parse(jsonText);
+  const json: RawDailyTrendsResponse = JSON.parse(jsonText);
 
-  const days = json?.default?.trendingSearchesDays ?? [];
+  const days = json.default?.trendingSearchesDays ?? [];
   const items: TrendItem[] = [];
   for (const day of days) {
     for (const trend of day.trendingSearches ?? []) {
       items.push({
         title: trend.title?.query ?? '',
         traffic: trend.formattedTraffic ?? null,
-        relatedArticles: (trend.articles ?? []).slice(0, 3).map((a: any) => ({
+        relatedArticles: (trend.articles ?? []).slice(0, 3).map((a) => ({
           title: a.title ?? '',
           url: a.url ?? '',
           source: a.source ?? '',

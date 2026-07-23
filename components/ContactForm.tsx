@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Loader2, CheckCircle2 } from 'lucide-react';
+import { getErrorMessage } from '@/lib/utils/errors';
 
 export default function ContactForm() {
   const [name, setName] = useState('');
@@ -26,9 +27,9 @@ export default function ContactForm() {
       setName('');
       setEmail('');
       setMessage('');
-    } catch (err: any) {
+    } catch (err: unknown) {
       setStatus('error');
-      setErrorMsg(err.message);
+      setErrorMsg(getErrorMessage(err));
     }
   }
 

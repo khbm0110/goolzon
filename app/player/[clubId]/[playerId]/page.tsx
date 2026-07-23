@@ -68,7 +68,7 @@ export default function PlayerDetailPage() {
     });
 
     data.getPlayerCareerData(clubId, playerId).then(setCareer);
-  }, [params?.clubId, params?.playerId]);
+  }, [params, params?.clubId, params?.playerId]);
 
   useEffect(() => {
     if (!result) return;

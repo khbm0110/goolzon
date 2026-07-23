@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import Link from 'next/link';
 import { ChevronDown, MapPin, Calendar } from 'lucide-react';
 import TeamLogo from '@/components/TeamLogo';
 import type { Match } from '@/types';
