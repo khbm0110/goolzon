@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import type { DataProvider } from './provider';
 import type { Article, Match, Standing, ClubProfile, Comment, User, Sponsor, Player, MatchDetails, AdsGlobalSettings } from '@/types';
 import type { LeaderboardEntry, Poll, TransferRecord, InjuryRecord, AwardRecord, CoachCareerEntry } from '@/types/community';
-import type { ArticleRow, MatchRow, StandingRow, PlayerRow, ClubRow, TrophyRow, CommentRow, ProfileRow, AdSlotRow } from './dbRows';
+import type { ArticleRow, MatchRow, StandingRow, PlayerRow, ClubRow, TrophyRow, CommentRow, ProfileRow, AdSlotRow, LeagueRow } from './dbRows';
 
 // Runs in both server and client contexts. Server Components in this
 // app only ever do PUBLIC reads (articles, matches, clubs, standings —
@@ -217,6 +217,41 @@ export const supabaseProvider: DataProvider = {
     const supabase = await getClient();
     const { data } = await supabase.from('matches').select('*');
     return (data ?? []).map(mapMatch);
+  },
+  async getLeagues() {
+    const supabase = await getClient();
+    const { data } = await supabase.from('leagues').select('*').order('sort_order');
+    return (data ?? []).map((row: LeagueRow) => ({
+      id: row.id,
+      name: row.name,
+      region: row.region,
+      sortOrder: row.sort_order,
+      active: row.active,
+    }));
+  },
+  async addLeague(league) {
+    const supabase = await getClient();
+    const { error } = await supabase.from('leagues').insert({
+      id: league.id,
+      name: league.name,
+      region: league.region,
+      sort_order: league.sortOrder,
+      active: league.active,
+    });
+    if (error) throw error;
+  },
+  async updateLeague(league) {
+    const supabase = await getClient();
+    const { error } = await supabase
+      .from('leagues')
+      .update({ name: league.name, region: league.region, sort_order: league.sortOrder, active: league.active })
+      .eq('id', league.id);
+    if (error) throw error;
+  },
+  async deleteLeague(id) {
+    const supabase = await getClient();
+    const { error } = await supabase.from('leagues').delete().eq('id', id);
+    if (error) throw error;
   },
   async getMatchById(id) {
     const supabase = await getClient();

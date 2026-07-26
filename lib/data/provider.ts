@@ -1,4 +1,4 @@
-import type { Article, Match, Standing, ClubProfile, Comment, User, Sponsor, SeoSettings, FeatureFlags, Player, DreamSquadPlayer, MatchDetails, AdSlot, AdsGlobalSettings } from '@/types';
+import type { Article, Match, Standing, ClubProfile, Comment, User, Sponsor, SeoSettings, FeatureFlags, Player, DreamSquadPlayer, MatchDetails, AdSlot, AdsGlobalSettings, League } from '@/types';
 import type { Prediction, LeaderboardEntry, Poll, TransferRecord, InjuryRecord, AwardRecord, CoachCareerEntry } from '@/types/community';
 
 // This is the single "contract" the whole app talks to for data.
@@ -17,6 +17,10 @@ export interface DataProvider {
   deleteArticle(id: string): Promise<void>;
 
   getMatches(): Promise<Match[]>;
+  getLeagues(): Promise<League[]>;
+  addLeague(league: League): Promise<void>;
+  updateLeague(league: League): Promise<void>;
+  deleteLeague(id: string): Promise<void>;
   getMatchById(id: string): Promise<Match | null>;
   addMatch(match: Match): Promise<void>;
   updateMatch(match: Match): Promise<void>;

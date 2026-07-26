@@ -125,6 +125,14 @@ export interface ProfileRow {
   join_date: string;
 }
 
+export interface LeagueRow {
+  id: string;
+  name: string;
+  region: 'arab' | 'european' | 'other';
+  sort_order: number;
+  active: boolean;
+}
+
 export interface AdSlotRow {
   id: string;
   placement: AdPlacement;

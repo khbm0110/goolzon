@@ -333,6 +333,50 @@ create table if not exists public.ads_global_settings (
 );
 
 -- Which API-Football leagues the automatic fixture importer pulls from.
+-- The site's own base taxonomy of leagues/countries — what
+-- article.category, matches.country, and clubs.country actually store
+-- (the Arabic `name` value, unchanged from the old hardcoded Category
+-- enum so zero migration is needed for existing rows). Admin-managed
+-- via لوحة التحكم → الدوريات الأساسية. Distinct from tracked_leagues
+-- below, which is only about which leagues get their FIXTURES
+-- auto-imported from API-Football — a site league doesn't need to be
+-- "tracked" to exist, and a tracked league doesn't need a matching row
+-- here (though in practice you'll usually want both).
+create table if not exists public.leagues (
+  id text primary key, -- url slug, e.g. 'saudi', 'england'
+  name text not null unique, -- Arabic display value, e.g. 'السعودية' — stored verbatim in category/country columns elsewhere
+  region text not null default 'other' check (region in ('arab', 'european', 'other')),
+  sort_order int not null default 0,
+  active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+insert into public.leagues (id, name, region, sort_order) values
+  ('saudi', 'السعودية', 'arab', 1),
+  ('uae', 'الإمارات', 'arab', 2),
+  ('qatar', 'قطر', 'arab', 3),
+  ('kuwait', 'الكويت', 'arab', 4),
+  ('oman', 'عمان', 'arab', 5),
+  ('bahrain', 'البحرين', 'arab', 6),
+  ('egypt', 'مصر', 'arab', 7),
+  ('algeria', 'الجزائر', 'arab', 8),
+  ('tunisia', 'تونس', 'arab', 9),
+  ('morocco', 'المغرب', 'arab', 10),
+  ('jordan', 'الأردن', 'arab', 11),
+  ('iraq', 'العراق', 'arab', 12),
+  ('lebanon', 'لبنان', 'arab', 13),
+  ('libya', 'ليبيا', 'arab', 14),
+  ('sudan', 'السودان', 'arab', 15),
+  ('yemen', 'اليمن', 'arab', 16),
+  ('palestine', 'فلسطين', 'arab', 17),
+  ('arab-cup', 'كأس العرب', 'arab', 18),
+  ('england', 'الدوري الإنجليزي', 'european', 19),
+  ('spain', 'الدوري الإسباني', 'european', 20),
+  ('italy', 'الدوري الإيطالي', 'european', 21),
+  ('germany', 'الدوري الألماني', 'european', 22),
+  ('champions-league', 'دوري أبطال أوروبا', 'european', 23)
+on conflict (id) do nothing;
+
 -- Admin-managed (searched + added from the API-Football /leagues
 -- endpoint) rather than hardcoded, since league ids AND the "current
 -- season" id both vary and shift every year.
@@ -481,6 +525,7 @@ alter table public.seo_settings enable row level security;
 alter table public.feature_flags enable row level security;
 alter table public.ad_slots enable row level security;
 alter table public.ads_global_settings enable row level security;
+alter table public.leagues enable row level security;
 alter table public.tracked_leagues enable row level security;
 alter table public.autopilot_settings enable row level security;
 alter table public.pending_articles enable row level security;
@@ -550,6 +595,9 @@ create policy "public read enabled ad slots" on public.ad_slots for select using
 drop policy if exists "public read ads settings" on public.ads_global_settings;
 create policy "public read ads settings" on public.ads_global_settings for select using (true);
 
+drop policy if exists "public read leagues" on public.leagues;
+create policy "public read leagues" on public.leagues for select using (true);
+
 drop policy if exists "public read tracked leagues" on public.tracked_leagues;
 create policy "public read tracked leagues" on public.tracked_leagues for select using (true);
 
@@ -609,6 +657,13 @@ create policy "admin all delete" on public.ad_slots for delete using (public.is_
 
 drop policy if exists "admin update ads settings" on public.ads_global_settings;
 create policy "admin update ads settings" on public.ads_global_settings for update using (public.is_admin());
+
+drop policy if exists "admin manage leagues insert" on public.leagues;
+create policy "admin manage leagues insert" on public.leagues for insert with check (public.is_admin());
+drop policy if exists "admin manage leagues update" on public.leagues;
+create policy "admin manage leagues update" on public.leagues for update using (public.is_admin());
+drop policy if exists "admin manage leagues delete" on public.leagues;
+create policy "admin manage leagues delete" on public.leagues for delete using (public.is_admin());
 
 drop policy if exists "admin manage tracked leagues insert" on public.tracked_leagues;
 create policy "admin manage tracked leagues insert" on public.tracked_leagues for insert with check (public.is_admin());

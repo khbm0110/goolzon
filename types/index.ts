@@ -1,31 +1,29 @@
 
-export enum Category {
-  SAUDI = 'السعودية',
-  UAE = 'الإمارات',
-  QATAR = 'قطر',
-  KUWAIT = 'الكويت',
-  OMAN = 'عمان',
-  BAHRAIN = 'البحرين',
-  EGYPT = 'مصر',
-  ALGERIA = 'الجزائر',
-  TUNISIA = 'تونس',
-  MOROCCO = 'المغرب',
-  JORDAN = 'الأردن',
-  IRAQ = 'العراق',
-  LEBANON = 'لبنان',
-  LIBYA = 'ليبيا',
-  SUDAN = 'السودان',
-  YEMEN = 'اليمن',
-  PALESTINE = 'فلسطين',
-  ENGLAND = 'الدوري الإنجليزي',
-  SPAIN = 'الدوري الإسباني',
-  ITALY = 'الدوري الإيطالي',
-  GERMANY = 'الدوري الألماني',
-  CHAMPIONS_LEAGUE = 'دوري أبطال أوروبا',
-  ARAB_CUP = 'كأس العرب',
-  ANALYSIS = 'تحليلات',
-  VIDEO = 'فيديو',
-  BREAKING = 'عاجل'
+// Leagues/countries are admin-managed data now (see `leagues` table in
+// supabase/schema.sql + لوحة التحكم → الدوريات الأساسية), not a fixed
+// list baked into the code — so this is just `string` at the type
+// level. The actual stored value is always a league's Arabic `name`
+// (e.g. "السعودية"), exactly like before, so no migration was needed
+// for existing articles/matches/clubs when this stopped being an enum.
+export type Category = string;
+
+// A few pseudo-categories are structural to the app itself (video
+// content, tactical analysis, breaking-news tagging) rather than
+// leagues an admin adds/removes — kept as fixed constants so
+// /videos, /analysis, etc. keep working regardless of what's in the
+// dynamic `leagues` table.
+export const SPECIAL_CATEGORIES = {
+  ANALYSIS: 'تحليلات',
+  VIDEO: 'فيديو',
+  BREAKING: 'عاجل',
+} as const;
+
+export interface League {
+  id: string; // url slug, e.g. 'saudi'
+  name: string; // Arabic display value — what's actually stored as category/country elsewhere
+  region: 'arab' | 'european' | 'other';
+  sortOrder: number;
+  active: boolean;
 }
 
 export interface FeatureFlags {
