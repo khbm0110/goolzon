@@ -5,15 +5,8 @@ import Link from 'next/link';
 import { ChevronDown, Radio, Search, X, Loader2, CalendarX } from 'lucide-react';
 import TeamLogo from '@/components/TeamLogo';
 import { data } from '@/lib/data';
-import { Category, type Match } from '@/types';
+import type { Match } from '@/types';
 import { isSameCalendarDay, addDays } from '@/lib/services/dateService';
-
-const ARAB_LEAGUES = [
-  Category.SAUDI, Category.UAE, Category.QATAR, Category.KUWAIT, Category.OMAN, Category.BAHRAIN,
-  Category.EGYPT, Category.ALGERIA, Category.TUNISIA, Category.MOROCCO, Category.JORDAN,
-  Category.IRAQ, Category.LEBANON, Category.LIBYA, Category.SUDAN, Category.YEMEN, Category.PALESTINE,
-];
-const EURO_LEAGUES = [Category.ENGLAND, Category.SPAIN, Category.ITALY, Category.GERMANY, Category.CHAMPIONS_LEAGUE];
 
 type Region = 'ALL' | 'ARAB' | 'EURO';
 type DayKey = 'YESTERDAY' | 'TODAY' | 'TOMORROW';
@@ -99,11 +92,17 @@ export default function ScoresPage() {
   const [region, setRegion] = useState<Region>('ALL');
   const [day, setDay] = useState<DayKey>('TODAY');
   const [query, setQuery] = useState('');
+  const [arabLeagueNames, setArabLeagueNames] = useState<string[]>([]);
+  const [euroLeagueNames, setEuroLeagueNames] = useState<string[]>([]);
 
   useEffect(() => {
     data.getMatches().then((m) => {
       setMatches(m);
       setIsLoading(false);
+    });
+    data.getLeagues().then((leagues) => {
+      setArabLeagueNames(leagues.filter((l) => l.region === 'arab').map((l) => l.name));
+      setEuroLeagueNames(leagues.filter((l) => l.region === 'european').map((l) => l.name));
     });
   }, []);
 
@@ -119,8 +118,8 @@ export default function ScoresPage() {
     const filtered = matches
       .filter((m) => (m.date ? isSameCalendarDay(new Date(m.date), selectedDate) : false))
       .filter((m) => {
-        if (region === 'ARAB') return (ARAB_LEAGUES as string[]).includes(m.country);
-        if (region === 'EURO') return (EURO_LEAGUES as string[]).includes(m.country);
+        if (region === 'ARAB') return arabLeagueNames.includes(m.country);
+        if (region === 'EURO') return euroLeagueNames.includes(m.country);
         return true;
       })
       .filter((m) => (q === '' ? true : m.homeTeam.toLowerCase().includes(q) || m.awayTeam.toLowerCase().includes(q) || m.league.toLowerCase().includes(q)));
@@ -138,7 +137,7 @@ export default function ScoresPage() {
       const bLive = b.some((m) => m.status === 'LIVE') ? 1 : 0;
       return bLive - aLive;
     });
-  }, [matches, region, day, query]);
+  }, [matches, region, day, query, arabLeagueNames, euroLeagueNames]);
 
   const totalMatches = grouped.reduce((acc, [, m]) => acc + m.length, 0);
 

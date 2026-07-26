@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { Save, X, Wand2, Loader2 } from 'lucide-react';
-import { Category, type ClubProfile } from '@/types';
+import { data } from '@/lib/data';
+import type { ClubProfile, League } from '@/types';
 
 interface ClubEditorProps {
   initialData: ClubProfile;
@@ -13,10 +14,15 @@ interface ClubEditorProps {
 export default function ClubEditor({ initialData, onSave, onCancel }: ClubEditorProps) {
   const [club, setClub] = useState<ClubProfile>(initialData);
   const [saving, setSaving] = useState(false);
+  const [leagues, setLeagues] = useState<League[]>([]);
   const [suggesting, setSuggesting] = useState(false);
   const [suggestError, setSuggestError] = useState<string | null>(null);
 
   useEffect(() => setClub(initialData), [initialData]);
+
+  useEffect(() => {
+    data.getLeagues().then(setLeagues);
+  }, []);
 
   async function handleSuggestFromWikipedia() {
     if (!club.name?.trim()) {
@@ -94,8 +100,8 @@ export default function ClubEditor({ initialData, onSave, onCancel }: ClubEditor
             <div>
               <label className="block text-sm text-[var(--fg-subtle)] mb-1">الدوري/الدولة</label>
               <select name="country" value={club.country} onChange={handleChange} className="w-full bg-[var(--bg-surface-2)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--fg)]">
-                {Object.values(Category).map((c) => (
-                  <option key={c} value={c}>{c}</option>
+                {leagues.filter((l) => l.active).map((l) => (
+                  <option key={l.id} value={l.name}>{l.name}</option>
                 ))}
               </select>
             </div>

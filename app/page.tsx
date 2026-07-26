@@ -6,7 +6,7 @@ import MatchTicker from '@/components/MatchTicker';
 import StandingsWidget from '@/components/StandingsWidget';
 import PollWidget from '@/components/PollWidget';
 import AdSlot from '@/components/AdSlot';
-import { Category } from '@/types';
+import { SPECIAL_CATEGORIES } from '@/types';
 import { isSameCalendarDay } from '@/lib/services/dateService';
 
 // This page reads live data (scores, standings, leaderboard...) that
@@ -37,7 +37,7 @@ export default async function HomePage() {
   const breaking = articles.filter((a) => a.isBreaking);
   const featuredArticle = breaking[0] ?? articles[0];
   const latestNews = articles
-    .filter((a) => a.id !== featuredArticle?.id && a.category !== Category.VIDEO)
+    .filter((a) => a.id !== featuredArticle?.id && a.category !== SPECIAL_CATEGORIES.VIDEO)
     .slice(0, 9);
   const sideNews = articles.filter((a) => a.id !== featuredArticle?.id).slice(0, 5);
 

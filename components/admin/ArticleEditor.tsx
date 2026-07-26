@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { Save, X } from 'lucide-react';
-import { Article, Category } from '@/types';
+import { data } from '@/lib/data';
+import { SPECIAL_CATEGORIES, type Article, type League } from '@/types';
 
 interface ArticleEditorProps {
   initialData: Partial<Article>;
@@ -14,10 +15,15 @@ interface ArticleEditorProps {
 export default function ArticleEditor({ initialData, onSave, onCancel, mode }: ArticleEditorProps) {
   const [article, setArticle] = useState<Partial<Article>>(initialData);
   const [saving, setSaving] = useState(false);
+  const [leagues, setLeagues] = useState<League[]>([]);
 
   useEffect(() => {
     setArticle(initialData);
   }, [initialData]);
+
+  useEffect(() => {
+    data.getLeagues().then(setLeagues);
+  }, []);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
     const { name, value, type } = e.target as HTMLInputElement;
@@ -54,9 +60,11 @@ export default function ArticleEditor({ initialData, onSave, onCancel, mode }: A
             <div>
               <label className="block text-sm text-[var(--fg-subtle)] mb-1">التصنيف</label>
               <select name="category" value={article.category} onChange={handleChange} className="w-full bg-[var(--bg-surface-2)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--fg)]">
-                {Object.values(Category).map((c) => (
-                  <option key={c} value={c}>{c}</option>
+                {leagues.filter((l) => l.active).map((l) => (
+                  <option key={l.id} value={l.name}>{l.name}</option>
                 ))}
+                <option value={SPECIAL_CATEGORIES.ANALYSIS}>{SPECIAL_CATEGORIES.ANALYSIS}</option>
+                <option value={SPECIAL_CATEGORIES.VIDEO}>{SPECIAL_CATEGORIES.VIDEO}</option>
               </select>
             </div>
             <div className="flex items-end gap-2 pb-1">

@@ -3,43 +3,29 @@ import type { Metadata } from 'next';
 import { data } from '@/lib/data';
 import NewsCard from '@/components/NewsCard';
 import FollowLeagueButton from '@/components/FollowLeagueButton';
-import { Category } from '@/types';
+import { SPECIAL_CATEGORIES } from '@/types';
 
 // This page reads live data (scores, standings, leaderboard...) that
 // changes constantly, so it must be rendered fresh on every request
 // rather than cached as a static page at build time.
 export const dynamic = 'force-dynamic';
 
-const CATEGORY_MAP: Record<string, Category> = {
-  saudi: Category.SAUDI,
-  uae: Category.UAE,
-  qatar: Category.QATAR,
-  kuwait: Category.KUWAIT,
-  oman: Category.OMAN,
-  bahrain: Category.BAHRAIN,
-  egypt: Category.EGYPT,
-  algeria: Category.ALGERIA,
-  tunisia: Category.TUNISIA,
-  morocco: Category.MOROCCO,
-  jordan: Category.JORDAN,
-  iraq: Category.IRAQ,
-  lebanon: Category.LEBANON,
-  libya: Category.LIBYA,
-  sudan: Category.SUDAN,
-  yemen: Category.YEMEN,
-  palestine: Category.PALESTINE,
-  england: Category.ENGLAND,
-  spain: Category.SPAIN,
-  italy: Category.ITALY,
-  germany: Category.GERMANY,
-  'champions-league': Category.CHAMPIONS_LEAGUE,
-  'arab-cup': Category.ARAB_CUP,
-  analysis: Category.ANALYSIS,
+// 'analysis' isn't a league from the admin-managed `leagues` table —
+// it's one of the fixed structural pseudo-categories, so it's resolved
+// separately from the DB lookup below.
+const SPECIAL_SLUGS: Record<string, string> = {
+  analysis: SPECIAL_CATEGORIES.ANALYSIS,
 };
+
+async function resolveCategory(slug: string): Promise<string | null> {
+  if (SPECIAL_SLUGS[slug]) return SPECIAL_SLUGS[slug];
+  const leagues = await data.getLeagues();
+  return leagues.find((l) => l.id === slug)?.name ?? null;
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const currentCategory = CATEGORY_MAP[slug];
+  const currentCategory = await resolveCategory(slug);
   if (!currentCategory) return {};
 
   return {
@@ -50,7 +36,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function CountryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const currentCategory = CATEGORY_MAP[slug] || Category.SAUDI;
+  const currentCategory = (await resolveCategory(slug)) ?? SPECIAL_CATEGORIES.ANALYSIS;
 
   const articles = await data.getArticles();
   const filtered = articles.filter((a) => a.category === currentCategory);

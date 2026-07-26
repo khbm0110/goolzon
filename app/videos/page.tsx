@@ -2,7 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { PlayCircle, Clock } from 'lucide-react';
 import { data } from '@/lib/data';
-import { Category } from '@/types';
+import { SPECIAL_CATEGORIES } from '@/types';
 
 // This page reads live data (scores, standings, leaderboard...) that
 // changes constantly, so it must be rendered fresh on every request
@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function VideosPage() {
   const articles = await data.getArticles();
-  const videos = articles.filter((a) => a.category === Category.VIDEO);
+  const videos = articles.filter((a) => a.category === SPECIAL_CATEGORIES.VIDEO);
 
   return (
     <div className="container mx-auto px-4 py-8">

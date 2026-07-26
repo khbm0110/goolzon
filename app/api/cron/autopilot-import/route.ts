@@ -3,8 +3,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { fetchRssFeed } from '@/lib/services/rss';
 import { getProvider } from '@/lib/services/ai/providers';
 import { buildRewritePrompt } from '@/lib/services/ai/prompt';
-import { Category } from '@/types';
 import { getErrorMessage } from '@/lib/utils/errors';
+import { SPECIAL_CATEGORIES } from '@/types';
 
 function hashId(input: string): string {
   let hash = 0;
@@ -30,8 +30,6 @@ function isRelevant(item: { title: string; description: string }, keywords: stri
   const haystack = `${item.title} ${item.description}`.toLowerCase();
   return keywords.some((kw) => haystack.includes(kw.toLowerCase()));
 }
-
-const ALL_CATEGORIES = Object.values(Category);
 
 // Runs every enabled agent whose source_type = 'rss' (e.g. "وكيل
 // الدوريات العربية"): fetches each of the agent's RSS sources, and for
@@ -65,6 +63,9 @@ export async function GET(request: Request) {
   if (!settings?.enabled) {
     return NextResponse.json({ message: 'الأتمتة موقوفة حاليًا من لوحة التحكم.' });
   }
+
+  const { data: leagueRows } = await admin.from('leagues').select('name').eq('active', true);
+  const ALL_CATEGORIES: string[] = [...(leagueRows ?? []).map((l) => l.name), SPECIAL_CATEGORIES.ANALYSIS, SPECIAL_CATEGORIES.VIDEO];
 
   const { data: agents } = await admin.from('ai_agents').select('*').eq('source_type', 'rss').eq('enabled', true);
   if (!agents || agents.length === 0) {
@@ -123,9 +124,7 @@ export async function GET(request: Request) {
           // Trust the AI's category pick only if it's one of our real
           // categories; otherwise fall back to the agent's default so a
           // typo/hallucinated label never breaks the article's classification.
-          const category = ALL_CATEGORIES.includes(rewritten.category as Category)
-            ? (rewritten.category as string)
-            : agent.default_category;
+          const category = rewritten.category && ALL_CATEGORIES.includes(rewritten.category) ? rewritten.category : agent.default_category;
 
           const { error } = await admin.from('pending_articles').insert({
             id: pendingId,

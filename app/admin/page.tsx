@@ -14,14 +14,15 @@ import { data } from '@/lib/data';
 import ArticleEditor from '@/components/admin/ArticleEditor';
 import ClubEditor from '@/components/admin/ClubEditor';
 import MatchEditor from '@/components/admin/MatchEditor';
+import LeagueEditor from '@/components/admin/LeagueEditor';
 import AdSlotEditor from '@/components/admin/AdSlotEditor';
 import AgentCard from '@/components/admin/AgentCard';
-import { Category, AD_PLACEMENT_LABELS, type Article, type User, type Comment, type ClubProfile, type Sponsor, type SeoSettings, type FeatureFlags, type AdSlot, type AdsGlobalSettings, type Match } from '@/types';
+import { AD_PLACEMENT_LABELS, type Article, type User, type Comment, type ClubProfile, type Sponsor, type SeoSettings, type FeatureFlags, type AdSlot, type AdsGlobalSettings, type Match, type League } from '@/types';
 import { getErrorMessage } from '@/lib/utils/errors';
 import type { ApiFootballLeagueSearchResult, ApiFootballTeamSearchResult, ApiFootballPlayerSearchResult } from '@/lib/services/apiFootball';
 import type { TrackedLeague, AiAgent, AiProviderInfo, AutopilotSettings, PendingArticle, BulkImportSummary, BulkImportRow, RssSource, ContactMessage } from '@/lib/types/admin';
 
-type AdminTab = 'OVERVIEW' | 'ARTICLES' | 'MATCHES' | 'USERS' | 'MODERATION' | 'MESSAGES' | 'CLUBS' | 'SPONSORS' | 'SEO' | 'ADS' | 'LEAGUES' | 'ANALYTICS' | 'AUTOPILOT' | 'SETTINGS';
+type AdminTab = 'OVERVIEW' | 'ARTICLES' | 'MATCHES' | 'BASE_LEAGUES' | 'USERS' | 'MODERATION' | 'MESSAGES' | 'CLUBS' | 'SPONSORS' | 'SEO' | 'ADS' | 'LEAGUES' | 'ANALYTICS' | 'AUTOPILOT' | 'SETTINGS';
 
 const COMING_SOON_TABS: { key: AdminTab; label: string; icon: typeof ShoppingBag; note: string }[] = [
   { key: 'ANALYTICS', label: 'التحليلات', icon: BarChart2, note: 'يحتاج ربط Google Analytics أولاً' },
@@ -47,11 +48,17 @@ export default function AdminDashboardPage() {
   const [adSlots, setAdSlots] = useState<AdSlot[]>([]);
   const [adsGlobal, setAdsGlobal] = useState<AdsGlobalSettings | null>(null);
   const [trackedLeagues, setTrackedLeagues] = useState<TrackedLeague[]>([]);
+  const [baseLeagues, setBaseLeagues] = useState<League[]>([]);
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [leagueQuery, setLeagueQuery] = useState('');
   const [leagueResults, setLeagueResults] = useState<ApiFootballLeagueSearchResult[]>([]);
   const [leagueSearching, setLeagueSearching] = useState(false);
   const [leagueSearchError, setLeagueSearchError] = useState<string | null>(null);
+  const [testClubName, setTestClubName] = useState('');
+  const [testPlayerName, setTestPlayerName] = useState('');
+  const [testResults, setTestResults] = useState<Record<string, unknown> | null>(null);
+  const [testError, setTestError] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
   const [importSummary, setImportSummary] = useState<BulkImportSummary | null>(null);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
@@ -71,6 +78,7 @@ export default function AdminDashboardPage() {
   const [editingClub, setEditingClub] = useState<ClubProfile | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
+  const [editingLeague, setEditingLeague] = useState<League | null>(null);
   const [editingAdSlot, setEditingAdSlot] = useState<AdSlot | null>(null);
 
   useEffect(() => {
@@ -78,7 +86,7 @@ export default function AdminDashboardPage() {
   }, [isAdmin, loading, router]);
 
   async function refreshAll() {
-    const [a, u, c, cl, sp, seo, ff, ads, adsG, m] = await Promise.all([
+    const [a, u, c, cl, sp, seo, ff, ads, adsG, m, bl] = await Promise.all([
       data.getArticles(),
       data.getUsers(),
       data.getAllComments(),
@@ -89,6 +97,7 @@ export default function AdminDashboardPage() {
       data.getAdSlots(),
       data.getAdsGlobalSettings(),
       data.getMatches(),
+      data.getLeagues(),
     ]);
     setArticles(a);
     setUsers(u);
@@ -100,6 +109,7 @@ export default function AdminDashboardPage() {
     setAdSlots(ads);
     setAdsGlobal(adsG);
     setMatches(m);
+    setBaseLeagues(bl);
   }
 
   async function refreshTrackedLeagues() {
@@ -213,6 +223,31 @@ export default function AdminDashboardPage() {
     }
     refreshAutopilot();
     refreshAll();
+  }
+
+  async function handleTestApiFootball(e: React.FormEvent) {
+    e.preventDefault();
+    setTesting(true);
+    setTestError(null);
+    setTestResults(null);
+    try {
+      const res = await fetch('/api/admin/test-api-football', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clubName: testClubName, playerName: testPlayerName || undefined }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setTestError(json.error || 'فشل الاختبار');
+        if (json.partialResults) setTestResults(json.partialResults);
+        return;
+      }
+      setTestResults(json.results);
+    } catch (err: unknown) {
+      setTestError(getErrorMessage(err));
+    } finally {
+      setTesting(false);
+    }
   }
 
   async function handleSearchLeagues(e: React.FormEvent) {
@@ -415,6 +450,32 @@ export default function AdminDashboardPage() {
     }
   }
 
+  async function handleSaveLeague(league: League) {
+    const exists = baseLeagues.some((l) => l.id === league.id);
+    try {
+      if (exists) await data.updateLeague(league);
+      else await data.addLeague(league);
+      setEditingLeague(null);
+      refreshAll();
+    } catch (e: unknown) {
+      alert(`فشل الحفظ: ${getErrorMessage(e)}`);
+    }
+  }
+
+  async function handleDeleteLeague(league: League) {
+    const inUse =
+      articles.some((a) => a.category === league.name) ||
+      clubs.some((c) => c.country === league.name) ||
+      matches.some((m) => m.country === league.name);
+    const warning = inUse
+      ? `تحذير: يوجد محتوى منشور بتصنيف "${league.name}" حاليًا (مقالات/أندية/مباريات) — حذف الدوري ما يحذف المحتوى، بس بيوقف ظهوره بقوائم الاختيار الجديدة. متأكد؟`
+      : `حذف "${league.name}" نهائيًا؟`;
+    if (confirm(warning)) {
+      await data.deleteLeague(league.id);
+      refreshAll();
+    }
+  }
+
   async function handleToggleSponsor(sponsor: Sponsor) {
     await data.updateSponsor({ ...sponsor, active: !sponsor.active });
     refreshAll();
@@ -490,6 +551,7 @@ export default function AdminDashboardPage() {
       items: [
         { key: 'ARTICLES', label: 'المقالات', icon: FileText },
         { key: 'MATCHES', label: 'المباريات', icon: Trophy },
+        { key: 'BASE_LEAGUES', label: 'الدوريات الأساسية', icon: Globe },
         { key: 'CLUBS', label: 'الأندية', icon: ShoppingBag },
       ],
     },
@@ -611,7 +673,7 @@ export default function AdminDashboardPage() {
 
             <h2 className="text-sm font-black text-[var(--fg-subtle)] mb-3">اختصارات سريعة</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <button onClick={() => { setEditorMode('NEW'); setEditingArticle({ id: 'new-article', title: '', summary: '', content: '', category: Category.SAUDI, imageUrl: '' }); }} className="flex items-center gap-2 p-4 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl hover:border-primary/50 transition-colors text-sm font-bold text-[var(--fg-muted)] hover:text-primary">
+              <button onClick={() => { setEditorMode('NEW'); setEditingArticle({ id: 'new-article', title: '', summary: '', content: '', category: baseLeagues[0]?.name ?? '', imageUrl: '' }); }} className="flex items-center gap-2 p-4 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl hover:border-primary/50 transition-colors text-sm font-bold text-[var(--fg-muted)] hover:text-primary">
                 <Plus size={16} /> مقال جديد
               </button>
               <button onClick={() => setActiveTab('MODERATION')} className="flex items-center gap-2 p-4 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl hover:border-primary/50 transition-colors text-sm font-bold text-[var(--fg-muted)] hover:text-primary">
@@ -634,7 +696,7 @@ export default function AdminDashboardPage() {
               <button
                 onClick={() => {
                   setEditorMode('NEW');
-                  setEditingArticle({ id: 'new-article', title: '', summary: '', content: '', category: Category.SAUDI, imageUrl: '' });
+                  setEditingArticle({ id: 'new-article', title: '', summary: '', content: '', category: baseLeagues[0]?.name ?? '', imageUrl: '' });
                 }}
                 className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-emerald-600 text-[var(--fg)] rounded-lg font-bold text-sm"
               >
@@ -821,7 +883,7 @@ export default function AdminDashboardPage() {
                     time: '',
                     status: 'UPCOMING',
                     league: '',
-                    country: Category.SAUDI,
+                    country: baseLeagues[0]?.name ?? '',
                     date: new Date().toISOString(),
                     round: '',
                     venue: '',
@@ -884,6 +946,69 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
+        {activeTab === 'BASE_LEAGUES' && (
+          <div>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="text-2xl font-black text-[var(--fg)]">الدوريات الأساسية ({baseLeagues.length})</h1>
+                <p className="text-xs text-[var(--fg-faint)] mt-1">
+                  هذي قائمة الدوريات/الدول اللي الموقع كله مبني عليها (تصنيف المقالات، دولة الأندية والمباريات). مختلفة عن
+                  «الدوريات المتابَعة» (استيراد المباريات التلقائي من API-Football).
+                </p>
+              </div>
+              <button
+                onClick={() => setEditingLeague({ id: '', name: '', region: 'arab', sortOrder: baseLeagues.length + 1, active: true })}
+                className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-emerald-600 text-[var(--fg)] rounded-lg font-bold text-sm flex-shrink-0"
+              >
+                <Plus size={16} /> دوري جديد
+              </button>
+            </div>
+
+            <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-[var(--bg-surface-2)] text-[var(--fg-subtle)] text-xs">
+                  <tr>
+                    <th className="p-3 text-right">الاسم</th>
+                    <th className="p-3 text-center">التصنيف</th>
+                    <th className="p-3 text-center">الترتيب</th>
+                    <th className="p-3 text-center">الحالة</th>
+                    <th className="p-3 text-center">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border-subtle)]">
+                  {baseLeagues.map((l) => (
+                    <tr key={l.id} className="hover:bg-[color-mix(in_srgb,var(--bg-surface-2)_30%,transparent)]">
+                      <td className="p-3 text-[var(--fg)] font-bold">{l.name}</td>
+                      <td className="p-3 text-center text-[var(--fg-faint)] text-xs">
+                        {l.region === 'arab' ? 'عربي' : l.region === 'european' ? 'أوروبي' : 'أخرى'}
+                      </td>
+                      <td className="p-3 text-center text-[var(--fg-faint)] text-xs">{l.sortOrder}</td>
+                      <td className="p-3 text-center">
+                        <span className={`text-xs px-2 py-1 rounded-full font-bold ${l.active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-[var(--bg-surface-2)] text-[var(--fg-faint)]'}`}>
+                          {l.active ? 'مفعّل' : 'موقوف'}
+                        </span>
+                      </td>
+                      <td className="p-3 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <button onClick={() => setEditingLeague(l)} className="p-1.5 bg-[var(--bg-surface-2)] hover:bg-[var(--bg-surface-3)] rounded text-[var(--fg-muted)]">
+                            <Edit size={14} />
+                          </button>
+                          <button onClick={() => handleDeleteLeague(l)} className="p-1.5 bg-[var(--bg-surface-2)] hover:bg-red-500/20 hover:text-red-500 rounded text-[var(--fg-muted)]">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {baseLeagues.length === 0 && (
+                <div className="text-center py-12 text-[var(--fg-faint)] text-sm">ما فيه دوريات بعد.</div>
+              )}
+            </div>
+          </div>
+        )}
+
         {activeTab === 'CLUBS' && (
           <div>
             <div className="flex items-center justify-between mb-6">
@@ -906,7 +1031,7 @@ export default function AdminDashboardPage() {
                     fanCount: 0,
                     squad: [],
                     trophies: [],
-                    country: Category.SAUDI,
+                    country: baseLeagues[0]?.name ?? '',
                   })
                 }
                 className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-emerald-600 text-[var(--fg)] rounded-lg font-bold text-sm"
@@ -1203,6 +1328,67 @@ export default function AdminDashboardPage() {
               </p>
             </div>
 
+            <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl p-5 mb-8">
+              <h2 className="font-bold text-[var(--fg)] mb-1">اختبار اتصال API-Football</h2>
+              <p className="text-xs text-[var(--fg-faint)] mb-4">
+                يسوي طلبات حقيقية بمفتاحك ويعرض لك بالضبط وش يرجع لكل نوع بيانات — عشان تتأكد بعينك وش متوفر ووش لأ، بدل التخمين.
+              </p>
+              <form onSubmit={handleTestApiFootball} className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                <input
+                  value={testClubName}
+                  onChange={(e) => setTestClubName(e.target.value)}
+                  placeholder="اسم نادٍ (مثال: Al Hilal)"
+                  className="bg-[var(--bg-surface-2)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--fg)]"
+                />
+                <input
+                  value={testPlayerName}
+                  onChange={(e) => setTestPlayerName(e.target.value)}
+                  placeholder="اسم لاعب (اختياري)"
+                  className="bg-[var(--bg-surface-2)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--fg)]"
+                />
+                <button
+                  type="submit"
+                  disabled={testing || testClubName.trim().length < 2}
+                  className="sm:col-span-2 px-4 py-2 bg-primary hover:bg-emerald-600 text-white rounded-lg text-sm font-bold disabled:opacity-50"
+                >
+                  {testing ? 'جارٍ الاختبار...' : 'اختبار الاتصال'}
+                </button>
+              </form>
+
+              {testError && <p className="text-sm text-red-500 mb-3">{testError}</p>}
+
+              {testResults != null && (
+                <div className="space-y-3">
+                  {Object.entries(testResults).map(([sectionKey, section]) => {
+                    const s = section as { fieldsChecked?: { field: string; value: unknown; present: boolean }[]; resultCount?: number; note?: string | null };
+                    return (
+                      <div key={sectionKey} className="bg-[var(--bg-base)] rounded-lg p-3">
+                        <p className="text-xs font-black text-[var(--fg-subtle)] mb-2 uppercase tracking-wide">{sectionKey}</p>
+                        {typeof s.resultCount === 'number' && (
+                          <p className="text-xs text-[var(--fg-faint)] mb-2">عدد النتائج: {s.resultCount}</p>
+                        )}
+                        {s.fieldsChecked && (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                            {s.fieldsChecked.map((f) => (
+                              <div key={f.field} className={`text-[10px] px-2 py-1 rounded flex items-center justify-between gap-1 ${f.present ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                                <span className="font-bold">{f.field}</span>
+                                <span>{f.present ? '✓' : 'فاضي'}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {s.note && <p className="text-[10px] text-amber-500 mt-2">{s.note}</p>}
+                      </div>
+                    );
+                  })}
+                  <details className="text-xs text-[var(--fg-faint)]">
+                    <summary className="cursor-pointer font-bold">عرض الرد الخام الكامل (JSON)</summary>
+                    <pre className="mt-2 bg-[var(--bg-base)] rounded-lg p-3 overflow-x-auto text-[10px]" dir="ltr">{JSON.stringify(testResults, null, 2)}</pre>
+                  </details>
+                </div>
+              )}
+            </div>
+
             <form onSubmit={handleSearchLeagues} className="flex gap-2 mb-6 max-w-lg">
               <div className="relative flex-1">
                 <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--fg-faint)]" />
@@ -1485,6 +1671,7 @@ export default function AdminDashboardPage() {
 
       {editingClub && <ClubEditor initialData={editingClub} onSave={handleSaveClub} onCancel={() => setEditingClub(null)} />}
       {editingMatch && <MatchEditor initialData={editingMatch} onSave={handleSaveMatch} onCancel={() => setEditingMatch(null)} />}
+      {editingLeague && <LeagueEditor initialData={editingLeague} onSave={handleSaveLeague} onCancel={() => setEditingLeague(null)} />}
       {editingAdSlot && <AdSlotEditor initialData={editingAdSlot} onSave={handleSaveAdSlot} onCancel={() => setEditingAdSlot(null)} />}
     </div>
   );

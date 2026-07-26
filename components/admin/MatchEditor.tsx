@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { Save, X } from 'lucide-react';
-import { Category, type Match } from '@/types';
+import { data } from '@/lib/data';
+import type { Match, League } from '@/types';
 
 interface MatchEditorProps {
   initialData: Match;
@@ -12,6 +13,11 @@ interface MatchEditorProps {
 
 export default function MatchEditor({ initialData, onSave, onCancel }: MatchEditorProps) {
   const [match, setMatch] = useState<Match>(initialData);
+  const [leagues, setLeagues] = useState<League[]>([]);
+
+  useEffect(() => {
+    data.getLeagues().then(setLeagues);
+  }, []);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => setMatch(initialData), [initialData]);
@@ -82,8 +88,8 @@ export default function MatchEditor({ initialData, onSave, onCancel }: MatchEdit
                 onChange={handleChange}
                 className="w-full bg-[var(--bg-surface-2)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--fg)] text-sm"
               >
-                {Object.entries(Category).map(([key, value]) => (
-                  <option key={key} value={value}>{value}</option>
+                {leagues.filter((l) => l.active).map((l) => (
+                  <option key={l.id} value={l.name}>{l.name}</option>
                 ))}
               </select>
             </div>

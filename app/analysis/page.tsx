@@ -1,7 +1,7 @@
 import { Trophy } from 'lucide-react';
 import { data } from '@/lib/data';
 import NewsCard from '@/components/NewsCard';
-import { Category } from '@/types';
+import { SPECIAL_CATEGORIES } from '@/types';
 
 // This page reads live data (scores, standings, leaderboard...) that
 // changes constantly, so it must be rendered fresh on every request
@@ -10,14 +10,14 @@ export const dynamic = 'force-dynamic';
 
 export default async function AnalysisPage() {
   const articles = await data.getArticles();
-  const filtered = articles.filter((a) => a.category === Category.ANALYSIS);
+  const filtered = articles.filter((a) => a.category === SPECIAL_CATEGORIES.ANALYSIS);
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-8 border-b border-[var(--border-subtle)] pb-4">
         <div>
           <span className="text-primary text-sm font-bold tracking-widest uppercase mb-1 block">تغطية خاصة</span>
-          <h1 className="text-3xl md:text-5xl font-black text-[var(--fg)]">{Category.ANALYSIS}</h1>
+          <h1 className="text-3xl md:text-5xl font-black text-[var(--fg)]">{SPECIAL_CATEGORIES.ANALYSIS}</h1>
         </div>
         <div className="hidden md:block">
           <Trophy size={48} className="text-slate-800" />
