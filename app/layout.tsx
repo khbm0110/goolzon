@@ -19,9 +19,6 @@ export const metadata: Metadata = {
   // Required so relative OG image paths resolve to absolute URLs when a
   // page doesn't set its own (see generateMetadata() on article/match/
   // club/country pages for per-page overrides).
-verification: {
-    google: "bqzxtIV6w-ZiijGKcR3F4NWlDnjkQHxeY0pDfzj4t9Y ",
-  },
   metadataBase: new URL(SITE_URL),
   title: {
     default: 'goolzon | الكرة الخليجية',
