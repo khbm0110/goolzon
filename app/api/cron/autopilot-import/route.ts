@@ -3,6 +3,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { fetchRssFeed } from '@/lib/services/rss';
 import { getProvider } from '@/lib/services/ai/providers';
 import { buildRewritePrompt } from '@/lib/services/ai/prompt';
+import { generateArticleImage } from '@/lib/services/ai/imageGen';
+import { uploadGeneratedImage } from '@/lib/services/imageStorage';
 import { getErrorMessage } from '@/lib/utils/errors';
 import { SPECIAL_CATEGORIES } from '@/types';
 
@@ -126,6 +128,17 @@ export async function GET(request: Request) {
           // typo/hallucinated label never breaks the article's classification.
           const category = rewritten.category && ALL_CATEGORIES.includes(rewritten.category) ? rewritten.category : agent.default_category;
 
+          // Best-effort only: a failed/unavailable image generator must
+          // never stop the article itself from being queued — it just
+          // publishes without a header image, same as before this existed.
+          let imageUrl: string | null = null;
+          try {
+            const image = await generateArticleImage(category);
+            if (image) imageUrl = await uploadGeneratedImage(admin, image, `rss/${pendingId}`);
+          } catch (e: unknown) {
+            errors.push(`[${agent.name}] "${item.title}": فشل توليد الصورة — ${getErrorMessage(e, '')}`);
+          }
+
           const { error } = await admin.from('pending_articles').insert({
             id: pendingId,
             agent_id: agent.id,
@@ -133,7 +146,7 @@ export async function GET(request: Request) {
             summary: rewritten.summary,
             content: rewritten.content,
             category,
-            image_url: null,
+            image_url: imageUrl,
             source_url: item.link,
             source_name: source.name,
             ai_provider: provider.id,

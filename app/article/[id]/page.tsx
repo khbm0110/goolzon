@@ -7,6 +7,7 @@ import { formatTimeAgo } from '@/lib/services/dateService';
 import ArticleComments from '@/components/ArticleComments';
 import FavoriteButton from '@/components/FavoriteButton';
 import AdSlot from '@/components/AdSlot';
+import NewsCard from '@/components/NewsCard';
 
 // This page reads live data (scores, standings, leaderboard...) that
 // changes constantly, so it must be rendered fresh on every request
@@ -46,6 +47,14 @@ export default async function ArticleDetailPage({ params }: { params: Promise<{ 
 
   if (!article) notFound();
 
+  // "قد تعجبك أيضًا": same-category articles first (most relevant), then
+  // top up with the latest other articles if the category doesn't have
+  // enough on its own — always excluding the article being viewed.
+  const allArticles = await data.getArticles();
+  const sameCategory = allArticles.filter((a) => a.id !== article.id && a.category === article.category);
+  const others = allArticles.filter((a) => a.id !== article.id && a.category !== article.category);
+  const relatedArticles = [...sameCategory, ...others].slice(0, 4);
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
       <span className="text-xs font-bold text-primary mb-2 block">{article.category}</span>
@@ -62,10 +71,17 @@ export default async function ArticleDetailPage({ params }: { params: Promise<{ 
       </div>
 
       {/* This is the LCP element on the article page — priority skips
-          lazy-loading so it doesn't compete with below-the-fold images. */}
-      <div className="relative w-full h-64 md:h-96 rounded-xl overflow-hidden mb-6">
-        <Image src={article.imageUrl} alt={article.title} fill priority sizes="(max-width: 768px) 100vw, 1024px" className="object-cover" />
-      </div>
+          lazy-loading so it doesn't compete with below-the-fold images.
+          Guard against an empty imageUrl (possible since the DB column
+          is nullable and supabase-provider.ts falls back to ''): passing
+          src="" to next/image throws at runtime, so skip rendering it
+          entirely rather than crash the whole article page over a
+          missing image. */}
+      {article.imageUrl && (
+        <div className="relative w-full h-64 md:h-96 rounded-xl overflow-hidden mb-6">
+          <Image src={article.imageUrl} alt={article.title} fill priority sizes="(max-width: 768px) 100vw, 1024px" className="object-cover" />
+        </div>
+      )}
 
       <p className="text-lg text-[var(--fg-muted)] leading-relaxed mb-6 font-bold">{article.summary}</p>
       <div className="prose prose-invert max-w-none text-[var(--fg-muted)] leading-loose whitespace-pre-line mb-8">{article.content}</div>
@@ -76,6 +92,17 @@ export default async function ArticleDetailPage({ params }: { params: Promise<{ 
         <ArticleComments articleId={article.id} />
         <FavoriteButton articleId={article.id} />
       </div>
+
+      {relatedArticles.length > 0 && (
+        <div className="border-t border-[var(--border-subtle)] mt-8 pt-8">
+          <h2 className="text-xl font-black text-[var(--fg)] mb-4">قد تعجبك أيضًا</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {relatedArticles.map((a) => (
+              <NewsCard key={a.id} article={a} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

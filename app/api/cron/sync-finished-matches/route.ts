@@ -16,7 +16,7 @@ import { getErrorMessage } from '@/lib/utils/errors';
 //
 // Next.js has no built-in scheduler, so something external has to call
 // this endpoint every 1–2 minutes while matches are live — e.g. Vercel
-// Cron (see vercel.json) or any uptime/cron service hitting this URL.
+// Cron (see supabase/cron-setup.sql, runs every 2 minutes via pg_cron) or any uptime/cron service hitting this URL.
 // It's intentionally idempotent and cheap to call repeatedly: a match
 // that's already FINISHED is simply skipped on every next run.
 //

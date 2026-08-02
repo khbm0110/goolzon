@@ -10,8 +10,8 @@ import { getErrorMessage } from '@/lib/utils/errors';
 // watch, and that makes new-player auto-sync (/api/sync/player) work
 // for teams that show up in these matches.
 //
-// Run once a day (see vercel.json) well before kickoff time. Re-running
-// it is safe — matches are upserted by id, so it never creates
+// Run once a day (see supabase/cron-setup.sql) well before kickoff time.
+// Re-running it is safe — matches are upserted by id, so it never creates
 // duplicates, it just refreshes kickoff time/venue/round if they
 // changed since the last run.
 export async function GET(request: Request) {

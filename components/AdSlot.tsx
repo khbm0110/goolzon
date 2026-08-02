@@ -39,9 +39,15 @@ export default function AdSlot({ placement, page }: { placement: AdPlacement; pa
     };
   }, [placement, page]);
 
-  // Browsers ignore <script> tags injected via innerHTML, so ad embed
-  // codes (which almost always include one) need to be re-created
-  // manually to actually execute.
+  // Browsers ignore <script> tags injected via innerHTML/cloneNode, so ad
+  // embed codes (which almost always include one) need to be re-created
+  // manually to actually execute. Crucially this must walk the WHOLE tree,
+  // not just top-level children: Google AdSense codes happen to be two
+  // flat top-level siblings (<ins> + <script>), which is why they worked
+  // before — but most other ad networks wrap their <script> inside a
+  // container <div> (e.g. `<div id="ad-123"><script>...</script></div>`),
+  // and a nested script like that was being silently cloned without ever
+  // running.
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -50,15 +56,16 @@ export default function AdSlot({ placement, page }: { placement: AdPlacement; pa
 
     const temp = document.createElement('div');
     temp.innerHTML = slot.code;
-    Array.from(temp.childNodes).forEach((node) => {
-      if (node.nodeName === 'SCRIPT') {
-        const script = document.createElement('script');
-        Array.from((node as HTMLScriptElement).attributes).forEach((attr) => script.setAttribute(attr.name, attr.value));
-        script.textContent = (node as HTMLScriptElement).textContent;
-        el.appendChild(script);
-      } else {
-        el.appendChild(node.cloneNode(true));
-      }
+    el.appendChild(temp);
+
+    // Replace every <script> anywhere in the tree (any depth) with a
+    // freshly created one — only scripts made via createElement +
+    // inserted through a real DOM method (appendChild/replaceWith) run.
+    temp.querySelectorAll('script').forEach((oldScript) => {
+      const newScript = document.createElement('script');
+      Array.from(oldScript.attributes).forEach((attr) => newScript.setAttribute(attr.name, attr.value));
+      newScript.textContent = oldScript.textContent;
+      oldScript.replaceWith(newScript);
     });
   }, [slot]);
 

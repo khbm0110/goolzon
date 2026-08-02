@@ -10,17 +10,16 @@ import { useTheme } from '@/contexts/ThemeContext';
 import SearchModal from './SearchModal';
 
 import { data } from '@/lib/data';
-import type { Article } from '@/types';
+import type { Article, League } from '@/types';
 
-const NAV_ITEMS = [
+// Fixed structural links only — actual leagues/countries come from the
+// `leagues` table (لوحة التحكم → الدوريات الأساسية) and are fetched below,
+// so adding/removing/reordering a league there updates this nav with no
+// code change needed.
+const FIXED_NAV_ITEMS = [
   { label: 'الرئيسية', path: '/' },
   { label: 'مركز النتائج', path: '/scores' },
   { label: 'الأندية', path: '/clubs' },
-  { label: 'دوري الأبطال', path: '/country/champions-league' },
-  { label: 'الدوري الإنجليزي', path: '/country/england' },
-  { label: 'الدوري الإسباني', path: '/country/spain' },
-  { label: 'الدوري السعودي', path: '/country/saudi' },
-  { label: 'الدوري الإماراتي', path: '/country/uae' },
 ];
 
 export default function Header() {
@@ -28,6 +27,7 @@ export default function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [articles, setArticles] = useState<Article[]>([]);
+  const [leagues, setLeagues] = useState<League[]>([]);
   const pathname = usePathname();
   const router = useRouter();
   const { currentUser, isAdmin, signOut } = useAuth();
@@ -36,7 +36,15 @@ export default function Header() {
 
   useEffect(() => {
     data.getArticles().then(setArticles);
+    data.getLeagues().then((all) =>
+      setLeagues(all.filter((l) => l.active).sort((a, b) => a.sortOrder - b.sortOrder))
+    );
   }, []);
+
+  const navItems = [
+    ...FIXED_NAV_ITEMS,
+    ...leagues.map((l) => ({ label: l.name, path: `/country/${l.id}` })),
+  ];
 
   // Close the account dropdown on outside click, and whenever the route changes.
   useEffect(() => {
@@ -88,7 +96,7 @@ export default function Header() {
 
           {/* Desktop Nav */}
           <nav className="hidden lg:flex items-center space-x-4 space-x-reverse overflow-x-auto no-scrollbar">
-            {NAV_ITEMS.map((item) => (
+            {navItems.map((item) => (
               <Link
                 key={item.path}
                 href={item.path}
@@ -197,7 +205,7 @@ export default function Header() {
       {isOpen && (
         <div className="lg:hidden bg-[var(--bg-surface)] border-t border-[var(--border-subtle)]">
           <div className="px-2 pt-2 pb-3 space-y-1">
-            {NAV_ITEMS.map((item) => (
+            {navItems.map((item) => (
               <Link
                 key={item.path}
                 href={item.path}
