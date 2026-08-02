@@ -1,3 +1,2 @@
 {
-  "$comment": "Cron jobs run via Supabase pg_cron now (see supabase/cron-setup.sql), not Vercel — Vercel Hobby only allows once-daily schedules, pg_cron doesn't. Do not re-add a \"crons\" key here; that would trigger every /api/cron/* route a second time on Vercel's own daily schedule, duplicating fixture imports, autopilot articles, etc."
 }
