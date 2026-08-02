@@ -1,6 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getProvider } from '@/lib/services/ai/providers';
 import { buildAnalysisPrompt } from '@/lib/services/ai/prompt';
+import { generateArticleImage } from '@/lib/services/ai/imageGen';
+import { uploadGeneratedImage } from '@/lib/services/imageStorage';
 import { getErrorMessage } from '@/lib/utils/errors';
 
 // Server-only. Called right after a match is marked FINISHED (see
@@ -45,6 +47,18 @@ export async function generateMatchAnalysis(
   try {
     const prompt = buildAnalysisPrompt(agent.persona, summary);
     const rewritten = await provider.complete(prompt);
+
+    // Best-effort only — see autopilot-import/route.ts for the same
+    // pattern: a failed/unavailable image generator must never stop
+    // the article from being queued.
+    let imageUrl: string | null = null;
+    try {
+      const image = await generateArticleImage(agent.default_category);
+      if (image) imageUrl = await uploadGeneratedImage(admin, image, `analysis/${pendingId}`);
+    } catch {
+      // no-op — image stays null, exactly like before this existed.
+    }
+
     const { error } = await admin.from('pending_articles').insert({
       id: pendingId,
       agent_id: 'analysis',
@@ -52,7 +66,7 @@ export async function generateMatchAnalysis(
       summary: rewritten.summary,
       content: rewritten.content,
       category: agent.default_category,
-      image_url: null,
+      image_url: imageUrl,
       source_url: null,
       source_name: `تحليل تلقائي — ${match.home_team} ضد ${match.away_team}`,
       ai_provider: provider.id,

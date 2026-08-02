@@ -1,28 +1,3 @@
 {
-  "crons": [
-    {
-      "path": "/api/cron/import-fixtures",
-      "schedule": "0 2 * * *"
-    },
-    {
-      "path": "/api/cron/sync-finished-matches",
-      "schedule": "0 3 * * *"
-    },
-    {
-      "path": "/api/cron/sync-lineups",
-      "schedule": "0 3 * * *"
-    },
-    {
-      "path": "/api/cron/autopilot-import",
-      "schedule": "0 4 * * *"
-    },
-    {
-      "path": "/api/cron/agent-trends",
-      "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/cron/autopilot-publish",
-      "schedule": "0 5 * * *"
-    }
-  ]
+  "$comment": "Cron jobs run via Supabase pg_cron now (see supabase/cron-setup.sql), not Vercel — Vercel Hobby only allows once-daily schedules, pg_cron doesn't. Do not re-add a \"crons\" key here; that would trigger every /api/cron/* route a second time on Vercel's own daily schedule, duplicating fixture imports, autopilot articles, etc."
 }
