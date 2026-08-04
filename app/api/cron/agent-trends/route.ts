@@ -50,7 +50,7 @@ export async function GET(request: Request) {
   }
 
   const { data: leagueRows } = await admin.from('leagues').select('name').eq('active', true);
-  const ALL_CATEGORIES: string[] = [...(leagueRows ?? []).map((l) => l.name), SPECIAL_CATEGORIES.ANALYSIS, SPECIAL_CATEGORIES.VIDEO];
+  const ALL_CATEGORIES: string[] = [...(leagueRows ?? []).map((l) => l.name), SPECIAL_CATEGORIES.ANALYSIS, SPECIAL_CATEGORIES.VIDEO, SPECIAL_CATEGORIES.GLOBAL];
 
   const { data: agent } = await admin.from('ai_agents').select('*').eq('id', 'trends').eq('source_type', 'google_trends').maybeSingle();
   if (!agent || !agent.enabled) {

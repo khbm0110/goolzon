@@ -35,7 +35,7 @@ export default function Header() {
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    data.getArticles().then(setArticles);
+    data.getArticles({ limit: 200 }).then(setArticles);
     data.getLeagues().then((all) =>
       setLeagues(all.filter((l) => l.active).sort((a, b) => a.sortOrder - b.sortOrder))
     );

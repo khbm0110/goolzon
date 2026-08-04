@@ -67,7 +67,7 @@ export async function GET(request: Request) {
   }
 
   const { data: leagueRows } = await admin.from('leagues').select('name').eq('active', true);
-  const ALL_CATEGORIES: string[] = [...(leagueRows ?? []).map((l) => l.name), SPECIAL_CATEGORIES.ANALYSIS, SPECIAL_CATEGORIES.VIDEO];
+  const ALL_CATEGORIES: string[] = [...(leagueRows ?? []).map((l) => l.name), SPECIAL_CATEGORIES.ANALYSIS, SPECIAL_CATEGORIES.VIDEO, SPECIAL_CATEGORIES.GLOBAL];
 
   const { data: agents } = await admin.from('ai_agents').select('*').eq('source_type', 'rss').eq('enabled', true);
   if (!agents || agents.length === 0) {

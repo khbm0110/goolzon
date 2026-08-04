@@ -65,6 +65,7 @@ export default function ArticleEditor({ initialData, onSave, onCancel, mode }: A
                 ))}
                 <option value={SPECIAL_CATEGORIES.ANALYSIS}>{SPECIAL_CATEGORIES.ANALYSIS}</option>
                 <option value={SPECIAL_CATEGORIES.VIDEO}>{SPECIAL_CATEGORIES.VIDEO}</option>
+                <option value={SPECIAL_CATEGORIES.GLOBAL}>{SPECIAL_CATEGORIES.GLOBAL}</option>
               </select>
             </div>
             <div className="flex items-end gap-2 pb-1">

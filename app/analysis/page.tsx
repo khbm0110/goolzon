@@ -9,8 +9,7 @@ import { SPECIAL_CATEGORIES } from '@/types';
 export const dynamic = 'force-dynamic';
 
 export default async function AnalysisPage() {
-  const articles = await data.getArticles();
-  const filtered = articles.filter((a) => a.category === SPECIAL_CATEGORIES.ANALYSIS);
+  const filtered = await data.getArticles({ category: SPECIAL_CATEGORIES.ANALYSIS });
 
   return (
     <div className="container mx-auto px-4 py-8">

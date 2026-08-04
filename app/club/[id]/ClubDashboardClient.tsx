@@ -21,7 +21,7 @@ export default function ClubDashboardClient() {
   const [standings, setStandings] = useState<Standing[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
-  const [simulatedFanCount, setSimulatedFanCount] = useState(0);
+  const [followerCount, setFollowerCount] = useState<number | null>(null);
 
   const clubId = params?.id?.toLowerCase();
 
@@ -29,12 +29,18 @@ export default function ClubDashboardClient() {
     if (!clubId) return;
     data.getClubById(clubId).then(setClub);
     data.getStandings().then(setStandings);
-    data.getArticles().then(setArticles);
+    data.getArticles({ limit: 200 }).then(setArticles);
     data.getMatches().then(setMatches);
   }, [clubId]);
 
+  // Real count of Goolzon users who actually follow this club (from the
+  // `followed_teams` table), not the old `simulatedFanCount` — which
+  // was just the admin-typed `fanCount` field (or a hardcoded 50000
+  // fallback if the admin never set one) nudged ±1 locally in each
+  // viewer's own browser on click, never persisted or shared with
+  // anyone else.
   useEffect(() => {
-    if (club) setSimulatedFanCount(club.fanCount || 50000);
+    if (club) data.getTeamFollowerCount(club.name).then(setFollowerCount);
   }, [club]);
 
   if (club === undefined) {
@@ -59,7 +65,10 @@ export default function ClubDashboardClient() {
 
   const handleFollow = () => {
     toggleFollow(club.name);
-    setSimulatedFanCount((prev) => (isFollowing ? prev - 1 : prev + 1));
+    // Optimistic ±1 on the REAL fetched count (not a fake base number)
+    // so the click still feels instant; the next full load re-syncs it
+    // with the server's actual total either way.
+    setFollowerCount((prev) => (prev === null ? prev : prev + (isFollowing ? -1 : 1)));
   };
 
   const primaryColor = club.colors?.primary || '#10b981';
@@ -107,7 +116,7 @@ export default function ClubDashboardClient() {
               <div className="flex flex-wrap justify-center md:justify-start gap-4 text-sm text-[var(--fg-muted)] font-bold">
                 <span className="flex items-center gap-1"><MapPin size={14} style={{ color: primaryColor }} /> {club.stadium}</span>
                 <span className="flex items-center gap-1"><User size={14} style={{ color: primaryColor }} /> {club.coach}</span>
-                <span className="flex items-center gap-1"><Users size={14} style={{ color: primaryColor }} /> {simulatedFanCount.toLocaleString()} مشجع</span>
+                <span className="flex items-center gap-1"><Users size={14} style={{ color: primaryColor }} /> {(followerCount ?? 0).toLocaleString()} متابع على Goolzon</span>
               </div>
             </div>
 

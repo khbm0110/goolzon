@@ -53,9 +53,30 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Site-wide structured data (JSON-LD): helps Google understand the
+  // site as a real publisher entity (name, logo, official social/RSS
+  // links) — this is what search/News surfaces actually check, not
+  // "does this look AI-written". Per-article NewsArticle markup (see
+  // app/article/[id]/page.tsx) is the other half of this.
+  const organizationLd = {
+    '@context': 'https://schema.org',
+    '@type': 'NewsMediaOrganization',
+    name: 'Goolzon',
+    url: SITE_URL,
+    logo: `${SITE_URL}/icons/icon-192.png`,
+  };
+  const websiteLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'Goolzon',
+    url: SITE_URL,
+  };
+
   return (
     <html lang="ar" dir="rtl" className={cairo.variable} suppressHydrationWarning>
       <body className="font-sans">
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationLd) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteLd) }} />
         <ThemeProvider>
           <AuthProvider>
             <Header />

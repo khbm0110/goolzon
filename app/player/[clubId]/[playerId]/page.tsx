@@ -72,7 +72,7 @@ export default function PlayerDetailPage() {
 
   useEffect(() => {
     if (!result) return;
-    data.getArticles().then((articles) => {
+    data.getArticles({ limit: 100 }).then((articles) => {
       setRelatedArticles(articles.filter((a) => a.title.includes(result.player.name)));
     });
   }, [result]);

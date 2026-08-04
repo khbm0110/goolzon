@@ -15,6 +15,7 @@ export const dynamic = 'force-dynamic';
 // separately from the DB lookup below.
 const SPECIAL_SLUGS: Record<string, string> = {
   analysis: SPECIAL_CATEGORIES.ANALYSIS,
+  global: SPECIAL_CATEGORIES.GLOBAL,
 };
 
 async function resolveCategory(slug: string): Promise<string | null> {
@@ -38,8 +39,7 @@ export default async function CountryPage({ params }: { params: Promise<{ slug: 
   const { slug } = await params;
   const currentCategory = (await resolveCategory(slug)) ?? SPECIAL_CATEGORIES.ANALYSIS;
 
-  const articles = await data.getArticles();
-  const filtered = articles.filter((a) => a.category === currentCategory);
+  const filtered = await data.getArticles({ category: currentCategory });
 
   return (
     <div className="container mx-auto px-4 py-8">

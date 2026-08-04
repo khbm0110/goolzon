@@ -1602,14 +1602,6 @@ export default function AdminDashboardPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm text-[var(--fg-subtle)] mb-1">الكلمات المفتاحية</label>
-                <input
-                  value={seoSettings.metaKeywords}
-                  onChange={(e) => setSeoSettings({ ...seoSettings, metaKeywords: e.target.value })}
-                  className="w-full bg-[var(--bg-surface-2)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--fg)]"
-                />
-              </div>
-              <div>
                 <label className="block text-sm text-[var(--fg-subtle)] mb-1">رابط صورة المشاركة (OG Image)</label>
                 <input
                   value={seoSettings.ogImageUrl}

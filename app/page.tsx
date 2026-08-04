@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { data } from '@/lib/data';
 import NewsCard from '@/components/NewsCard';
+import NewsRail from '@/components/NewsRail';
+import FollowedLeaguesNews from '@/components/FollowedLeaguesNews';
 import MatchTicker from '@/components/MatchTicker';
 import StandingsWidget from '@/components/StandingsWidget';
 import PollWidget from '@/components/PollWidget';
@@ -28,8 +30,9 @@ function SectionHeader({ title, link }: { title: string; link?: string }) {
 }
 
 export default async function HomePage() {
-  const [articles, matches, standings] = await Promise.all([
-    data.getArticles(),
+  const [articles, globalNews, matches, standings] = await Promise.all([
+    data.getArticles({ limit: 30 }), // enough for featured (1) + latest (9) + side (5) with headroom
+    data.getArticles({ category: SPECIAL_CATEGORIES.GLOBAL, limit: 10 }),
     data.getMatches(),
     data.getStandings(),
   ]);
@@ -37,7 +40,7 @@ export default async function HomePage() {
   const breaking = articles.filter((a) => a.isBreaking);
   const featuredArticle = breaking[0] ?? articles[0];
   const latestNews = articles
-    .filter((a) => a.id !== featuredArticle?.id && a.category !== SPECIAL_CATEGORIES.VIDEO)
+    .filter((a) => a.id !== featuredArticle?.id && a.category !== SPECIAL_CATEGORIES.VIDEO && a.category !== SPECIAL_CATEGORIES.GLOBAL)
     .slice(0, 9);
   const sideNews = articles.filter((a) => a.id !== featuredArticle?.id).slice(0, 5);
 
@@ -71,6 +74,8 @@ export default async function HomePage() {
         </div>
       </div>
 
+      <FollowedLeaguesNews />
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 container mx-auto px-4">
         <div className="space-y-12 lg:col-span-9">
           <section>
@@ -81,6 +86,13 @@ export default async function HomePage() {
               ))}
             </div>
           </section>
+
+          {globalNews.length > 0 && (
+            <section>
+              <SectionHeader title={SPECIAL_CATEGORIES.GLOBAL} link="/country/global" />
+              <NewsRail articles={globalNews} />
+            </section>
+          )}
         </div>
 
         <div className="lg:col-span-3 space-y-6">

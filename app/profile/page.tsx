@@ -42,8 +42,12 @@ export default function ProfilePage() {
 
   useEffect(() => {
     data.getClubs().then(setClubs);
-    data.getArticles().then(setArticles);
   }, []);
+
+  useEffect(() => {
+    if (favorites.length > 0) data.getArticlesByIds(favorites).then(setArticles);
+    else setArticles([]);
+  }, [favorites]);
 
   useEffect(() => {
     if (!profileLoading && !currentUser) router.replace('/login');
