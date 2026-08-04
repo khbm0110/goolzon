@@ -151,11 +151,25 @@ function mapUser(row: ProfileRow): User {
 }
 
 export const supabaseProvider: DataProvider = {
-  async getArticles() {
+  async getArticles(options) {
     const supabase = await getClient();
-    const { data, error } = await supabase.from('articles').select('*').order('date', { ascending: false });
+    let query = supabase.from('articles').select('*').order('date', { ascending: false });
+    if (options?.category) query = query.eq('category', options.category);
+    if (options?.categories && options.categories.length > 0) query = query.in('category', options.categories);
+    if (options?.limit) query = query.limit(options.limit);
+    const { data, error } = await query;
     if (error) {
       console.error('getArticles failed:', error.message);
+      return [];
+    }
+    return (data ?? []).map(mapArticle);
+  },
+  async getArticlesByIds(ids) {
+    if (ids.length === 0) return [];
+    const supabase = await getClient();
+    const { data, error } = await supabase.from('articles').select('*').in('id', ids);
+    if (error) {
+      console.error('getArticlesByIds failed:', error.message);
       return [];
     }
     return (data ?? []).map(mapArticle);
@@ -164,6 +178,11 @@ export const supabaseProvider: DataProvider = {
     const supabase = await getClient();
     const { data } = await supabase.from('articles').select('*').eq('id', id).maybeSingle();
     return data ? mapArticle(data) : null;
+  },
+  async incrementArticleViews(id) {
+    const supabase = await getClient();
+    const { error } = await supabase.rpc('increment_article_views', { target_id: id });
+    if (error) console.error('incrementArticleViews failed:', error.message);
   },
   async getBreakingArticles() {
     const supabase = await getClient();
@@ -342,6 +361,15 @@ export const supabaseProvider: DataProvider = {
     const { data: trophies } = await supabase.from('trophies').select('*').eq('club_id', id);
     return mapClub(club, players ?? [], trophies ?? []);
   },
+  async getTeamFollowerCount(teamName) {
+    const supabase = await getClient();
+    const { data, error } = await supabase.rpc('get_team_follower_count', { target_team: teamName });
+    if (error) {
+      console.error('getTeamFollowerCount failed:', error.message);
+      return 0;
+    }
+    return data ?? 0;
+  },
   async addClub(club) {
     const supabase = await getClient();
     const { error } = await supabase.from('clubs').insert({
@@ -485,7 +513,6 @@ export const supabaseProvider: DataProvider = {
     return {
       siteTitle: data?.site_title ?? '',
       metaDescription: data?.meta_description ?? '',
-      metaKeywords: data?.meta_keywords ?? '',
       ogImageUrl: data?.og_image_url ?? '',
     };
   },
@@ -496,7 +523,6 @@ export const supabaseProvider: DataProvider = {
       .update({
         site_title: settings.siteTitle,
         meta_description: settings.metaDescription,
-        meta_keywords: settings.metaKeywords,
         og_image_url: settings.ogImageUrl,
       })
       .eq('id', 1);

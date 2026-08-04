@@ -16,6 +16,7 @@ export const SPECIAL_CATEGORIES = {
   ANALYSIS: 'تحليلات',
   VIDEO: 'فيديو',
   BREAKING: 'عاجل',
+  GLOBAL: 'أخبار عالمية',
 } as const;
 
 export interface League {
@@ -238,7 +239,6 @@ export interface ClubProfile {
 export interface SeoSettings {
   siteTitle: string;
   metaDescription: string;
-  metaKeywords: string; 
   ogImageUrl: string;
 }
 

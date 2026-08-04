@@ -296,7 +296,6 @@ create table if not exists public.seo_settings (
   id int primary key default 1,
   site_title text,
   meta_description text,
-  meta_keywords text,
   og_image_url text,
   constraint single_row check (id = 1)
 );

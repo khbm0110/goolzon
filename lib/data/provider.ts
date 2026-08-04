@@ -8,8 +8,19 @@ import type { Prediction, LeaderboardEntry, Poll, TransferRecord, InjuryRecord, 
 // ever imports Supabase directly; they only ever import `data` from
 // lib/data/index.ts.
 export interface DataProvider {
-  getArticles(): Promise<Article[]>;
+  // `options` lets a caller ask only for what it needs instead of every
+  // row in the table — every article ever written by an autopilot
+  // agent lives here forever, so an unbounded fetch only gets more
+  // expensive over time. `limit` caps row count; `category`/`categories`
+  // push the filter into the query itself (e.g. a league/country page,
+  // or a user's several followed leagues at once) instead of fetching
+  // everything and filtering in memory. Omit all three for the few
+  // places that genuinely need the full table (admin's article list,
+  // the sitemap).
+  getArticles(options?: { limit?: number; category?: string; categories?: string[] }): Promise<Article[]>;
+  getArticlesByIds(ids: string[]): Promise<Article[]>;
   getArticleById(id: string): Promise<Article | null>;
+  incrementArticleViews(id: string): Promise<void>;
   getBreakingArticles(): Promise<Article[]>;
   getTrendingArticles(): Promise<Article[]>;
   addArticle(article: Article): Promise<void>;
@@ -31,6 +42,7 @@ export interface DataProvider {
 
   getClubs(): Promise<ClubProfile[]>;
   getClubById(id: string): Promise<ClubProfile | null>;
+  getTeamFollowerCount(teamName: string): Promise<number>;
   addClub(club: ClubProfile): Promise<void>;
   updateClub(club: ClubProfile): Promise<void>;
   deleteClub(id: string): Promise<void>;
