@@ -5,6 +5,7 @@ import { getProvider } from '@/lib/services/ai/providers';
 import { buildRewritePrompt } from '@/lib/services/ai/prompt';
 import { generateArticleImage } from '@/lib/services/ai/imageGen';
 import { uploadGeneratedImage } from '@/lib/services/imageStorage';
+import { findDuplicateTitle } from '@/lib/services/duplicateDetection';
 import { getErrorMessage } from '@/lib/utils/errors';
 import { SPECIAL_CATEGORIES } from '@/types';
 
@@ -74,10 +75,26 @@ export async function GET(request: Request) {
     return NextResponse.json({ message: 'ما فيه وكلاء RSS مفعّلين حاليًا.' });
   }
 
+  // Recent titles to compare new items against — see
+  // lib/services/duplicateDetection.ts for why this exists (the
+  // per-item dedup below only catches the SAME source item being
+  // re-fetched, not a different source covering the same story). A
+  // 48h window keeps this relevant to "is this the same news right
+  // now", not flagging a rematch of the same two teams weeks later.
+  // Grows as this run queues new articles, so two different agents in
+  // the same run also can't both queue the same story.
+  const since48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+  const [{ data: recentPublished }, { data: recentPending }] = await Promise.all([
+    admin.from('articles').select('title').gte('date', since48h).limit(150),
+    admin.from('pending_articles').select('title').in('status', ['PENDING', 'APPROVED']).gte('created_at', since48h).limit(150),
+  ]);
+  const recentTitles: string[] = [...(recentPublished ?? []), ...(recentPending ?? [])].map((r) => r.title);
+
   let fetched = 0;
   let queued = 0;
   let skipped = 0;
   let irrelevant = 0;
+  let duplicates = 0;
   const errors: string[] = [];
 
   for (const agent of agents) {
@@ -118,6 +135,15 @@ export async function GET(request: Request) {
           continue;
         }
 
+        // Checked BEFORE the AI call (using the source's original
+        // title, not a rewrite) so a likely duplicate never costs an
+        // API call at all, on top of never getting queued.
+        const duplicateOf = findDuplicateTitle(item.title, recentTitles);
+        if (duplicateOf) {
+          duplicates++;
+          continue;
+        }
+
         try {
           await sleep(DELAY_BETWEEN_AI_CALLS_MS);
           const prompt = buildRewritePrompt(item.title, item.description || item.title, agent.persona, minWords, ALL_CATEGORIES);
@@ -155,6 +181,7 @@ export async function GET(request: Request) {
           });
           if (error) throw new Error(error.message);
           queued++;
+          recentTitles.push(rewritten.title);
         } catch (e: unknown) {
           errors.push(`[${agent.name}] "${item.title}": ${getErrorMessage(e, 'فشل إعادة الصياغة')}`);
         }
@@ -162,5 +189,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ fetched, queued, skipped, irrelevant, errors });
+  return NextResponse.json({ fetched, queued, skipped, duplicates, irrelevant, errors });
 }

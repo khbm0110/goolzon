@@ -89,40 +89,51 @@ export default async function ArticleDetailPage({ params }: { params: Promise<{ 
   return (
     <div className="container mx-auto px-4 py-8">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }} />
-      <span className="text-xs font-bold text-primary mb-2 block">{article.category}</span>
-      <h1 className="text-2xl md:text-4xl font-black text-[var(--fg)] leading-tight mb-4">{article.title}</h1>
 
-      <div className="flex items-center gap-4 text-sm text-[var(--fg-subtle)] mb-6 border-b border-[var(--border-subtle)] pb-4">
-        <span className="flex items-center gap-1">
-          <Clock size={14} /> {formatTimeAgo(article.date)}
-        </span>
-        <span className="flex items-center gap-1">
-          <Eye size={14} /> {article.views.toLocaleString()}
-        </span>
-        <span>بقلم {article.author}</span>
-      </div>
+      {/* Readable content (title, image, body) capped at a comfortable
+          reading width — NOT centered with mx-auto, so it still starts
+          right at the page's edge like the rest of the site, it just
+          no longer stretches edge-to-edge on wide screens (long lines
+          are hard to read, and it made the page feel like it was
+          "filling the whole screen"). The "قد تعجبك أيضًا" grid below
+          stays at the full site width on purpose — that one's meant to
+          be wide. */}
+      <div className="max-w-3xl">
+        <span className="text-xs font-bold text-primary mb-2 block">{article.category}</span>
+        <h1 className="text-2xl md:text-4xl font-black text-[var(--fg)] leading-tight mb-4">{article.title}</h1>
 
-      {/* This is the LCP element on the article page — priority skips
-          lazy-loading so it doesn't compete with below-the-fold images.
-          Guard against an empty imageUrl (possible since the DB column
-          is nullable and supabase-provider.ts falls back to ''): passing
-          src="" to next/image throws at runtime, so skip rendering it
-          entirely rather than crash the whole article page over a
-          missing image. */}
-      {article.imageUrl && (
-        <div className="relative w-full h-64 md:h-96 rounded-xl overflow-hidden mb-6">
-          <Image src={article.imageUrl} alt={article.title} fill priority sizes="(max-width: 768px) 100vw, 1024px" className="object-cover" />
+        <div className="flex items-center gap-4 text-sm text-[var(--fg-subtle)] mb-6 border-b border-[var(--border-subtle)] pb-4">
+          <span className="flex items-center gap-1">
+            <Clock size={14} /> {formatTimeAgo(article.date)}
+          </span>
+          <span className="flex items-center gap-1">
+            <Eye size={14} /> {article.views.toLocaleString()}
+          </span>
+          <span>بقلم {article.author}</span>
         </div>
-      )}
 
-      <p className="text-lg text-[var(--fg-muted)] leading-relaxed mb-6 font-bold">{article.summary}</p>
-      <div className="prose prose-invert max-w-none text-[var(--fg-muted)] leading-loose whitespace-pre-line mb-8">{article.content}</div>
+        {/* This is the LCP element on the article page — priority skips
+            lazy-loading so it doesn't compete with below-the-fold images.
+            Guard against an empty imageUrl (possible since the DB column
+            is nullable and supabase-provider.ts falls back to ''): passing
+            src="" to next/image throws at runtime, so skip rendering it
+            entirely rather than crash the whole article page over a
+            missing image. */}
+        {article.imageUrl && (
+          <div className="relative w-full h-64 md:h-96 rounded-xl overflow-hidden mb-6">
+            <Image src={article.imageUrl} alt={article.title} fill priority sizes="(max-width: 768px) 100vw, 768px" className="object-cover" />
+          </div>
+        )}
 
-      <AdSlot placement="IN_ARTICLE" page="article" />
+        <p className="text-lg text-[var(--fg-muted)] leading-relaxed mb-6 font-bold">{article.summary}</p>
+        <div className="prose prose-invert max-w-none text-[var(--fg-muted)] leading-loose whitespace-pre-line mb-8">{article.content}</div>
 
-      <div className="border-t border-[var(--border-subtle)] pt-6 flex items-center gap-3 flex-wrap">
-        <ArticleComments articleId={article.id} />
-        <FavoriteButton articleId={article.id} />
+        <AdSlot placement="IN_ARTICLE" page="article" />
+
+        <div className="border-t border-[var(--border-subtle)] pt-6 flex items-center gap-3 flex-wrap">
+          <ArticleComments articleId={article.id} />
+          <FavoriteButton articleId={article.id} />
+        </div>
       </div>
 
       {relatedArticles.length > 0 && (

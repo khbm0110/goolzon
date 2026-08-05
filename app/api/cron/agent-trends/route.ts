@@ -5,6 +5,7 @@ import { getProvider } from '@/lib/services/ai/providers';
 import { buildRewritePrompt } from '@/lib/services/ai/prompt';
 import { generateArticleImage } from '@/lib/services/ai/imageGen';
 import { uploadGeneratedImage } from '@/lib/services/imageStorage';
+import { findDuplicateTitle } from '@/lib/services/duplicateDetection';
 import { getErrorMessage } from '@/lib/utils/errors';
 import { SPECIAL_CATEGORIES } from '@/types';
 
@@ -71,7 +72,20 @@ export async function GET(request: Request) {
 
   let queued = 0;
   let skipped = 0;
+  let duplicates = 0;
   const errors: string[] = [];
+
+  // Same cross-source duplicate check as autopilot-import — a trending
+  // topic can easily be the exact story an RSS agent already wrote up
+  // (with different wording), which the per-item id hash below can't
+  // catch since it's a different pendingId scheme entirely. See
+  // lib/services/duplicateDetection.ts.
+  const since48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+  const [{ data: recentPublished }, { data: recentPending }] = await Promise.all([
+    admin.from('articles').select('title').gte('date', since48h).limit(150),
+    admin.from('pending_articles').select('title').in('status', ['PENDING', 'APPROVED']).gte('created_at', since48h).limit(150),
+  ]);
+  const recentTitles: string[] = [...(recentPublished ?? []), ...(recentPending ?? [])].map((r) => r.title);
 
   for (const trend of trends.slice(0, 5)) {
     const pendingId = `af-trend-${hashId(trend.title)}`;
@@ -79,6 +93,13 @@ export async function GET(request: Request) {
     const { data: existingPublished } = await admin.from('articles').select('id').eq('id', pendingId).maybeSingle();
     if (existingPending || existingPublished) {
       skipped++;
+      continue;
+    }
+
+    // Checked before the AI call, using the trend's bare title —
+    // cheap enough, and if it's already covered we save the API call.
+    if (findDuplicateTitle(trend.title, recentTitles)) {
+      duplicates++;
       continue;
     }
 
@@ -127,10 +148,11 @@ export async function GET(request: Request) {
       });
       if (error) throw new Error(error.message);
       queued++;
+      recentTitles.push(rewritten.title);
     } catch (e: unknown) {
       errors.push(`"${trend.title}": ${getErrorMessage(e, 'فشل إعادة الصياغة')}`);
     }
   }
 
-  return NextResponse.json({ trendsFound: trends.length, queued, skipped, errors });
+  return NextResponse.json({ trendsFound: trends.length, queued, skipped, duplicates, errors });
 }
