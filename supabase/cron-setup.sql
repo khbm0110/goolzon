@@ -41,7 +41,7 @@ select cron.schedule(
   'goolzon-import-fixtures',
   '0 2 * * *',
   $$
-  select net.http_post(
+  select net.http_get(
     url := 'YOUR_SITE_URL/api/cron/import-fixtures',
     headers := jsonb_build_object('Authorization', 'Bearer YOUR_CRON_SECRET')
   );
@@ -55,7 +55,7 @@ select cron.schedule(
   'goolzon-sync-finished-matches',
   '*/2 * * * *',
   $$
-  select net.http_post(
+  select net.http_get(
     url := 'YOUR_SITE_URL/api/cron/sync-finished-matches',
     headers := jsonb_build_object('Authorization', 'Bearer YOUR_CRON_SECRET')
   );
@@ -69,7 +69,7 @@ select cron.schedule(
   'goolzon-sync-lineups',
   '*/2 * * * *',
   $$
-  select net.http_post(
+  select net.http_get(
     url := 'YOUR_SITE_URL/api/cron/sync-lineups',
     headers := jsonb_build_object('Authorization', 'Bearer YOUR_CRON_SECRET')
   );
@@ -82,7 +82,7 @@ select cron.schedule(
   'goolzon-autopilot-import',
   '*/15 * * * *',
   $$
-  select net.http_post(
+  select net.http_get(
     url := 'YOUR_SITE_URL/api/cron/autopilot-import',
     headers := jsonb_build_object('Authorization', 'Bearer YOUR_CRON_SECRET')
   );
@@ -95,7 +95,7 @@ select cron.schedule(
   'goolzon-autopilot-publish',
   '* * * * *',
   $$
-  select net.http_post(
+  select net.http_get(
     url := 'YOUR_SITE_URL/api/cron/autopilot-publish',
     headers := jsonb_build_object('Authorization', 'Bearer YOUR_CRON_SECRET')
   );
@@ -108,7 +108,7 @@ select cron.schedule(
   'goolzon-agent-trends',
   '0 6,12,18 * * *',
   $$
-  select net.http_post(
+  select net.http_get(
     url := 'YOUR_SITE_URL/api/cron/agent-trends',
     headers := jsonb_build_object('Authorization', 'Bearer YOUR_CRON_SECRET')
   );

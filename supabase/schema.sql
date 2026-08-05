@@ -31,6 +31,9 @@ create table if not exists public.profiles (
 );
 
 -- Auto-create a profile row whenever a new auth user signs up.
+-- security definer + a pinned search_path (defends against search_path
+-- hijacking); EXECUTE is revoked below since this is a trigger-only
+-- function, never meant to be called directly via /rest/v1/rpc.
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
@@ -44,7 +47,10 @@ begin
   );
   return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public;
+
+revoke execute on function public.handle_new_user() from public;
+grant execute on function public.handle_new_user() to service_role;
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
@@ -272,8 +278,7 @@ create table if not exists public.polls (
 create table if not exists public.poll_options (
   id uuid primary key default gen_random_uuid(),
   poll_id uuid not null references public.polls(id) on delete cascade,
-  label text not null,
-  votes integer not null default 0
+  label text not null
 );
 
 create table if not exists public.poll_votes (
@@ -535,15 +540,32 @@ alter table public.contact_messages enable row level security;
 create or replace function public.is_admin()
 returns boolean as $$
   select exists (select 1 from public.profiles where id = auth.uid() and role = 'admin');
-$$ language sql security definer stable;
+$$ language sql security definer stable set search_path = public;
 
--- Atomically increments a poll option's vote count (called after a
--- poll_votes insert succeeds, so double-voting is prevented by the
--- poll_votes primary key rather than this function).
-create or replace function public.increment_poll_vote(option_id_input uuid)
-returns void as $$
-  update public.poll_options set votes = votes + 1 where id = option_id_input;
-$$ language sql security definer;
+-- Real vote counts, computed on read — NOT a manually-incremented
+-- counter. poll_votes SELECT is locked to each user's own rows by RLS
+-- ("read own vote" below), so a plain client query can't aggregate
+-- across everyone's votes; this security-definer function can, but
+-- only ever returns counts, never the underlying rows. (An earlier
+-- version of this used a separate increment_poll_vote() RPC that had
+-- no check tying it to a real vote at all — anyone could call it
+-- directly and inflate any option's count arbitrarily. Counting the
+-- real rows instead of trusting a counter closes that off entirely.)
+create or replace function public.get_poll_votes_by_poll(target_poll_id uuid)
+returns table(option_id uuid, votes bigint)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select po.id as option_id, count(pv.option_id) as votes
+  from public.poll_options po
+  left join public.poll_votes pv on pv.option_id = po.id
+  where po.poll_id = target_poll_id
+  group by po.id;
+$$;
+
+grant execute on function public.get_poll_votes_by_poll(uuid) to anon, authenticated;
 
 -- Public read-only content: anyone (even logged out) can read.
 drop policy if exists "public read" on public.articles;
@@ -702,8 +724,27 @@ create policy "admin only delete contact messages" on public.contact_messages fo
 -- Profiles: users read/update their own; admins read & update all (ban etc).
 drop policy if exists "read own profile" on public.profiles;
 create policy "read own profile" on public.profiles for select using (auth.uid() = id or public.is_admin());
+-- CRITICAL: an UPDATE policy with no WITH CHECK defaults to reusing
+-- USING as the check — which only restricts WHO can update a row
+-- (auth.uid() = id), never WHICH COLUMNS. Without the WITH CHECK
+-- below, any authenticated user could PATCH their own row and set
+-- role='admin' (instant self-promotion — is_admin() reads exactly
+-- this column) or status='active' (a banned user un-banning
+-- themselves). role/status must stay exactly as currently stored
+-- unless the caller is already an admin; name/username/avatar remain
+-- freely editable.
 drop policy if exists "update own profile" on public.profiles;
-create policy "update own profile" on public.profiles for update using (auth.uid() = id or public.is_admin());
+create policy "update own profile" on public.profiles
+for update
+using (auth.uid() = id or public.is_admin())
+with check (
+  public.is_admin()
+  or (
+    auth.uid() = id
+    and role = (select p.role from public.profiles p where p.id = auth.uid())
+    and status = (select p.status from public.profiles p where p.id = auth.uid())
+  )
+);
 
 -- Comments: logged-in users create their own; owner or admin can update (e.g. report/hide).
 drop policy if exists "insert own comment" on public.comments;

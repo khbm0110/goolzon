@@ -690,17 +690,22 @@ export const supabaseProvider: DataProvider = {
     const { data: poll } = await supabase.from('polls').select('*').eq('active', true).order('created_at', { ascending: false }).limit(1).maybeSingle();
     if (!poll) return null;
     const { data: options } = await supabase.from('poll_options').select('*').eq('poll_id', poll.id);
-    return { id: poll.id, question: poll.question, options: (options ?? []).map((o) => ({ id: o.id, label: o.label, votes: o.votes })) } as Poll;
+    const { data: counts } = await supabase.rpc('get_poll_votes_by_poll', { target_poll_id: poll.id });
+    const votesByOption = new Map((counts ?? []).map((c: { option_id: string; votes: number }) => [c.option_id, c.votes]));
+    return { id: poll.id, question: poll.question, options: (options ?? []).map((o) => ({ id: o.id, label: o.label, votes: votesByOption.get(o.id) ?? 0 })) } as Poll;
   },
   async votePoll(pollId, optionId, userId) {
     const supabase = await getClient();
-    const { error } = await supabase.from('poll_votes').insert({ poll_id: pollId, option_id: optionId, user_id: userId });
-    if (!error) {
-      await supabase.rpc('increment_poll_vote', { option_id_input: optionId }).then(() => {});
-    }
+    // No counter to increment anymore — get_poll_votes_by_poll (called
+    // below) counts real rows in poll_votes directly, so there's
+    // nothing else to keep in sync, and nothing for a bad-faith caller
+    // to inflate independently of an actual vote.
+    await supabase.from('poll_votes').insert({ poll_id: pollId, option_id: optionId, user_id: userId });
     const { data: options } = await supabase.from('poll_options').select('*').eq('poll_id', pollId);
     const { data: poll } = await supabase.from('polls').select('*').eq('id', pollId).single();
-    return { id: pollId, question: poll?.question ?? '', options: (options ?? []).map((o) => ({ id: o.id, label: o.label, votes: o.votes })) };
+    const { data: counts } = await supabase.rpc('get_poll_votes_by_poll', { target_poll_id: pollId });
+    const votesByOption = new Map((counts ?? []).map((c: { option_id: string; votes: number }) => [c.option_id, c.votes]));
+    return { id: pollId, question: poll?.question ?? '', options: (options ?? []).map((o) => ({ id: o.id, label: o.label, votes: votesByOption.get(o.id) ?? 0 })) };
   },
   async hasUserVotedPoll(pollId, userId) {
     const supabase = await getClient();
