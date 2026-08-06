@@ -50,6 +50,15 @@ export const supabaseAuth: AuthProvider = {
     return { user: profile, error: null };
   },
 
+  async signInWithOAuth(provider) {
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    return { error: error?.message ?? null };
+  },
+
   async signOut() {
     const supabase = createClient();
     await supabase.auth.signOut();

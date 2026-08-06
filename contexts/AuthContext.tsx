@@ -11,6 +11,7 @@ interface AuthContextValue {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (name: string, username: string, email: string, password: string) => Promise<{ error: string | null }>;
+  signInWithOAuth: (provider: 'google' | 'facebook') => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   followedTeams: string[];
   toggleFollow: (teamName: string) => void;
@@ -79,6 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { error } = await auth.signUp(name, username, email, password);
       return { error };
     },
+    signInWithOAuth: (provider) => auth.signInWithOAuth(provider),
     signOut: () => auth.signOut(),
 
     followedTeams,

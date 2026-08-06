@@ -95,7 +95,12 @@ create table if not exists public.matches (
   -- moment the fixture status flips to FINISHED.
   api_fixture_id integer,
   home_team_api_id integer,
-  away_team_api_id integer
+  away_team_api_id integer,
+  -- Which upstream API this match's ids belong to — API-Football and
+  -- football-data.org use entirely different id schemes, and
+  -- football-data.org's free plan is the only one of the two that
+  -- covers the CURRENT season (see lib/services/footballData.ts).
+  data_provider text not null default 'api_football' check (data_provider in ('api_football', 'football_data'))
 );
 
 create index if not exists idx_matches_live_with_fixture
@@ -243,6 +248,19 @@ create table if not exists public.favorites (
   article_id text references public.articles(id) on delete cascade,
   created_at timestamptz not null default now(),
   primary key (user_id, article_id)
+);
+
+-- Web Push subscriptions (see lib/services/webPush.ts). A user can
+-- have several (one per browser/device they enabled notifications
+-- on). endpoint is unique — the same browser subscription always
+-- reuses its row instead of accumulating duplicates.
+create table if not exists public.push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references public.profiles(id) on delete cascade,
+  endpoint text not null unique,
+  p256dh text not null,
+  auth text not null,
+  created_at timestamptz not null default now()
 );
 
 create table if not exists public.activity_log (
@@ -518,6 +536,7 @@ alter table public.comments enable row level security;
 alter table public.followed_teams enable row level security;
 alter table public.followed_leagues enable row level security;
 alter table public.favorites enable row level security;
+alter table public.push_subscriptions enable row level security;
 alter table public.activity_log enable row level security;
 alter table public.dream_squads enable row level security;
 alter table public.predictions enable row level security;

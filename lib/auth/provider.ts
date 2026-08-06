@@ -15,6 +15,10 @@ export interface AuthProvider {
   getCurrentUser(): Promise<AuthUser | null>;
   signIn(email: string, password: string): Promise<{ user: AuthUser | null; error: string | null }>;
   signUp(name: string, username: string, email: string, password: string): Promise<{ user: AuthUser | null; error: string | null }>;
+  // Redirects the browser to the provider's own login page, then back
+  // to /auth/callback — there's no user/error to return here directly,
+  // the callback route is what actually creates the session.
+  signInWithOAuth(provider: 'google' | 'facebook'): Promise<{ error: string | null }>;
   signOut(): Promise<void>;
   onChange(callback: (user: AuthUser | null) => void): () => void;
 }

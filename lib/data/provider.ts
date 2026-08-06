@@ -19,6 +19,7 @@ export interface DataProvider {
   // the sitemap).
   getArticles(options?: { limit?: number; category?: string; categories?: string[] }): Promise<Article[]>;
   getArticlesByIds(ids: string[]): Promise<Article[]>;
+  searchArticles(query: string): Promise<Article[]>;
   getArticleById(id: string): Promise<Article | null>;
   incrementArticleViews(id: string): Promise<void>;
   getBreakingArticles(): Promise<Article[]>;

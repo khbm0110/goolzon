@@ -174,6 +174,27 @@ export const supabaseProvider: DataProvider = {
     }
     return (data ?? []).map(mapArticle);
   },
+  async searchArticles(query) {
+    const q = query.trim();
+    if (!q) return [];
+    const supabase = await getClient();
+    // ILIKE across title/summary/content, done in the query itself (not
+    // fetch-everything-then-filter) so this scales the same way the
+    // rest of getArticles's options do. `%` escaped so a literal % in
+    // someone's search doesn't act as a wildcard.
+    const escaped = q.replace(/[%_]/g, (m) => `\\${m}`);
+    const { data, error } = await supabase
+      .from('articles')
+      .select('*')
+      .or(`title.ilike.%${escaped}%,summary.ilike.%${escaped}%,content.ilike.%${escaped}%`)
+      .order('date', { ascending: false })
+      .limit(30);
+    if (error) {
+      console.error('searchArticles failed:', error.message);
+      return [];
+    }
+    return (data ?? []).map(mapArticle);
+  },
   async getArticleById(id) {
     const supabase = await getClient();
     const { data } = await supabase.from('articles').select('*').eq('id', id).maybeSingle();
@@ -704,8 +725,8 @@ export const supabaseProvider: DataProvider = {
     const { data: options } = await supabase.from('poll_options').select('*').eq('poll_id', pollId);
     const { data: poll } = await supabase.from('polls').select('*').eq('id', pollId).single();
     const { data: counts } = await supabase.rpc('get_poll_votes_by_poll', { target_poll_id: pollId });
-    const votesByOption = new Map<string, number>((counts ?? []).map((c: { option_id: string; votes: number }) => [c.option_id, c.votes]));
-    return { id: pollId, question: poll?.question ?? '', options: (options ?? []).map((o) => ({ id: o.id, label: o.label, votes: votesByOption.get(o.id) ?? 0 })) } as Poll;
+    const votesByOption = new Map((counts ?? []).map((c: { option_id: string; votes: number }) => [c.option_id, c.votes]));
+    return { id: pollId, question: poll?.question ?? '', options: (options ?? []).map((o) => ({ id: o.id, label: o.label, votes: votesByOption.get(o.id) ?? 0 })) };
   },
   async hasUserVotedPoll(pollId, userId) {
     const supabase = await getClient();

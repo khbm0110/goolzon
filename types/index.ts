@@ -17,6 +17,7 @@ export const SPECIAL_CATEGORIES = {
   VIDEO: 'فيديو',
   BREAKING: 'عاجل',
   GLOBAL: 'أخبار عالمية',
+  TRANSFERS: 'الانتقالات',
 } as const;
 
 export interface League {
