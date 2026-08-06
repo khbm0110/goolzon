@@ -16,6 +16,7 @@ export const dynamic = 'force-dynamic';
 const SPECIAL_SLUGS: Record<string, string> = {
   analysis: SPECIAL_CATEGORIES.ANALYSIS,
   global: SPECIAL_CATEGORIES.GLOBAL,
+  transfers: SPECIAL_CATEGORIES.TRANSFERS,
 };
 
 async function resolveCategory(slug: string): Promise<string | null> {

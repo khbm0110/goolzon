@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { UserPlus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import OAuthButtons from '@/components/OAuthButtons';
 
 export default function RegisterPage() {
   const { signUp } = useAuth();
@@ -84,6 +85,8 @@ export default function RegisterPage() {
             {loading ? 'جارٍ الإنشاء...' : 'إنشاء الحساب'}
           </button>
         </form>
+
+        <OAuthButtons />
 
         <p className="text-sm text-[var(--fg-subtle)] mt-4 text-center">
           لديك حساب بالفعل؟{' '}

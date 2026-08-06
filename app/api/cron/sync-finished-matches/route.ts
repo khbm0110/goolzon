@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { fetchFixtureStatus } from '@/lib/services/apiFootball';
+import { fetchFootballDataMatchStatus } from '@/lib/services/footballData';
 import { refreshClubPlayers } from '@/lib/data/playerSync';
 import { generateMatchAnalysis } from '@/lib/data/matchAnalysis';
+import { sendPushToFollowers } from '@/lib/services/webPush';
 import { getErrorMessage } from '@/lib/utils/errors';
 
 // This is the route that delivers "فوري بعد كل مباراة": it checks every
@@ -40,7 +42,7 @@ export async function GET(request: Request) {
 
   const { data: liveMatches } = await admin
     .from('matches')
-    .select('id, home_team, away_team, league, date, api_fixture_id, home_team_api_id, away_team_api_id')
+    .select('id, home_team, away_team, league, date, api_fixture_id, home_team_api_id, away_team_api_id, data_provider')
     .eq('status', 'LIVE')
     .not('api_fixture_id', 'is', null);
 
@@ -53,7 +55,16 @@ export async function GET(request: Request) {
 
   for (const match of liveMatches) {
     try {
-      const fixture = await fetchFixtureStatus(match.api_fixture_id);
+      // football-data.org and API-Football use entirely different
+      // fixture/team id schemes, so which status-check function (and
+      // whether the ids even mean anything to it) depends entirely on
+      // which one this particular match came from.
+      const isFootballData = match.data_provider === 'football_data';
+      const fixture = isFootballData
+        ? await fetchFootballDataMatchStatus(match.api_fixture_id).then((r) =>
+            r ? { isFinished: r.isFinished, statusShort: r.statusShort, scoreHome: r.scoreHome, scoreAway: r.scoreAway } : null
+          )
+        : await fetchFixtureStatus(match.api_fixture_id);
       if (!fixture) {
         results[match.id] = 'fixture-not-found';
         continue;
@@ -69,12 +80,33 @@ export async function GET(request: Request) {
         .update({ status: 'FINISHED', score_home: fixture.scoreHome, score_away: fixture.scoreAway, time: 'إنتهت' })
         .eq('id', match.id);
 
+      // 1b) Tell anyone following either club or this league — this is
+      // the other half of "follow a team" actually meaning something.
+      // Best-effort: a notification failure should never stop the rest
+      // of this match's processing (player refresh, analysis article).
+      try {
+        await sendPushToFollowers(admin, [match.home_team, match.away_team, match.league], {
+          title: `⚽ انتهت: ${match.home_team} ${fixture.scoreHome ?? 0} - ${fixture.scoreAway ?? 0} ${match.away_team}`,
+          body: match.league || '',
+          url: `/match/${match.id}`,
+        });
+      } catch {
+        // no-op — see comment above.
+      }
+
       // 2) Refresh both clubs' players immediately — this is the
-      // "instant" part: no waiting for anyone to visit a page.
-      const homeClubId = match.home_team_api_id ? `af-${match.home_team_api_id}` : null;
-      const awayClubId = match.away_team_api_id ? `af-${match.away_team_api_id}` : null;
-      if (homeClubId) await refreshClubPlayers(admin, homeClubId);
-      if (awayClubId) await refreshClubPlayers(admin, awayClubId);
+      // "instant" part: no waiting for anyone to visit a page. Only
+      // possible for API-Football matches: home_team_api_id/
+      // away_team_api_id are football-data.org's own team ids for a
+      // football_data match, which don't correspond to anything in
+      // API-Football's catalogue, and football-data.org's free plan
+      // has no player/squad data to sync from at all.
+      if (!isFootballData) {
+        const homeClubId = match.home_team_api_id ? `af-${match.home_team_api_id}` : null;
+        const awayClubId = match.away_team_api_id ? `af-${match.away_team_api_id}` : null;
+        if (homeClubId) await refreshClubPlayers(admin, homeClubId);
+        if (awayClubId) await refreshClubPlayers(admin, awayClubId);
+      }
 
       // 3) Let "وكيل التحليل" write a tactical analysis from the final
       // score (+ stats if match_details has any) — no-ops quietly if

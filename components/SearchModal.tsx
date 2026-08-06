@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { Search, X, ChevronLeft } from 'lucide-react';
 import type { Article } from '@/types';
 
@@ -16,6 +17,13 @@ export default function SearchModal({ isOpen, onClose, articles }: SearchModalPr
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Article[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+
+  const goToFullResults = (q: string) => {
+    if (!q.trim()) return;
+    onClose();
+    router.push(`/search?q=${encodeURIComponent(q.trim())}`);
+  };
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -48,7 +56,13 @@ export default function SearchModal({ isOpen, onClose, articles }: SearchModalPr
       <div className="absolute inset-0 bg-[color-mix(in_srgb,var(--bg-base)_90%,transparent)] backdrop-blur-sm transition-opacity" onClick={onClose} />
 
       <div className="relative w-full max-w-2xl bg-[var(--bg-surface)] border border-[var(--border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
-        <div className="p-4 border-b border-[var(--border)] flex items-center gap-3">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            goToFullResults(query);
+          }}
+          className="p-4 border-b border-[var(--border)] flex items-center gap-3"
+        >
           <Search className="text-[var(--fg-subtle)]" size={20} />
           <input
             ref={inputRef}
@@ -58,10 +72,10 @@ export default function SearchModal({ isOpen, onClose, articles }: SearchModalPr
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
-          <button onClick={onClose} className="p-2 hover:bg-[var(--bg-surface-2)] rounded-full text-[var(--fg-subtle)] hover:text-[var(--fg)] transition-colors">
+          <button type="button" onClick={onClose} className="p-2 hover:bg-[var(--bg-surface-2)] rounded-full text-[var(--fg-subtle)] hover:text-[var(--fg)] transition-colors">
             <X size={20} />
           </button>
-        </div>
+        </form>
 
         <div className="overflow-y-auto p-2">
           {query && results.length === 0 && <div className="text-center py-10 text-[var(--fg-faint)]">لا توجد نتائج مطابقة لـ &quot;{query}&quot;</div>}
@@ -97,7 +111,14 @@ export default function SearchModal({ isOpen, onClose, articles }: SearchModalPr
           ))}
         </div>
 
-        {results.length > 0 && <div className="bg-[var(--bg-base)] p-2 text-center border-t border-[var(--border-subtle)] text-[10px] text-[var(--fg-faint)]">عرض {results.length} نتائج</div>}
+        {results.length > 0 && (
+          <button
+            onClick={() => goToFullResults(query)}
+            className="bg-[var(--bg-base)] p-3 text-center border-t border-[var(--border-subtle)] text-sm font-bold text-primary hover:underline w-full"
+          >
+            عرض كل النتائج
+          </button>
+        )}
       </div>
     </div>
   );

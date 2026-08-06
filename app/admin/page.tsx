@@ -383,11 +383,26 @@ export default function AdminDashboardPage() {
   }
 
   async function handleSaveArticle(articleData: Article) {
+    let savedId: string;
     if (articleData.id && !articleData.id.startsWith('new-')) {
       await data.updateArticle(articleData);
+      savedId = articleData.id;
     } else {
       const newArticle: Article = { ...articleData, id: `article-${Date.now()}`, date: new Date().toISOString(), author: currentUser?.name || 'Admin', views: 0 };
       await data.addArticle(newArticle);
+      savedId = newArticle.id;
+    }
+    // Push notifications need the VAPID private key, which must never
+    // reach the browser, so this one step goes through a small server
+    // route instead of the usual direct-to-Supabase pattern. Fire-and-
+    // forget: a failed/slow notification send should never block the
+    // admin's save action or surface as an error on the article form.
+    if (articleData.isBreaking) {
+      fetch('/api/admin/notify-breaking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ articleId: savedId, title: articleData.title, summary: articleData.summary }),
+      }).catch(() => {});
     }
     setEditingArticle(null);
     refreshAll();

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { data } from '@/lib/data';
+import PushNotificationToggle from '@/components/PushNotificationToggle';
 import type { ClubProfile, Article, DreamSquadPlayer } from '@/types';
 
 const FORMATION_433 = [
@@ -241,7 +242,11 @@ export default function ProfilePage() {
             )}
 
             {profileTab === 'FOLLOWING' && (
-              followedTeams.length === 0 && followedLeagues.length === 0 ? (
+              <>
+                <div className="mb-4 pb-4 border-b border-[var(--border-subtle)]">
+                  <PushNotificationToggle />
+                </div>
+                {followedTeams.length === 0 && followedLeagues.length === 0 ? (
                 <p className="text-[var(--fg-faint)] text-sm text-center py-6">لسه ما تابعت أي فريق أو بطولة.</p>
               ) : (
                 <div className="space-y-4">
@@ -266,7 +271,8 @@ export default function ProfilePage() {
                     </div>
                   )}
                 </div>
-              )
+              )}
+              </>
             )}
 
             {profileTab === 'ACTIVITY' && (

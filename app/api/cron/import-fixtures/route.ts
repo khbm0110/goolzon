@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { fetchFixturesForLeagueOnDate } from '@/lib/services/apiFootball';
+import { fetchFootballDataFixturesForDate, isFootballDataConfigured, FOOTBALL_DATA_COMPETITION_CODES } from '@/lib/services/footballData';
 import { getErrorMessage } from '@/lib/utils/errors';
 
 // Pulls today's fixtures for every league an admin is tracking
@@ -39,36 +40,69 @@ export async function GET(request: Request) {
   let imported = 0;
   const errors: string[] = [];
 
-  for (const league of leagues) {
+  async function upsertFixture(f: Awaited<ReturnType<typeof fetchFixturesForLeagueOnDate>>[number], league: (typeof leagues)[number], provider: 'api_football' | 'football_data') {
+    const { error } = await admin.from('matches').upsert({
+      id: `af-${f.fixtureApiId}`,
+      home_team: f.homeTeamName,
+      home_logo: f.homeTeamLogo,
+      away_team: f.awayTeamName,
+      away_logo: f.awayTeamLogo,
+      score_home: f.scoreHome,
+      score_away: f.scoreAway,
+      time: f.status === 'LIVE' && f.elapsedMinutes != null ? `${f.elapsedMinutes}'` : new Date(f.date).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
+      status: f.status,
+      league: league.name,
+      country: league.country,
+      date: f.date,
+      round: f.round,
+      venue: f.venue,
+      api_fixture_id: f.fixtureApiId,
+      home_team_api_id: f.homeTeamApiId,
+      away_team_api_id: f.awayTeamApiId,
+      data_provider: provider,
+    });
+    if (error) errors.push(`${f.fixtureApiId}: ${error.message}`);
+    else imported++;
+  }
+
+  // Split tracked leagues by which upstream can actually serve them.
+  // football-data.org's free plan covers the current season for a
+  // fixed set of major European competitions (see
+  // FOOTBALL_DATA_COMPETITION_CODES) — use it for those, since
+  // API-Football's free plan can't return current-season data at all
+  // ("Free plans do not have access to this season"). Everything else
+  // (Arab leagues, Botola 2, etc.) still goes through API-Football as
+  // before, and will keep failing on the free plan until that's
+  // upgraded — this only fixes the leagues football-data.org actually
+  // has.
+  const fdLeagues = leagues.filter((l) => isFootballDataConfigured() && FOOTBALL_DATA_COMPETITION_CODES[l.league_api_id]);
+  const afLeagues = leagues.filter((l) => !fdLeagues.includes(l));
+
+  if (fdLeagues.length > 0) {
+    try {
+      const codes = fdLeagues.map((l) => FOOTBALL_DATA_COMPETITION_CODES[l.league_api_id]);
+      const fixturesByCode = await fetchFootballDataFixturesForDate(codes, today);
+      for (const league of fdLeagues) {
+        const code = FOOTBALL_DATA_COMPETITION_CODES[league.league_api_id];
+        for (const f of fixturesByCode.get(code) ?? []) {
+          await upsertFixture(f, league, 'football_data');
+        }
+      }
+    } catch (e: unknown) {
+      errors.push(`football-data.org: ${getErrorMessage(e, 'unknown error')}`);
+    }
+  }
+
+  for (const league of afLeagues) {
     try {
       const fixtures = await fetchFixturesForLeagueOnDate(league.league_api_id, league.season, today);
       for (const f of fixtures) {
-        const { error } = await admin.from('matches').upsert({
-          id: `af-${f.fixtureApiId}`,
-          home_team: f.homeTeamName,
-          home_logo: f.homeTeamLogo,
-          away_team: f.awayTeamName,
-          away_logo: f.awayTeamLogo,
-          score_home: f.scoreHome,
-          score_away: f.scoreAway,
-          time: f.status === 'LIVE' && f.elapsedMinutes != null ? `${f.elapsedMinutes}'` : new Date(f.date).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
-          status: f.status,
-          league: league.name,
-          country: league.country,
-          date: f.date,
-          round: f.round,
-          venue: f.venue,
-          api_fixture_id: f.fixtureApiId,
-          home_team_api_id: f.homeTeamApiId,
-          away_team_api_id: f.awayTeamApiId,
-        });
-        if (error) errors.push(`${f.fixtureApiId}: ${error.message}`);
-        else imported++;
+        await upsertFixture(f, league, 'api_football');
       }
     } catch (e: unknown) {
       errors.push(`league ${league.name}: ${getErrorMessage(e, 'unknown error')}`);
     }
   }
 
-  return NextResponse.json({ leagues: leagues.length, imported, errors });
+  return NextResponse.json({ leagues: leagues.length, viaFootballData: fdLeagues.length, viaApiFootball: afLeagues.length, imported, errors });
 }

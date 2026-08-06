@@ -14,15 +14,15 @@ export default function NewsRail({ articles }: { articles: Article[] }) {
         <Link
           key={article.id}
           href={`/article/${article.id}`}
-          className="flex-shrink-0 w-40 md:w-48 snap-start group"
+          className="flex-shrink-0 w-56 md:w-64 snap-start group"
         >
-          <div className="relative w-40 h-24 md:w-48 md:h-28 rounded-lg overflow-hidden bg-[var(--bg-surface-2)] mb-2">
+          <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-[var(--bg-surface-2)] mb-2">
             {article.imageUrl && (
               <Image
                 src={article.imageUrl}
                 alt={article.title}
                 fill
-                sizes="192px"
+                sizes="256px"
                 className="object-cover transition-transform group-hover:scale-105"
               />
             )}

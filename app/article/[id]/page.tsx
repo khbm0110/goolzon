@@ -98,7 +98,16 @@ export default async function ArticleDetailPage({ params }: { params: Promise<{ 
           "filling the whole screen"). The "قد تعجبك أيضًا" grid below
           stays at the full site width on purpose — that one's meant to
           be wide. */}
-      <div className="max-w-3xl">
+      {/* max-w caps the reading width; me-auto (margin-inline-end) is
+          what actually pins it to the RIGHT edge in RTL — a plain
+          block with max-w and no margin does NOT auto-align to the
+          page's RTL start on its own, direction doesn't reposition
+          block boxes by itself, so without this it was hugging the
+          LEFT edge instead (wrong side entirely) with the empty
+          leftover space appearing on the right. me-auto (not the
+          physical ml-auto) keeps this correct if the site ever adds
+          an LTR page too. */}
+      <div className="max-w-4xl me-auto">
         <span className="text-xs font-bold text-primary mb-2 block">{article.category}</span>
         <h1 className="text-2xl md:text-4xl font-black text-[var(--fg)] leading-tight mb-4">{article.title}</h1>
 
@@ -121,7 +130,7 @@ export default async function ArticleDetailPage({ params }: { params: Promise<{ 
             missing image. */}
         {article.imageUrl && (
           <div className="relative w-full h-64 md:h-96 rounded-xl overflow-hidden mb-6">
-            <Image src={article.imageUrl} alt={article.title} fill priority sizes="(max-width: 768px) 100vw, 768px" className="object-cover" />
+            <Image src={article.imageUrl} alt={article.title} fill priority sizes="(max-width: 768px) 100vw, 896px" className="object-cover" />
           </div>
         )}
 

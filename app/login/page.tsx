@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { LogIn } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import OAuthButtons from '@/components/OAuthButtons';
 
 export default function LoginPage() {
   const { signIn } = useAuth();
@@ -63,6 +64,8 @@ export default function LoginPage() {
             {loading ? 'جارٍ الدخول...' : 'دخول'}
           </button>
         </form>
+
+        <OAuthButtons />
 
         <p className="text-sm text-[var(--fg-subtle)] mt-4 text-center">
           ليس لديك حساب؟{' '}

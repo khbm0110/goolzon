@@ -35,12 +35,16 @@ export async function GET(request: Request) {
 
   // Candidates: matches kicking off within the next 40 minutes, or
   // already live, that came from a real fixture and don't have
-  // lineups stored yet.
+  // lineups stored yet. Only api_football matches — football-data.org's
+  // free plan has no player/lineup data at all, and its team/fixture
+  // ids don't correspond to anything in API-Football's catalogue
+  // anyway (fetchFixtureLineups would just fail or return nonsense).
   const windowEnd = new Date(Date.now() + 40 * 60_000).toISOString();
   const { data: candidates } = await admin
     .from('matches')
     .select('id, home_team_api_id, away_team_api_id, api_fixture_id, status, date')
     .not('api_fixture_id', 'is', null)
+    .eq('data_provider', 'api_football')
     .in('status', ['UPCOMING', 'LIVE'])
     .lte('date', windowEnd);
 

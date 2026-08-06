@@ -10,16 +10,20 @@ import { useTheme } from '@/contexts/ThemeContext';
 import SearchModal from './SearchModal';
 
 import { data } from '@/lib/data';
+import { SPECIAL_CATEGORIES } from '@/types';
 import type { Article, League } from '@/types';
 
 // Fixed structural links only — actual leagues/countries come from the
 // `leagues` table (لوحة التحكم → الدوريات الأساسية) and are fetched below,
 // so adding/removing/reordering a league there updates this nav with no
-// code change needed.
+// code change needed. الانتقالات is pinned here (not left to the dynamic
+// league list) because transfer-market news is a first-class, always-on
+// category on every competitor site, not something tied to one league.
 const FIXED_NAV_ITEMS = [
   { label: 'الرئيسية', path: '/' },
   { label: 'مركز النتائج', path: '/scores' },
   { label: 'الأندية', path: '/clubs' },
+  { label: SPECIAL_CATEGORIES.TRANSFERS, path: '/country/transfers' },
 ];
 
 export default function Header() {
