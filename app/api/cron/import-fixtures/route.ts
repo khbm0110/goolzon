@@ -24,7 +24,7 @@ export async function GET(request: Request) {
     }
   }
 
-  let admin;
+  let admin: ReturnType<typeof createAdminClient>;
   try {
     admin = createAdminClient();
   } catch {
