@@ -4,6 +4,15 @@ import { fetchFixturesForLeagueOnDate } from '@/lib/services/apiFootball';
 import { fetchFootballDataFixturesForDate, isFootballDataConfigured, FOOTBALL_DATA_COMPETITION_CODES } from '@/lib/services/footballData';
 import { getErrorMessage } from '@/lib/utils/errors';
 
+interface TrackedLeague {
+  id: string;
+  name: string;
+  country: string | null;
+  league_api_id: number;
+  season: number;
+  active: boolean;
+}
+
 // Pulls today's fixtures for every league an admin is tracking
 // (`tracked_leagues`) and upserts them into `matches`, filling in
 // api_fixture_id / home_team_api_id / away_team_api_id — the piece that
@@ -31,7 +40,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Sync is not configured on the server yet.' }, { status: 503 });
   }
 
-  const { data: leagues } = await admin.from('tracked_leagues').select('*').eq('active', true);
+  const { data: leagues } = await admin.from('tracked_leagues').select('*').eq('active', true).returns<TrackedLeague[]>();
   if (!leagues || leagues.length === 0) {
     return NextResponse.json({ leagues: 0, imported: 0, message: 'No tracked leagues yet — add some from لوحة التحكم → الدوريات.' });
   }
@@ -40,7 +49,7 @@ export async function GET(request: Request) {
   let imported = 0;
   const errors: string[] = [];
 
-  async function upsertFixture(f: Awaited<ReturnType<typeof fetchFixturesForLeagueOnDate>>[number], league: (typeof leagues)[number], provider: 'api_football' | 'football_data') {
+  async function upsertFixture(f: Awaited<ReturnType<typeof fetchFixturesForLeagueOnDate>>[number], league: TrackedLeague, provider: 'api_football' | 'football_data') {
     const { error } = await admin.from('matches').upsert({
       id: `af-${f.fixtureApiId}`,
       home_team: f.homeTeamName,
