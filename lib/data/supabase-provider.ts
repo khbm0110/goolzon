@@ -712,7 +712,7 @@ export const supabaseProvider: DataProvider = {
     if (!poll) return null;
     const { data: options } = await supabase.from('poll_options').select('*').eq('poll_id', poll.id);
     const { data: counts } = await supabase.rpc('get_poll_votes_by_poll', { target_poll_id: poll.id });
-    const votesByOption = new Map((counts ?? []).map((c: { option_id: string; votes: number }) => [c.option_id, c.votes]));
+    const votesByOption = new Map<string, number>((counts ?? []).map((c: { option_id: string; votes: number }): [string, number] => [c.option_id, c.votes]));
     return { id: poll.id, question: poll.question, options: (options ?? []).map((o) => ({ id: o.id, label: o.label, votes: votesByOption.get(o.id) ?? 0 })) } as Poll;
   },
   async votePoll(pollId, optionId, userId) {
@@ -725,8 +725,8 @@ export const supabaseProvider: DataProvider = {
     const { data: options } = await supabase.from('poll_options').select('*').eq('poll_id', pollId);
     const { data: poll } = await supabase.from('polls').select('*').eq('id', pollId).single();
     const { data: counts } = await supabase.rpc('get_poll_votes_by_poll', { target_poll_id: pollId });
-    const votesByOption = new Map((counts ?? []).map((c: { option_id: string; votes: number }) => [c.option_id, c.votes]));
-    return { id: pollId, question: poll?.question ?? '', options: (options ?? []).map((o) => ({ id: o.id, label: o.label, votes: votesByOption.get(o.id) ?? 0 })) };
+    const votesByOption = new Map<string, number>((counts ?? []).map((c: { option_id: string; votes: number }): [string, number] => [c.option_id, c.votes]));
+    return { id: pollId, question: poll?.question ?? '', options: (options ?? []).map((o) => ({ id: o.id, label: o.label, votes: votesByOption.get(o.id) ?? 0 })) } as Poll;
   },
   async hasUserVotedPoll(pollId, userId) {
     const supabase = await getClient();
