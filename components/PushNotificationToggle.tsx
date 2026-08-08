@@ -51,7 +51,11 @@ export default function PushNotificationToggle() {
     const reg = await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(publicKey),
+      // TS 5.7+'s stricter Uint8Array/ArrayBufferLike typing rejects
+      // this even though it's a perfectly valid BufferSource at
+      // runtime (a plain Uint8Array backed by a regular ArrayBuffer) —
+      // the PushManager Web API type just hasn't caught up.
+      applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
     });
 
     const json = sub.toJSON();
