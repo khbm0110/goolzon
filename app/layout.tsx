@@ -1,6 +1,9 @@
+```tsx
 import type { Metadata, Viewport } from 'next';
+import Script from 'next/script';
 import { Cairo } from 'next/font/google';
 import './globals.css';
+
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import Header from '@/components/Header';
@@ -13,34 +16,42 @@ const cairo = Cairo({
   variable: '--font-cairo',
 });
 
-const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '');
+const SITE_URL = (
+  process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+).replace(/\/$/, '');
 
 export const metadata: Metadata = {
-  // Required so relative OG image paths resolve to absolute URLs when a
-  // page doesn't set its own (see generateMetadata() on article/match/
-  // club/country pages for per-page overrides).
   metadataBase: new URL(SITE_URL),
+
   title: {
     default: 'goolzon | الكرة الخليجية',
     template: '%s | goolzon',
   },
-  description: 'goolzon: منصة إخبارية رياضية عربية شاملة تغطي أخبار كرة القدم، نتائج المباريات لحظة بلحظة، جداول ترتيب الدوريات العربية والعالمية، تحليلات تكتيكية، وأخبار الأندية واللاعبين — بتحديث مستمر على مدار الساعة.',
+
+  description:
+    'goolzon: منصة إخبارية رياضية عربية شاملة تغطي أخبار كرة القدم، نتائج المباريات لحظة بلحظة، جداول ترتيب الدوريات العربية والعالمية، تحليلات تكتيكية، وأخبار الأندية واللاعبين — بتحديث مستمر على مدار الساعة.',
+
   manifest: '/manifest.json',
+
   icons: {
     icon: '/icons/icon-192.png',
     apple: '/icons/icon-192.png',
   },
+
   openGraph: {
     type: 'website',
     locale: 'ar_AR',
     siteName: 'goolzon',
     title: 'goolzon | الكرة الخليجية',
-    description: 'goolzon: منصة إخبارية رياضية عربية شاملة تغطي أخبار كرة القدم، نتائج المباريات لحظة بلحظة، جداول ترتيب الدوريات العربية والعالمية، تحليلات تكتيكية، وأخبار الأندية واللاعبين — بتحديث مستمر على مدار الساعة.',
+    description:
+      'goolzon: منصة إخبارية رياضية عربية شاملة تغطي أخبار كرة القدم، نتائج المباريات لحظة بلحظة، جداول ترتيب الدوريات العربية والعالمية، تحليلات تكتيكية، وأخبار الأندية واللاعبين — بتحديث مستمر على مدار الساعة.',
   },
+
   twitter: {
     card: 'summary_large_image',
     title: 'goolzon | الكرة الخليجية',
-    description: 'goolzon: منصة إخبارية رياضية عربية شاملة تغطي أخبار كرة القدم، نتائج المباريات لحظة بلحظة، جداول ترتيب الدوريات العربية والعالمية، تحليلات تكتيكية، وأخبار الأندية واللاعبين — بتحديث مستمر على مدار الساعة.',
+    description:
+      'goolzon: منصة إخبارية رياضية عربية شاملة تغطي أخبار كرة القدم، نتائج المباريات لحظة بلحظة، جداول ترتيب الدوريات العربية والعالمية، تحليلات تكتيكية، وأخبار الأندية واللاعبين — بتحديث مستمر على مدار الساعة.',
   },
 };
 
@@ -53,11 +64,7 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Site-wide structured data (JSON-LD): helps Google understand the
-  // site as a real publisher entity (name, logo, official social/RSS
-  // links) — this is what search/News surfaces actually check, not
-  // "does this look AI-written". Per-article NewsArticle markup (see
-  // app/article/[id]/page.tsx) is the other half of this.
+  // Site-wide structured data (JSON-LD)
   const organizationLd = {
     '@context': 'https://schema.org',
     '@type': 'NewsMediaOrganization',
@@ -65,6 +72,7 @@ export default function RootLayout({
     url: SITE_URL,
     logo: `${SITE_URL}/icons/icon-192.png`,
   };
+
   const websiteLd = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
@@ -73,19 +81,51 @@ export default function RootLayout({
   };
 
   return (
-    <html lang="ar" dir="rtl" className={cairo.variable} suppressHydrationWarning>
-      <body className="font-sans">
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationLd) }} />
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteLd) }} />
-        <ThemeProvider>
-          <AuthProvider>
-            <Header />
-            <main>{children}</main>
-            <Footer />
+    <html lang="ar" dir="rtl" className={cairo.variable}>
+      <body>
+        {/* Google Analytics 4 */}
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_ID}`}
+          strategy="afterInteractive"
+        />
+
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){window.dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '${process.env.NEXT_PUBLIC_GA_ID}');
+          `}
+        </Script>
+
+        {/* Site-wide structured data */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(organizationLd),
+          }}
+        />
+
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(websiteLd),
+          }}
+        />
+
+        <AuthProvider>
+          <ThemeProvider>
             <ServiceWorkerRegister />
-          </AuthProvider>
-        </ThemeProvider>
+
+            <Header />
+
+            <main>{children}</main>
+
+            <Footer />
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );
 }
+```
